@@ -6,6 +6,8 @@ from direct.task import Task
 
 class MarbleMaze(ShowBase):
 
+    BOARD = 20  # half-size of play area; walls sit at +/- BOARD
+
     def __init__(self):
         ShowBase.__init__(self)
 
@@ -55,26 +57,30 @@ class MarbleMaze(ShowBase):
         return wall
 
     def createLevel(self):
+        board = self.BOARD
+        span = board * 2
+
         self.floor = self.loader.loadModel("models/box")
         self.floor.reparentTo(self.render)
-        self.floor.setScale(20, 20, 0.5)
+        self.floor.setScale(span, span, 0.5)
         self.floor.setPos(0, 0, 0)
         self.apply_solid_color(self.floor, 0.4, 0.7, 0.4)
 
-        BOARD = 20
         self.walls = []
 
-        # Outer boundary
-        self.walls.append(self.make_wall(0, BOARD, BOARD, 0.5))
-        self.walls.append(self.make_wall(0, -BOARD, BOARD, 0.5))
-        self.walls.append(self.make_wall(BOARD, 0, 0.5, BOARD))
-        self.walls.append(self.make_wall(-BOARD, 0, 0.5, BOARD))
+        # Outer boundary — span the full floor edge to edge
+        self.walls.append(self.make_wall(0, board, span, 0.5))
+        self.walls.append(self.make_wall(0, -board, span, 0.5))
+        self.walls.append(self.make_wall(board, 0, 0.5, span))
+        self.walls.append(self.make_wall(-board, 0, 0.5, span))
 
         # Inner boundary
-        self.walls.append(self.make_wall(0, 15, 15, 0.4))
-        self.walls.append(self.make_wall(0, -15, 15, 0.4))
-        self.walls.append(self.make_wall(15, 0, 0.4, 15))
-        self.walls.append(self.make_wall(-15, 0, 0.4, 15))
+        inner = 15
+        inner_span = inner * 2
+        self.walls.append(self.make_wall(0, inner, inner_span, 0.4))
+        self.walls.append(self.make_wall(0, -inner, inner_span, 0.4))
+        self.walls.append(self.make_wall(inner, 0, 0.4, inner_span))
+        self.walls.append(self.make_wall(-inner, 0, 0.4, inner_span))
 
         # Maze walls
         self.walls.append(self.make_wall(-5, 5, 0.4, 6))
@@ -117,12 +123,13 @@ class MarbleMaze(ShowBase):
         self.text.setText("Reach the yellow cube!  WASD = move  R = restart")
 
     def hits_wall(self, pos):
+        margin = 0.6
         for wall in self.walls:
             wp = wall.getPos()
-            sx = wall.getScale().x
-            sy = wall.getScale().y
+            hx = wall.getScale().x * 0.5 + margin
+            hy = wall.getScale().y * 0.5 + margin
 
-            if abs(pos.x - wp.x) < sx + 0.7 and abs(pos.y - wp.y) < sy + 0.7:
+            if abs(pos.x - wp.x) < hx and abs(pos.y - wp.y) < hy:
                 return True
 
         return False
@@ -147,8 +154,9 @@ class MarbleMaze(ShowBase):
         if self.keys["d"]:
             new_pos.x += speed * dt
 
-        new_pos.x = max(-19, min(19, new_pos.x))
-        new_pos.y = max(-19, min(19, new_pos.y))
+        limit = self.BOARD - 1
+        new_pos.x = max(-limit, min(limit, new_pos.x))
+        new_pos.y = max(-limit, min(limit, new_pos.y))
         if not self.hits_wall(new_pos):
             self.ball.setPos(new_pos)
         else:
