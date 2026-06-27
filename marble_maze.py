@@ -24,6 +24,7 @@ class MarbleMaze(ShowBase):
 
     CELL_SIZE = 4
     FLOOR_PADDING = 10
+    BOX_MODEL_HALF = 1.0  # models/box spans -1..1 before scaling
 
     FLOOR_THICK = 0.2
     WALL_HEIGHT = 1.2
@@ -125,6 +126,9 @@ class MarbleMaze(ShowBase):
                 break
         return pos
 
+    def wall_half_extents(self, sx, sy):
+        return sx * self.BOX_MODEL_HALF, sy * self.BOX_MODEL_HALF
+
     def make_wall(self, x, y, sx, sy):
         wall = self.loader.loadModel("models/box")
         wall.reparentTo(self.render)
@@ -140,14 +144,14 @@ class MarbleMaze(ShowBase):
         goal_pos = None
         rows = len(layout)
         cols = len(layout[0])
-        half = self.CELL_SIZE / 2
 
         for row, line in enumerate(layout):
             for col, ch in enumerate(line):
                 x, y = self.cell_center(col, row, cols, rows)
                 if ch == "#":
                     self.walls.append(self.make_wall(x, y, self.CELL_SIZE, self.CELL_SIZE))
-                    self.wall_bounds.append((x, y, half, half))
+                    half_x, half_y = self.wall_half_extents(self.CELL_SIZE, self.CELL_SIZE)
+                    self.wall_bounds.append((x, y, half_x, half_y))
                 elif ch == "S":
                     start_pos = (x + 1.0, y - 1.0)
                 elif ch == "G":
@@ -167,7 +171,9 @@ class MarbleMaze(ShowBase):
         self.maze_rows = len(MAZE_LAYOUT)
         maze_width = self.maze_cols * self.CELL_SIZE
         maze_height = self.maze_rows * self.CELL_SIZE
-        self.play_limit = maze_width / 2 - self.BALL_RADIUS - 0.5
+        wall_half, _ = self.wall_half_extents(self.CELL_SIZE, self.CELL_SIZE)
+        inner_limit = maze_width / 2 - wall_half - self.BALL_RADIUS - self.COLLISION_PADDING
+        self.play_limit = inner_limit
 
         self.floor = self.make_floor(
             maze_width + self.FLOOR_PADDING,
@@ -206,12 +212,12 @@ class MarbleMaze(ShowBase):
     def try_move(self, old_pos, new_x, new_y):
         pos = Point3(old_pos.x, old_pos.y, self.BALL_Z)
 
-        if not self.collides_at(new_x, pos.y):
-            pos.x = new_x
-        if not self.collides_at(pos.x, new_y):
-            pos.y = new_y
-
+        pos.x = new_x
         pos = self.resolve_collisions(pos)
+
+        pos.y = new_y
+        pos = self.resolve_collisions(pos)
+
         pos.z = self.BALL_Z
         return pos
 
