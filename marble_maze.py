@@ -25,10 +25,11 @@ class MarbleMaze(ShowBase):
     CELL_SIZE = 3
     WALL_THICK = 0.12
     FLOOR_PADDING = 2
+    BOX_MODEL_HALF = 1.0  # models/box spans -1..1 before scaling
 
     BALL_SCALE = 0.32
     BALL_RADIUS = BALL_SCALE * 0.5
-    HIT_RADIUS = BALL_RADIUS + 0.05
+    COLLISION_PADDING = 0.05
 
     FLOOR_THICK = 0.2
     WALL_HEIGHT = 0.6
@@ -85,7 +86,9 @@ class MarbleMaze(ShowBase):
 
     def add_wall_edge(self, x, y, sx, sy):
         self.walls.append(self.make_wall(x, y, sx, sy))
-        self.wall_boxes.append((x, y, sx, sy))
+        half_x = sx * self.BOX_MODEL_HALF
+        half_y = sy * self.BOX_MODEL_HALF
+        self.wall_bounds.append((x, y, half_x, half_y))
 
     def wall_edges_for_cell(self, col, row, x, y):
         """Draw thin edges only where wall meets open space — uniform thickness."""
@@ -109,22 +112,60 @@ class MarbleMaze(ShowBase):
         self.apply_solid_color(wall, *self.WALL_COLOR)
         return wall
 
-    def hits_wall(self, x, y):
-        r = self.HIT_RADIUS
-        for wx, wy, sx, sy in self.wall_boxes:
-            hw = sx * 0.5
-            hh = sy * 0.5
-            closest_x = max(wx - hw, min(x, wx + hw))
-            closest_y = max(wy - hh, min(y, wy + hh))
-            dx = x - closest_x
-            dy = y - closest_y
-            if dx * dx + dy * dy < r * r:
+    def circle_vs_wall(self, px, py, wall_cx, wall_cy, half_x, half_y):
+        radius = self.BALL_RADIUS + self.COLLISION_PADDING
+
+        closest_x = max(wall_cx - half_x, min(px, wall_cx + half_x))
+        closest_y = max(wall_cy - half_y, min(py, wall_cy + half_y))
+
+        dx = px - closest_x
+        dy = py - closest_y
+        dist_sq = dx * dx + dy * dy
+
+        if dist_sq >= radius * radius:
+            return None
+
+        if dist_sq > 1e-9:
+            dist = math.sqrt(dist_sq)
+            return dx / dist, dy / dist, radius - dist
+
+        left = px - (wall_cx - half_x)
+        right = (wall_cx + half_x) - px
+        bottom = py - (wall_cy - half_y)
+        top = (wall_cy + half_y) - py
+        min_pen = min(left, right, bottom, top)
+
+        if min_pen == left:
+            return -1.0, 0.0, radius + left
+        if min_pen == right:
+            return 1.0, 0.0, radius + right
+        if min_pen == bottom:
+            return 0.0, -1.0, radius + bottom
+        return 0.0, 1.0, radius + top
+
+    def collides_at(self, px, py):
+        for wall_cx, wall_cy, half_x, half_y in self.wall_bounds:
+            if self.circle_vs_wall(px, py, wall_cx, wall_cy, half_x, half_y):
                 return True
         return False
 
+    def resolve_collisions(self, pos):
+        for _ in range(6):
+            moved = False
+            for wall_cx, wall_cy, half_x, half_y in self.wall_bounds:
+                hit = self.circle_vs_wall(pos.x, pos.y, wall_cx, wall_cy, half_x, half_y)
+                if hit:
+                    nx, ny, overlap = hit
+                    pos.x += nx * overlap
+                    pos.y += ny * overlap
+                    moved = True
+            if not moved:
+                break
+        return pos
+
     def build_maze(self, layout):
         self.walls = []
-        self.wall_boxes = []
+        self.wall_bounds = []
         start_pos = None
         goal_pos = None
 
@@ -153,7 +194,13 @@ class MarbleMaze(ShowBase):
 
         span_x = cols * self.CELL_SIZE + self.FLOOR_PADDING
         span_y = rows * self.CELL_SIZE + self.FLOOR_PADDING
-        self.play_limit = cols * self.CELL_SIZE / 2 - self.HIT_RADIUS - 0.2
+        wall_half = self.WALL_THICK * self.BOX_MODEL_HALF
+        self.play_limit = (
+            cols * self.CELL_SIZE / 2
+            - wall_half
+            - self.BALL_RADIUS
+            - self.COLLISION_PADDING
+        )
 
         self.floor = self.loader.loadModel("models/box")
         self.floor.reparentTo(self.render)
@@ -191,37 +238,21 @@ class MarbleMaze(ShowBase):
         self.ball.setPos(self.start_pos[0], self.start_pos[1], self.BALL_Z)
         self.text.setText("Enter top, exit bottom!  WASD = move  R = restart")
 
-    def try_move(self, x, y, dx, dy):
-        steps = max(1, int(math.ceil(max(abs(dx), abs(dy)) / 0.1)))
+    def try_move(self, old_pos, new_x, new_y):
+        pos = Point3(old_pos.x, old_pos.y, self.BALL_Z)
 
-        for _ in range(steps):
-            step_x = dx / steps
-            step_y = dy / steps
-            new_x = x + step_x
-            new_y = y + step_y
+        pos.x = max(-self.play_limit, min(self.play_limit, new_x))
+        pos = self.resolve_collisions(pos)
 
-            if not self.hits_wall(new_x, new_y):
-                x, y = new_x, new_y
-                continue
+        pos.y = max(-self.play_limit, min(self.play_limit, new_y))
+        pos = self.resolve_collisions(pos)
 
-            moved = False
-            if not self.hits_wall(x + step_x, y):
-                x += step_x
-                moved = True
-            if not self.hits_wall(x, y + step_y):
-                y += step_y
-                moved = True
-            if not moved:
-                break
-
-        x = max(-self.play_limit, min(self.play_limit, x))
-        y = max(-self.play_limit, min(self.play_limit, y))
-        return x, y
+        pos.z = self.BALL_Z
+        return pos
 
     def update(self, task):
         dt = globalClock.getDt()
-        x = self.ball.getPos().x
-        y = self.ball.getPos().y
+        old_pos = self.ball.getPos()
         speed = 7
         dx = dy = 0.0
 
@@ -235,8 +266,7 @@ class MarbleMaze(ShowBase):
             dx += speed * dt
 
         if dx != 0.0 or dy != 0.0:
-            x, y = self.try_move(x, y, dx, dy)
-            self.ball.setPos(x, y, self.BALL_Z)
+            self.ball.setPos(self.try_move(old_pos, old_pos.x + dx, old_pos.y + dy))
 
         if (self.goal.getPos() - self.ball.getPos()).length() < 1.2:
             self.text.setText("YOU REACHED THE EXIT! Press R to play again")
