@@ -48,6 +48,28 @@ namespace DragonBoxAlgebra.Gameplay
                 HandValues = new List<int> { 1 },
                 ParMoves = 6,
                 ParCards = 1
+            },
+            new()
+            {
+                Title = "Merge to One",
+                LeftCards = new List<CardKind> { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
+                RightCards = new List<CardKind> { CardKind.NightCreature },
+                HandCards = new List<CardKind> { CardKind.NightCreature },
+                HandValues = new List<int> { 1 },
+                ParMoves = 5,
+                ParCards = 1
+            },
+            new()
+            {
+                Title = "Divide Identical Pair",
+                LeftCards = new List<CardKind> { CardKind.Box, CardKind.PositiveConstant, CardKind.PositiveConstant },
+                LeftValues = new List<int> { 1, 1, 1 },
+                RightCards = new List<CardKind> { CardKind.NegativeConstant },
+                RightValues = new List<int> { 1 },
+                HandCards = new List<CardKind> { CardKind.DivideTool, CardKind.NegativeConstant },
+                HandValues = new List<int> { 1, 1 },
+                ParMoves = 7,
+                ParCards = 2
             }
         };
     }

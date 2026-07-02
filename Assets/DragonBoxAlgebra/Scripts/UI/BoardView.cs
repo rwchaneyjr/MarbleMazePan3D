@@ -8,18 +8,27 @@ namespace DragonBoxAlgebra.UI
 {
     public class BoardView : MonoBehaviour
     {
-        [SerializeField] private RectTransform leftPanel;
-        [SerializeField] private RectTransform rightPanel;
-
+        private RectTransform _leftPanel;
+        private RectTransform _rightPanel;
+        private RectTransform _dragRoot;
+        private Canvas _canvas;
         private AlgebraGameController _controller;
-        private CardWidget _selected;
+        private readonly List<CardWidget> _widgets = new();
 
-        public void Initialize(AlgebraGameController controller, RectTransform left, RectTransform right)
+        public void Initialize(AlgebraGameController controller, RectTransform left, RectTransform right,
+            Canvas canvas, RectTransform dragRoot)
         {
             _controller = controller;
-            leftPanel = left;
-            rightPanel = right;
+            _leftPanel = left;
+            _rightPanel = right;
+            _canvas = canvas;
+            _dragRoot = dragRoot;
+
+            left.gameObject.AddComponent<BoardDropZone>();
+            right.gameObject.AddComponent<BoardDropZone>();
+
             _controller.BoardChanged += Refresh;
+            _controller.CombineOccurred += OnCombine;
             Refresh();
         }
 
@@ -28,50 +37,59 @@ namespace DragonBoxAlgebra.UI
             if (_controller != null)
             {
                 _controller.BoardChanged -= Refresh;
+                _controller.CombineOccurred -= OnCombine;
             }
         }
 
-        public void HandleCardClicked(CardWidget widget)
+        private void OnCombine(CombineEvent evt)
         {
-            if (_selected == null)
+            VortexEffect.Play(_dragRoot, GetSideCenter(evt.SideName));
+
+            if (DragonBoxAlgebra.Audio.AudioManager.Instance != null)
             {
-                _selected = widget;
-                widget.SetSelected(true);
-                return;
+                switch (evt.Action)
+                {
+                    case CombineActionType.MergeToOne:
+                    case CombineActionType.DividePair:
+                        DragonBoxAlgebra.Audio.AudioManager.Instance.PlayMergeToOne();
+                        break;
+                    default:
+                        DragonBoxAlgebra.Audio.AudioManager.Instance.PlayCombine();
+                        break;
+                }
             }
 
-            if (_selected == widget)
+            foreach (CardWidget widget in _widgets)
             {
-                widget.SetSelected(false);
-                _selected = null;
-                return;
+                if (widget.SideName == evt.SideName)
+                {
+                    widget.ReactCombine();
+                }
             }
+        }
 
-            if (_selected.SideName != widget.SideName)
-            {
-                _selected.SetSelected(false);
-                _selected = widget;
-                widget.SetSelected(true);
-                return;
-            }
-
-            _controller.TryCombine(widget.SideName, _selected.Index, widget.Index);
-            _selected.SetSelected(false);
-            _selected = null;
+        private Vector3 GetSideCenter(string sideName)
+        {
+            RectTransform panel = sideName == "Left" ? _leftPanel : _rightPanel;
+            return panel.transform.position;
         }
 
         private void Refresh()
         {
-            RebuildSide(leftPanel, _controller.Board.Left, "Left", _controller);
-            RebuildSide(rightPanel, _controller.Board.Right, "Right", _controller);
-            _selected = null;
+            _widgets.Clear();
+            RebuildSide(_leftPanel, _controller.Board.Left, "Left");
+            RebuildSide(_rightPanel, _controller.Board.Right, "Right");
         }
 
-        private static void RebuildSide(RectTransform panel, BoardSide side, string sideName, AlgebraGameController controller)
+        private void RebuildSide(RectTransform panel, BoardSide side, string sideName)
         {
             for (int i = panel.childCount - 1; i >= 0; i--)
             {
-                Destroy(panel.GetChild(i).gameObject);
+                Transform child = panel.GetChild(i);
+                if (child.GetComponent<BoardDropZone>() == null)
+                {
+                    Destroy(child.gameObject);
+                }
             }
 
             var layout = panel.GetComponent<HorizontalLayoutGroup>();
@@ -85,7 +103,9 @@ namespace DragonBoxAlgebra.UI
 
             for (int i = 0; i < side.Cards.Count; i++)
             {
-                CardWidget.Create(panel, side.Cards[i], i, sideName, controller);
+                CardWidget widget = CardWidget.Create(panel, side.Cards[i], i, sideName, _controller, _canvas, _dragRoot);
+                widget.gameObject.AddComponent<CardDropZone>();
+                _widgets.Add(widget);
             }
         }
     }

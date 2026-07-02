@@ -8,12 +8,18 @@ namespace DragonBoxAlgebra.UI
     public class HandView : MonoBehaviour
     {
         private RectTransform _panel;
+        private Canvas _canvas;
+        private RectTransform _dragRoot;
         private AlgebraGameController _controller;
 
-        public void Initialize(AlgebraGameController controller, RectTransform panel)
+        public void Initialize(AlgebraGameController controller, RectTransform panel, Canvas canvas,
+            RectTransform dragRoot)
         {
             _controller = controller;
             _panel = panel;
+            _canvas = canvas;
+            _dragRoot = dragRoot;
+            _panel.gameObject.AddComponent<BoardDropZone>();
             _controller.BoardChanged += Refresh;
             Refresh();
         }
@@ -30,7 +36,11 @@ namespace DragonBoxAlgebra.UI
         {
             for (int i = _panel.childCount - 1; i >= 0; i--)
             {
-                Destroy(_panel.GetChild(i).gameObject);
+                Transform child = _panel.GetChild(i);
+                if (child.GetComponent<BoardDropZone>() == null)
+                {
+                    Destroy(child.gameObject);
+                }
             }
 
             var layout = _panel.GetComponent<HorizontalLayoutGroup>();
@@ -43,12 +53,8 @@ namespace DragonBoxAlgebra.UI
 
             for (int i = 0; i < _controller.Hand.Count; i++)
             {
-                int handIndex = i;
                 BoardCard card = _controller.Hand[i];
-                CardWidget widget = CardWidget.Create(_panel, card, handIndex, "Hand", _controller);
-                var button = widget.gameObject.AddComponent<Button>();
-                button.targetGraphic = widget.GetComponent<Image>();
-                button.onClick.AddListener(() => _controller.TryPlayFromHand(handIndex, true));
+                CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
             }
         }
     }

@@ -4,19 +4,32 @@ using DragonBoxAlgebra.Core;
 
 namespace DragonBoxAlgebra.Gameplay
 {
+    public struct CombineEvent
+    {
+        public string SideName;
+        public CombineActionType Action;
+        public int IndexA;
+        public int IndexB;
+    }
+
     public class AlgebraGameController
     {
         public event Action BoardChanged;
         public event Action<int, int> LevelCompleted;
         public event Action<int, int> LevelLoaded;
         public event Action<string> MessageChanged;
+        public event Action<CombineEvent> CombineOccurred;
 
         public AlgebraBoard Board { get; } = new();
         public MoveTracker Moves { get; } = new();
         public IReadOnlyList<BoardCard> Hand => _hand;
+        public bool CanUndo => _undoStack.Count > 0;
 
         private readonly List<BoardCard> _hand = new();
+        private readonly Stack<GameSnapshot> _undoStack = new();
+        private GameSnapshot _initialSnapshot;
         private int _levelIndex;
+        private bool _levelComplete;
 
         public int LevelIndex => _levelIndex;
         public int LevelCount => LevelLibrary.Levels.Count;
@@ -33,10 +46,13 @@ namespace DragonBoxAlgebra.Gameplay
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
             Moves.Reset();
+            _undoStack.Clear();
+            _levelComplete = false;
+            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
             BoardChanged?.Invoke();
-            MessageChanged?.Invoke("Combine opposite cards on the same side, or play from your hand to both sides.");
+            MessageChanged?.Invoke("Drag cards together on the same side, or drag from your hand to the board.");
         }
 
         public void LoadNextLevel()
@@ -52,39 +68,128 @@ namespace DragonBoxAlgebra.Gameplay
             LoadLevel(_levelIndex);
         }
 
+        public void RewindLevel()
+        {
+            if (_initialSnapshot == null)
+            {
+                return;
+            }
+
+            _initialSnapshot.Apply(Board, _hand, Moves);
+            _undoStack.Clear();
+            _levelComplete = false;
+            BoardChanged?.Invoke();
+            MessageChanged?.Invoke("Rewound to the start of the level.");
+        }
+
+        public void Undo()
+        {
+            if (_undoStack.Count == 0 || _levelComplete)
+            {
+                return;
+            }
+
+            _undoStack.Pop().Apply(Board, _hand, Moves);
+            _levelComplete = false;
+            BoardChanged?.Invoke();
+            MessageChanged?.Invoke("Undid the last move.");
+        }
+
         public bool TryCombine(string sideName, int indexA, int indexB)
         {
-            BoardSide side = sideName == "Left" ? Board.Left : Board.Right;
-            if (!Board.TryCombineOnSide(side, indexA, indexB))
+            if (_levelComplete)
             {
+                return false;
+            }
+
+            PushUndo();
+            BoardSide side = Board.GetSide(sideName);
+            if (!Board.TryCombineOnSide(side, indexA, indexB, out CombineActionType action))
+            {
+                PopUndoWithoutApply();
                 MessageChanged?.Invoke("Those cards cannot combine.");
                 return false;
             }
 
             Moves.RegisterCombine();
-            Board.ResolveAllAutoCombines();
-            BoardChanged?.Invoke();
-            CheckWin();
+            CombineOccurred?.Invoke(new CombineEvent
+            {
+                SideName = sideName,
+                Action = action,
+                IndexA = indexA,
+                IndexB = indexB
+            });
+
+            ResolveCombines();
             return true;
         }
 
-        public bool TryPlayFromHand(int handIndex, bool addToLeftSide)
+        public bool TryPlayFromHand(int handIndex)
         {
-            if (handIndex < 0 || handIndex >= _hand.Count)
+            if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;
             }
 
             BoardCard template = _hand[handIndex];
-            Board.TryAddBalanced(template, addToLeftSide);
+            if (template.Kind == CardKind.DivideTool)
+            {
+                return TryUseDivideTool(handIndex);
+            }
+
+            PushUndo();
+            Board.TryAddBalanced(template);
             _hand.RemoveAt(handIndex);
 
             Moves.RegisterBalancedPlay();
-            Board.ResolveAllAutoCombines();
-            BoardChanged?.Invoke();
             MessageChanged?.Invoke("Balanced move! Same card added to both sides.");
-            CheckWin();
+            ResolveCombines();
             return true;
+        }
+
+        public bool TryUseDivideTool(int handIndex)
+        {
+            PushUndo();
+            bool left = Board.TryApplyDivide(Board.Left);
+            bool right = !left && Board.TryApplyDivide(Board.Right);
+
+            if (!left && !right)
+            {
+                PopUndoWithoutApply();
+                MessageChanged?.Invoke("No identical pair to divide on either side.");
+                return false;
+            }
+
+            _hand.RemoveAt(handIndex);
+            Moves.RegisterBalancedPlay();
+            CombineOccurred?.Invoke(new CombineEvent
+            {
+                SideName = left ? "Left" : "Right",
+                Action = CombineActionType.DividePair,
+                IndexA = 0,
+                IndexB = 1
+            });
+            MessageChanged?.Invoke("Divided identical pair into One!");
+            ResolveCombines();
+            return true;
+        }
+
+        private void ResolveCombines()
+        {
+            Board.ResolveAllAutoCombines(out List<(string side, int a, int b, CombineActionType action)> autoResolved);
+            foreach ((string side, int a, int b, CombineActionType action) entry in autoResolved)
+            {
+                CombineOccurred?.Invoke(new CombineEvent
+                {
+                    SideName = entry.side,
+                    Action = entry.action,
+                    IndexA = entry.a,
+                    IndexB = entry.b
+                });
+            }
+
+            BoardChanged?.Invoke();
+            CheckWin();
         }
 
         private void CheckWin()
@@ -100,8 +205,22 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
+            _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             LevelCompleted?.Invoke(stars, Moves.Moves);
+        }
+
+        private void PushUndo()
+        {
+            _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves));
+        }
+
+        private void PopUndoWithoutApply()
+        {
+            if (_undoStack.Count > 0)
+            {
+                _undoStack.Pop();
+            }
         }
     }
 }

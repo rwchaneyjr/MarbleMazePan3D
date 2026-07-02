@@ -6,6 +6,16 @@ namespace DragonBoxAlgebra.Core
         DayCreature,
         NightCreature,
         PositiveConstant,
-        NegativeConstant
+        NegativeConstant,
+        One,
+        DivideTool
+    }
+
+    public enum CombineActionType
+    {
+        OppositeCancel,
+        MergeToOne,
+        OneEliminates,
+        DividePair
     }
 }

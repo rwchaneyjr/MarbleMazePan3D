@@ -26,10 +26,30 @@ No manual scene wiring needed — `AlgebraBootstrap` builds the UI at runtime.
 
 | Action | How |
 |--------|-----|
-| Combine opposites | Click two opposite cards on the **same side** |
-| Play from hand | Click a card in the bottom hand bar |
-| Restart level | **Restart** button (top-left) |
-| Next level | **Next** button after winning |
+| Combine cards | **Drag** one card onto another on the **same side** |
+| Play from hand | **Drag** a hand card onto either board panel |
+| Opposites cancel | Day + Night, +1 + -1 → green vortex animation |
+| Merge to One | Drag identical cards together |
+| One eliminates | Drag a **One** card onto any other card |
+| Divide | Drag **➗** from hand onto the board (merges identical pair) |
+| Undo | **↩** button (top-right) |
+| Rewind | **⏪** button — back to level start |
+| Next level | **Next** after winning |
+
+### Features matching DragonBox
+
+- ✅ Two-sided textured board
+- ✅ Drag-and-drop card interaction
+- ✅ Opposite cancel with **green vortex** animation
+- ✅ Merge identical → **One** (multiply mechanic)
+- ✅ **One** eliminates cards (×1 mechanic)
+- ✅ **Divide tool** for identical pairs
+- ✅ **Undo** and **Rewind**
+- ✅ Procedural card sprites and board texture
+- ✅ Sound effects (combine, play, undo, win)
+- ✅ Creature bounce reactions on cards
+- ✅ Win screen with stars and checklist
+- ✅ 6 sample levels
 
 ### Project layout
 
@@ -60,14 +80,12 @@ new LevelDefinition
 }
 ```
 
-### Next steps to match the real app
+### Next steps (optional polish)
 
-- Replace colored placeholders with DragonBox-style **sprites**
-- Add **drag-and-drop** instead of click-to-combine
-- Add **undo / rewind** buttons (top-right in original)
-- Add **multiply/divide** mechanics (stack cards, divide both sides)
-- Add **chapter progression** and animated creature reactions
-- Add **sound effects** and the green vortex cancel animation
+- Import official-style DragonBox art sprites
+- Show equation notation at top (e.g. `2x + 1 = 5`)
+- Chapter select map screen
+- Animated dragon character on win screen
 
 ---
 

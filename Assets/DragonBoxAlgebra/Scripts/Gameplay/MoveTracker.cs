@@ -2,8 +2,8 @@ namespace DragonBoxAlgebra.Gameplay
 {
     public class MoveTracker
     {
-        public int Moves { get; private set; }
-        public int CardsPlayed { get; private set; }
+        public int Moves { get; set; }
+        public int CardsPlayed { get; set; }
 
         public void Reset()
         {

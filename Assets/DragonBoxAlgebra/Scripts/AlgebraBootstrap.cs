@@ -1,3 +1,4 @@
+using DragonBoxAlgebra.Audio;
 using DragonBoxAlgebra.Gameplay;
 using DragonBoxAlgebra.UI;
 using UnityEngine;
@@ -8,14 +9,19 @@ namespace DragonBoxAlgebra
     {
         private void Awake()
         {
-            Camera mainCamera = Camera.main;
-            if (mainCamera == null)
+            if (Camera.main == null)
             {
                 var cameraGo = new GameObject("Main Camera");
                 cameraGo.tag = "MainCamera";
-                mainCamera = cameraGo.AddComponent<Camera>();
-                mainCamera.orthographic = true;
-                mainCamera.backgroundColor = new Color(0.12f, 0.34f, 0.42f);
+                var camera = cameraGo.AddComponent<Camera>();
+                camera.orthographic = true;
+                camera.backgroundColor = new Color(0.12f, 0.34f, 0.42f);
+            }
+
+            if (AudioManager.Instance == null)
+            {
+                var audioGo = new GameObject("AudioManager", typeof(AudioSource), typeof(AudioManager));
+                DontDestroyOnLoad(audioGo);
             }
 
             var controller = new AlgebraGameController();
