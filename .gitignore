@@ -32,3 +32,7 @@ Thumbs.db
 
 # Crash reports
 sysinfo.txt
+
+# Large reference media (keep frames if needed)
+reference/*.mp4
+reference/*.mov
