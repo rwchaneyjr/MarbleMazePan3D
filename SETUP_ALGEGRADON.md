@@ -1,45 +1,48 @@
-# Push to AlgebraDragon
+# Put the game on AlgebraDragon
 
-The DragonBox Unity project is ready. The cloud agent cannot push directly to
-`AlgebraDragon` (permission denied). Run these commands **on your computer**:
+The cloud agent **cannot push directly** to `AlgebraDragon` until Cursor is granted access to that repo.
 
-## Option A — Push this branch to AlgebraDragon (recommended)
+## Fastest way (about 1 minute) — run on your PC
 
-```bash
-git clone https://github.com/rwchaneyjr/MarbleMazePan3D.git
-cd MarbleMazePan3D
-git checkout cursor/algebra-dragon-setup-1ad2
-
-git remote add algebra-dragon https://github.com/rwchaneyjr/AlgebraDragon.git
-git push -u algebra-dragon cursor/algebra-dragon-setup-1ad2:main
-```
-
-## Option B — Copy from existing DragonBox branch
+Open **Git Bash** or **PowerShell** and paste:
 
 ```bash
-git clone https://github.com/rwchaneyjr/MarbleMazePan3D.git temp-copy
-cd temp-copy
-git checkout cursor/dragonbox-algebra-unity-1ad2
-
-# Remove marble maze files manually, then:
-git remote add algebra-dragon https://github.com/rwchaneyjr/AlgebraDragon.git
-git push -u algebra-dragon HEAD:main
+git clone -b cursor/algebra-dragon-setup-1ad2 https://github.com/rwchaneyjr/MarbleMazePan3D.git AlgebraDragon
+cd AlgebraDragon
+git remote remove origin
+git remote add origin https://github.com/rwchaneyjr/AlgebraDragon.git
+git push -u origin HEAD:main
 ```
 
-## Option C — GitHub import
+Then open **https://github.com/rwchaneyjr/AlgebraDragon** — the full Unity project will be there.
 
-1. Open https://github.com/rwchaneyjr/AlgebraDragon
-2. Use **Import repository** or push from local as above
+---
 
-## After pushing
+## Or: grant Cursor access (so the agent can push for you)
 
-1. Open the `AlgebraDragon` folder in Unity
-2. Open `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
-3. Press Play
+1. Open https://github.com/settings/installations
+2. Click **Cursor** → **Configure**
+3. Under **Repository access**, add **AlgebraDragon**
+4. Save, then tell the agent: **"try pushing to AlgebraDragon again"**
 
-## Grant cloud agent access (optional)
+---
 
-To let Cursor push to `AlgebraDragon` automatically in the future:
+## Or: GitHub Actions one-click sync
 
-1. Go to https://github.com/rwchaneyjr/AlgebraDragon/settings/installations
-2. Ensure the **Cursor** GitHub App has access to this repository
+1. Create a Personal Access Token: https://github.com/settings/tokens (scope: **repo**)
+2. Go to **MarbleMazePan3D → Settings → Secrets → Actions**
+3. New secret: name `ALGEBRA_DRAGON_TOKEN`, paste your token
+4. Go to **Actions → Push to AlgebraDragon → Run workflow**
+
+This copies the DragonBox-only branch to **AlgebraDragon/main**.
+
+---
+
+## What's included
+
+- Full DragonBox Algebra Unity game
+- Drag-drop, undo, rewind, multiply/divide, sounds, animations
+- 6 levels
+- No marble maze files
+
+Open in Unity: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
