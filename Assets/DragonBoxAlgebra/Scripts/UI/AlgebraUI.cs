@@ -130,7 +130,7 @@ namespace DragonBoxAlgebra.UI
             CreateButton(completePanel.transform, "Next", new Vector2(0.5f, 0.18f), OnNextClicked);
 
             _completeView = gameObject.AddComponent<LevelCompleteView>();
-            _completeView.Initialize(Controller, completePanel, starsText, creatureText);
+            _completeView.Initialize(Controller, completePanel.gameObject, starsText, creatureText);
 
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {

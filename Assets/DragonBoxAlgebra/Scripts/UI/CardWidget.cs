@@ -150,9 +150,14 @@ namespace DragonBoxAlgebra.UI
 
         private BoardDropZone FindBoardZone(PointerEventData eventData)
         {
-            foreach (RaycastResult result in eventData.hovered)
+            foreach (GameObject go in eventData.hovered)
             {
-                BoardDropZone zone = result.gameObject.GetComponent<BoardDropZone>();
+                if (go == null)
+                {
+                    continue;
+                }
+
+                BoardDropZone zone = go.GetComponent<BoardDropZone>();
                 if (zone != null)
                 {
                     return zone;
@@ -164,9 +169,14 @@ namespace DragonBoxAlgebra.UI
 
         private CardWidget FindDropTarget(PointerEventData eventData)
         {
-            foreach (RaycastResult result in eventData.hovered)
+            foreach (GameObject go in eventData.hovered)
             {
-                CardWidget widget = result.gameObject.GetComponent<CardWidget>();
+                if (go == null)
+                {
+                    continue;
+                }
+
+                CardWidget widget = go.GetComponent<CardWidget>();
                 if (widget != null && widget != this)
                 {
                     return widget;
