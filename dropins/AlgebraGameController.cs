@@ -282,7 +282,7 @@ namespace DragonBoxAlgebra.Gameplay
                 HandIndex = handIndex
             };
 
-            ActivateOppositePairsOnSide(targetSide);
+            ActivateOppositePairForCard(targetSide, placedSide.Cards.Count - 1);
             MessageChanged?.Invoke("? appeared on the other side — drag the same tile there.");
             BoardChanged?.Invoke();
             ResolveCombines();
