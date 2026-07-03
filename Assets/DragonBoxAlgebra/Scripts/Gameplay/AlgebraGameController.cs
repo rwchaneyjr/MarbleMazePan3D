@@ -432,7 +432,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            int partner = CombineRules.FindOppositePartnerIndex(side, cardIndex);
+            int partner = FindAvailableOppositePartnerIndex(side, cardIndex);
             if (partner >= 0)
             {
                 TryCreateCancelMarker(sideName, side.Cards[cardIndex].Id, side.Cards[partner].Id);
@@ -450,7 +450,12 @@ namespace DragonBoxAlgebra.Gameplay
             BoardSide side = Board.GetSide(sideName);
             for (int i = 0; i < side.Cards.Count; i++)
             {
-                int partner = CombineRules.FindOppositePartnerIndex(side, i);
+                if (IsCardPendingCancel(side.Cards[i].Id))
+                {
+                    continue;
+                }
+
+                int partner = FindAvailableOppositePartnerIndex(side, i);
                 if (partner > i)
                 {
                     TryCreateCancelMarker(sideName, side.Cards[i].Id, side.Cards[partner].Id);
@@ -458,8 +463,37 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
+        private int FindAvailableOppositePartnerIndex(BoardSide side, int index)
+        {
+            if (index < 0 || index >= side.Cards.Count || IsCardPendingCancel(side.Cards[index].Id))
+            {
+                return -1;
+            }
+
+            BoardCard card = side.Cards[index];
+            for (int j = 0; j < side.Cards.Count; j++)
+            {
+                if (j == index || IsCardPendingCancel(side.Cards[j].Id))
+                {
+                    continue;
+                }
+
+                if (CombineRules.GetCombineAction(card, side.Cards[j]) == CombineActionType.OppositeCancel)
+                {
+                    return j;
+                }
+            }
+
+            return -1;
+        }
+
         private void TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
         {
+            if (IsCardPendingCancel(cardIdA) || IsCardPendingCancel(cardIdB))
+            {
+                return;
+            }
+
             foreach (PendingCancelMarker marker in _pendingCancels)
             {
                 if (marker.SideName != sideName)
