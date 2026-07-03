@@ -243,33 +243,6 @@ namespace DragonBoxAlgebra.Gameplay
             return true;
         }
 
-        public bool TryUseDivideTool(int handIndex)
-        {
-            PushUndo();
-            bool left = Board.TryApplyDivide(Board.Left);
-            bool right = !left && Board.TryApplyDivide(Board.Right);
-
-            if (!left && !right)
-            {
-                PopUndoWithoutApply();
-                MessageChanged?.Invoke("No identical pair to divide on either side.");
-                return false;
-            }
-
-            _hand.RemoveAt(handIndex);
-            Moves.RegisterBalancedPlay();
-            CombineOccurred?.Invoke(new CombineEvent
-            {
-                SideName = left ? "Left" : "Right",
-                Action = CombineActionType.DividePair,
-                IndexA = 0,
-                IndexB = 1
-            });
-            MessageChanged?.Invoke("Divided identical pair into One!");
-            ResolveCombines();
-            return true;
-        }
-
         private void ResolveCombines()
         {
             Board.ResolveAllAutoCombines(out List<(string side, int a, int b, CombineActionType action)> autoResolved);

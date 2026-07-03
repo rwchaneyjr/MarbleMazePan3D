@@ -51,17 +51,6 @@ namespace DragonBoxAlgebra.Core
             return true;
         }
 
-        public bool TryApplyDivide(BoardSide side)
-        {
-            if (!CombineRules.TryFindIdenticalPair(side, out int indexA, out int indexB))
-            {
-                return false;
-            }
-
-            CombineRules.ApplyCombine(side, indexA, indexB, CombineActionType.DividePair);
-            return true;
-        }
-
         public void ResolveAllAutoCombines(out List<(string side, int a, int b, CombineActionType action)> resolved)
         {
             resolved = new List<(string, int, int, CombineActionType)>();

@@ -52,16 +52,7 @@ namespace DragonBoxAlgebra.UI
 
             if (DragonBoxAlgebra.Audio.AudioManager.Instance != null)
             {
-                switch (evt.Action)
-                {
-                    case CombineActionType.MergeToOne:
-                    case CombineActionType.DividePair:
-                        DragonBoxAlgebra.Audio.AudioManager.Instance.PlayMergeToOne();
-                        break;
-                    default:
-                        DragonBoxAlgebra.Audio.AudioManager.Instance.PlayCombine();
-                        break;
-                }
+                DragonBoxAlgebra.Audio.AudioManager.Instance.PlayCombine();
             }
 
             foreach (CardWidget widget in _widgets)
