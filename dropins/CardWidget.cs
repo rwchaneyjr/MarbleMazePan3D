@@ -77,10 +77,20 @@ namespace DragonBoxAlgebra.UI
             ApplyCreatureVisual();
             if (_labelText != null)
             {
-                _labelText.text = CardVisuals.AlgebraLabel(Card);
-                if (Card.StackCount > 1)
+                bool showCreatureArt = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box
+                    && _creatureImage != null && _creatureImage.enabled;
+
+                if (showCreatureArt)
                 {
-                    _labelText.text += $" x{Card.StackCount}";
+                    _labelText.text = string.Empty;
+                }
+                else
+                {
+                    _labelText.text = CardVisuals.AlgebraLabel(Card);
+                    if (Card.StackCount > 1)
+                    {
+                        _labelText.text += $" x{Card.StackCount}";
+                    }
                 }
             }
         }
@@ -88,12 +98,19 @@ namespace DragonBoxAlgebra.UI
         private void ApplyCreatureVisual()
         {
             Sprite icon = CardVisuals.IconSprite(Card);
+            bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
 
             if (_creatureImage != null)
             {
                 _creatureImage.sprite = icon;
                 _creatureImage.enabled = icon != null;
                 _creatureImage.preserveAspect = true;
+                if (icon != null && _creatureImage.rectTransform != null)
+                {
+                    var inset = isCreature ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
+                    _creatureImage.rectTransform.offsetMin = inset;
+                    _creatureImage.rectTransform.offsetMax = new Vector2(-inset.x, -inset.y);
+                }
             }
 
             if (_creatureText != null)
