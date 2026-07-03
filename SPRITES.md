@@ -7,20 +7,23 @@ Unity loads sprites at runtime from a **`Resources`** folder.
 Move (or copy) your PNG files to:
 
 ```
-Assets/Resources/Sprites/
+Assets/DragonBoxAlgebra/Resources/Sprites/
 ```
+
+Your files (`LightFish`, `DarkTurtle`, etc.) should live there — **not** in `Assets/DragonBoxAlgebra/Sprites/` alone.
 
 Example names that work automatically:
 
 | File name contains | Used for |
 |--------------------|----------|
-| `fish` or `day` | Day creature (+x) |
-| `turtle` or `night` | Night creature (-x) |
+| `LightFish` | Day creature (+x) |
+| `DarkTurtle` | Night creature (-x) |
+| `DarkFish` / `LightTurtle` | Fallback day/night art |
 | `box` or `dragon` | Box card |
 
 ## In Unity Inspector
 
-1. Click each PNG in `Assets/Resources/Sprites/`
+1. Click each PNG in `Assets/DragonBoxAlgebra/Resources/Sprites/`
 2. **Texture Type** → **Sprite (2D and UI)**
 3. Click **Apply**
 4. Press **Play**

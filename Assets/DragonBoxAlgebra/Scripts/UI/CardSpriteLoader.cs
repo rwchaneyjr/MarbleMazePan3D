@@ -5,8 +5,8 @@ namespace DragonBoxAlgebra.UI
 {
     public static class CardSpriteLoader
     {
-        private static Sprite _fish;
-        private static Sprite _turtle;
+        private static Sprite _dayCreature;
+        private static Sprite _nightCreature;
         private static Sprite _box;
         private static bool _initialized;
 
@@ -28,8 +28,8 @@ namespace DragonBoxAlgebra.UI
             EnsureLoaded();
             return card.Kind switch
             {
-                CardKind.DayCreature => _fish,
-                CardKind.NightCreature => _turtle,
+                CardKind.DayCreature => _dayCreature,
+                CardKind.NightCreature => _nightCreature,
                 CardKind.Box => _box,
                 _ => null
             };
@@ -51,25 +51,94 @@ namespace DragonBoxAlgebra.UI
             }
 
             string name = sprite.name.ToLowerInvariant();
-            if (IsFish(name))
+            int dayScore = DayScore(name);
+            int nightScore = NightScore(name);
+
+            if (dayScore > 0 && (_dayCreature == null || dayScore > DayScore(_dayCreature.name.ToLowerInvariant())))
             {
-                _fish ??= sprite;
+                _dayCreature = sprite;
             }
-            else if (IsTurtle(name))
+
+            if (nightScore > 0 && (_nightCreature == null || nightScore > NightScore(_nightCreature.name.ToLowerInvariant())))
             {
-                _turtle ??= sprite;
+                _nightCreature = sprite;
             }
-            else if (IsBox(name))
+
+            if (IsBox(name))
             {
                 _box ??= sprite;
             }
         }
 
-        private static bool IsFish(string name) =>
-            name.Contains("fish") || name.Contains("day") || name == "a";
+        private static int DayScore(string name)
+        {
+            if (name == "lightfish")
+            {
+                return 100;
+            }
 
-        private static bool IsTurtle(string name) =>
-            name.Contains("turtle") || name.Contains("night") || name == "neg";
+            if (name == "lightturtle")
+            {
+                return 90;
+            }
+
+            if (name.Contains("light") && name.Contains("fish"))
+            {
+                return 80;
+            }
+
+            if (name.Contains("light") && name.Contains("turtle"))
+            {
+                return 70;
+            }
+
+            if (name.Contains("fish") && !name.Contains("dark"))
+            {
+                return 50;
+            }
+
+            if (name.Contains("day"))
+            {
+                return 40;
+            }
+
+            return 0;
+        }
+
+        private static int NightScore(string name)
+        {
+            if (name == "darkturtle")
+            {
+                return 100;
+            }
+
+            if (name == "darkfish")
+            {
+                return 90;
+            }
+
+            if (name.Contains("dark") && name.Contains("turtle"))
+            {
+                return 80;
+            }
+
+            if (name.Contains("dark") && name.Contains("fish"))
+            {
+                return 70;
+            }
+
+            if (name.Contains("turtle") && !name.Contains("light"))
+            {
+                return 50;
+            }
+
+            if (name.Contains("night"))
+            {
+                return 40;
+            }
+
+            return 0;
+        }
 
         private static bool IsBox(string name) =>
             name.Contains("box") || name.Contains("dragon");
