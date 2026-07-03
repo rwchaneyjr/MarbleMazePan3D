@@ -18,6 +18,10 @@ A **DragonBox-style algebra puzzle game** in Unity — drag cards on a two-sided
 
 `C:\Users\rober\Desktop\SymbolAlgebra`
 
+## GitHub repo
+
+**https://github.com/rwchaneyjr/SymbolsBalance**
+
 ## License
 
 MIT — educational recreation. DragonBox is a trademark of its respective owners.
