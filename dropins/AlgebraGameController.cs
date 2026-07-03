@@ -328,21 +328,6 @@ namespace DragonBoxAlgebra.Gameplay
             PushUndo();
             BoardSide placedSide = Board.GetSide(targetSide);
             placedSide.Cards.Add(template.Clone());
-            int placedIndex = placedSide.Cards.Count - 1;
-            BoardCard placed = placedSide.Cards[placedIndex];
-
-            int partner = CombineRules.FindOppositePartnerIndex(placedSide, placedIndex);
-            if (partner >= 0 && !IsCardPendingCancel(placedSide.Cards[partner].Id))
-            {
-                TryCreateCancelMarker(targetSide, placedSide.Cards[partner].Id, placed.Id);
-                _hand.RemoveAt(handIndex);
-                HandChanged?.Invoke();
-                Moves.RegisterBalancedPlay();
-                MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
-                BoardChanged?.Invoke();
-                CheckWin();
-                return true;
-            }
 
             _pendingBalance = new BalancePending
             {
@@ -384,7 +369,8 @@ namespace DragonBoxAlgebra.Gameplay
             _pendingBalance = null;
             HandChanged?.Invoke();
 
-            ActivateOppositePairForCard(targetSide, balancedSide.Cards.Count - 1);
+            ActivateAllOppositePairsOnSide("Left");
+            ActivateAllOppositePairsOnSide("Right");
 
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke("Balanced! Click the spinning * to dismiss opposites.");
