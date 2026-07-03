@@ -8,6 +8,7 @@ namespace DragonBoxAlgebra.Gameplay
     public class LevelDefinition
     {
         public string Title;
+        public int CreatureTheme;
         public List<CardKind> LeftCards = new();
         public List<CardKind> RightCards = new();
         public List<int> LeftValues = new();

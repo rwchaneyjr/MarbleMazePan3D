@@ -15,6 +15,40 @@ namespace DragonBoxAlgebra.UI
 
         public static Sprite FishCreature => _fishCreature ??= CreateFishSprite();
         public static Sprite TurtleCreature => _turtleCreature ??= CreateTurtleSprite();
+
+        public static Sprite LightCreature(int theme, int value = 1) =>
+            GetThemedSprite(theme, true, value);
+
+        public static Sprite DarkCreature(int theme, int value = 1) =>
+            GetThemedSprite(theme, false, value);
+
+        private static readonly Sprite[,] _themedSprites = new Sprite[CreatureArt.ThemeCount, 2];
+
+        private static Sprite GetThemedSprite(int theme, bool light, int value)
+        {
+            int row = ((theme % CreatureArt.ThemeCount) + CreatureArt.ThemeCount) % CreatureArt.ThemeCount;
+            int col = light ? 0 : 1;
+            if (_themedSprites[row, col] != null)
+            {
+                return _themedSprites[row, col];
+            }
+
+            _themedSprites[row, col] = row switch
+            {
+                0 => light ? CreateFishSprite() : CreateTurtleSprite(),
+                1 => CreateBirdSprite(light),
+                2 => CreateCrabSprite(light),
+                3 => CreateWingSprite(light),
+                4 => CreateStarSprite(light),
+                5 => CreateHopperSprite(light),
+                6 => CreateStripedSprite(light),
+                7 => CreateWeatherSprite(light),
+                8 => CreateDragonSprite(light),
+                _ => CreatePetSprite(light)
+            };
+
+            return _themedSprites[row, col];
+        }
         public static Sprite DiceSprite => _diceSprite ??= CreateDiceSprite();
         public static Sprite SmileySprite => _smileySprite ??= CreateSmileySprite();
         public static Sprite BoxSprite => _boxSprite ??= CreateBoxSprite();
@@ -214,6 +248,142 @@ namespace DragonBoxAlgebra.UI
 
             texture.Apply();
             return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static Sprite CreateBirdSprite(bool light)
+        {
+            var body = light ? new Color(0.35f, 0.72f, 0.98f) : new Color(0.35f, 0.28f, 0.55f);
+            var accent = light ? new Color(1f, 0.75f, 0.15f) : new Color(0.85f, 0.72f, 0.35f);
+            return CreateWingedCreature(body, accent, light);
+        }
+
+        private static Sprite CreateCrabSprite(bool light)
+        {
+            var body = light ? new Color(0.95f, 0.35f, 0.28f) : new Color(0.55f, 0.25f, 0.75f);
+            var accent = light ? new Color(1f, 0.6f, 0.45f) : new Color(0.75f, 0.55f, 0.95f);
+            return CreateClawCreature(body, accent);
+        }
+
+        private static Sprite CreateWingSprite(bool light)
+        {
+            var body = light ? new Color(0.95f, 0.55f, 0.85f) : new Color(0.35f, 0.22f, 0.35f);
+            var accent = light ? new Color(0.55f, 0.25f, 0.75f) : new Color(0.65f, 0.65f, 0.72f);
+            return CreateWingedCreature(body, accent, light);
+        }
+
+        private static Sprite CreateStarSprite(bool light)
+        {
+            var body = light ? new Color(1f, 0.9f, 0.25f) : new Color(0.75f, 0.78f, 0.95f);
+            var accent = light ? new Color(1f, 0.65f, 0.1f) : new Color(0.45f, 0.48f, 0.75f);
+            return CreateRoundCreature(body, accent, light ? 0.9f : 0.55f);
+        }
+
+        private static Sprite CreateHopperSprite(bool light)
+        {
+            var body = light ? new Color(0.92f, 0.88f, 0.82f) : new Color(0.82f, 0.42f, 0.18f);
+            var accent = light ? new Color(0.95f, 0.65f, 0.72f) : new Color(0.35f, 0.22f, 0.12f);
+            return CreateRoundCreature(body, accent, 1.1f);
+        }
+
+        private static Sprite CreateStripedSprite(bool light)
+        {
+            var body = light ? new Color(1f, 0.85f, 0.1f) : new Color(0.25f, 0.55f, 0.22f);
+            var accent = light ? new Color(0.2f, 0.2f, 0.2f) : new Color(0.85f, 0.2f, 0.15f);
+            return CreateStripedCreature(body, accent);
+        }
+
+        private static Sprite CreateWeatherSprite(bool light)
+        {
+            var body = light ? new Color(1f, 0.82f, 0.2f) : new Color(0.45f, 0.55f, 0.72f);
+            var accent = light ? new Color(1f, 0.55f, 0.05f) : new Color(0.75f, 0.82f, 0.95f);
+            return CreateRoundCreature(body, accent, light ? 1.15f : 0.85f);
+        }
+
+        private static Sprite CreateDragonSprite(bool light)
+        {
+            var body = light ? new Color(0.25f, 0.78f, 0.45f) : new Color(0.92f, 0.28f, 0.12f);
+            var accent = light ? new Color(0.95f, 0.85f, 0.2f) : new Color(1f, 0.55f, 0.1f);
+            return CreateWingedCreature(body, accent, light);
+        }
+
+        private static Sprite CreatePetSprite(bool light)
+        {
+            var body = light ? new Color(0.95f, 0.72f, 0.35f) : new Color(0.45f, 0.35f, 0.28f);
+            var accent = light ? new Color(1f, 0.55f, 0.25f) : new Color(0.2f, 0.2f, 0.2f);
+            return CreateRoundCreature(body, accent, 1f);
+        }
+
+        private static Sprite CreateWingedCreature(Color body, Color accent, bool light)
+        {
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+            FillEllipse(texture, 48, 52, 18, 16, body);
+            FillEllipse(texture, 28, 54, 14, 8, accent);
+            FillEllipse(texture, 68, 54, 14, 8, accent);
+            FillEllipse(texture, light ? 42 : 38, 58, 5, 5, Color.white);
+            FillEllipse(texture, light ? 54 : 58, 58, 5, 5, Color.white);
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static Sprite CreateClawCreature(Color body, Color accent)
+        {
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+            FillEllipse(texture, 48, 50, 24, 18, body);
+            FillEllipse(texture, 24, 44, 10, 8, accent);
+            FillEllipse(texture, 72, 44, 10, 8, accent);
+            FillEllipse(texture, 40, 62, 6, 6, Color.white);
+            FillEllipse(texture, 56, 62, 6, 6, Color.white);
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static Sprite CreateRoundCreature(Color body, Color accent, float scale)
+        {
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+            int rx = (int)(28 * scale);
+            int ry = (int)(26 * scale);
+            FillEllipse(texture, 48, 52, rx, ry, body);
+            FillEllipse(texture, 48, 58, (int)(18 * scale), (int)(10 * scale), accent);
+            FillEllipse(texture, 38, 48, 6, 6, Color.white);
+            FillEllipse(texture, 58, 48, 6, 6, Color.white);
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static Sprite CreateStripedCreature(Color body, Color accent)
+        {
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+            FillEllipse(texture, 48, 52, 30, 18, body);
+            for (int i = 0; i < 4; i++)
+            {
+                FillEllipse(texture, 30 + i * 12, 52, 4, 14, accent);
+            }
+
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static void ClearTexture(Texture2D texture)
+        {
+            for (int y = 0; y < texture.height; y++)
+            {
+                for (int x = 0; x < texture.width; x++)
+                {
+                    texture.SetPixel(x, y, Color.clear);
+                }
+            }
         }
 
         private static void FillEllipse(Texture2D texture, int cx, int cy, int rx, int ry, Color color)

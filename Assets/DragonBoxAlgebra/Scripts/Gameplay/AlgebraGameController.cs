@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
+using DragonBoxAlgebra.UI;
 
 namespace DragonBoxAlgebra.Gameplay
 {
@@ -37,6 +38,7 @@ namespace DragonBoxAlgebra.Gameplay
         private BalancePending _pendingBalance;
         private int _levelIndex;
         private bool _levelComplete;
+        private static readonly Random Rng = new();
 
         public int LevelIndex => _levelIndex;
         public int LevelCount => LevelLibrary.Levels.Count;
@@ -83,6 +85,7 @@ namespace DragonBoxAlgebra.Gameplay
         {
             _levelIndex = Math.Clamp(index, 0, LevelLibrary.Levels.Count - 1);
             LevelDefinition level = CurrentLevel;
+            CreatureArt.SetTheme(level.CreatureTheme);
 
             Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues),
                 level.BuildSide(level.RightCards, level.RightValues));
@@ -118,6 +121,23 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 LoadLevel(_levelIndex + 1);
             }
+            else
+            {
+                LoadRandomLevel();
+            }
+        }
+
+        public void LoadRandomLevel()
+        {
+            if (LevelLibrary.Levels.Count <= 6)
+            {
+                LoadLevel(0);
+                return;
+            }
+
+            int index = 6 + Rng.Next(LevelLibrary.Levels.Count - 6);
+            LoadLevel(index);
+            MessageChanged?.Invoke($"Random puzzle — {CreatureArt.ThemeName}!");
         }
 
         public void RestartLevel()
