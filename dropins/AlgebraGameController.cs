@@ -60,8 +60,8 @@ namespace DragonBoxAlgebra.Gameplay
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance);
             BoardChanged?.Invoke();
             MessageChanged?.Invoke(
-                "Goal: red box ALONE. BALANCE same card on both sides. Light + dark CANCEL (vanish). " +
-                "Click hand card to flip light/dark. No adding to One.");
+                "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
+                "Click hand tiles to flip light/dark.");
         }
 
         public void LoadNextLevel()
@@ -206,9 +206,7 @@ namespace DragonBoxAlgebra.Gameplay
                 HandIndex = handIndex
             };
 
-            string otherSide = targetSide == "Left" ? "RIGHT" : "LEFT";
-            MessageChanged?.Invoke(
-                $"BALANCE! Drag the same tile to the ? on the {otherSide} — one on each side.");
+            MessageChanged?.Invoke("? appeared on the other side — drag the same tile there.");
             BoardChanged?.Invoke();
             ResolveCombines();
             return true;
