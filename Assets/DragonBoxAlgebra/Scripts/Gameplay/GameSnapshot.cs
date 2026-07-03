@@ -12,6 +12,7 @@ namespace DragonBoxAlgebra.Gameplay
         public int CardsPlayed;
         public bool HasPendingBalance;
         public string PendingPlacedSide;
+        public int PendingHandIndex;
         public BoardCard PendingCard;
 
         public static GameSnapshot Capture(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves,
@@ -42,6 +43,7 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 snapshot.HasPendingBalance = true;
                 snapshot.PendingPlacedSide = pendingBalance.PlacedSide;
+                snapshot.PendingHandIndex = pendingBalance.HandIndex;
                 snapshot.PendingCard = pendingBalance.Card.Clone();
             }
 
@@ -78,6 +80,7 @@ namespace DragonBoxAlgebra.Gameplay
                 pendingBalance = new BalancePending
                 {
                     PlacedSide = PendingPlacedSide,
+                    HandIndex = PendingHandIndex,
                     Card = PendingCard.Clone()
                 };
             }
