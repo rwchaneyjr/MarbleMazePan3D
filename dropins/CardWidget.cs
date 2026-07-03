@@ -130,21 +130,18 @@ namespace DragonBoxAlgebra.UI
 
             _isDragging = false;
 
-            if (eventData.pointerEnter == null || eventData.pointerEnter.GetComponent<CardDropZone>() == null)
+            CardWidget target = FindDropTarget(eventData);
+            if (target != null && target != this)
             {
-                CardWidget target = FindDropTarget(eventData);
-                if (target != null && target != this)
+                HandleDropOnCard(target);
+            }
+            else if (SideName == "Hand")
+            {
+                BoardDropZone boardZone = FindBoardZone(eventData);
+                if (boardZone != null)
                 {
-                    HandleDropOnCard(target);
-                }
-                else if (SideName == "Hand")
-                {
-                    BoardDropZone boardZone = FindBoardZone(eventData);
-                    if (boardZone != null)
-                    {
-                        _controller.TryPlayFromHand(Index);
-                        DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                    }
+                    _controller.TryPlayFromHand(Index);
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
             }
 
@@ -219,6 +216,11 @@ namespace DragonBoxAlgebra.UI
                 }
 
                 CardWidget widget = go.GetComponent<CardWidget>();
+                if (widget == null)
+                {
+                    widget = go.GetComponentInParent<CardWidget>();
+                }
+
                 if (widget != null && widget != this)
                 {
                     return widget;
@@ -262,6 +264,7 @@ namespace DragonBoxAlgebra.UI
             var borderImage = borderGo.GetComponent<Image>();
             borderImage.sprite = SpriteFactory.RoundedCard;
             borderImage.type = Image.Type.Sliced;
+            borderImage.raycastTarget = false;
             borderImage.color = CardVisuals.Border(card.Kind);
 
             var image = root.GetComponent<Image>();

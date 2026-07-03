@@ -107,7 +107,7 @@ namespace DragonBoxAlgebra.Gameplay
             if (!Board.TryCombineOnSide(side, indexA, indexB, out CombineActionType action))
             {
                 PopUndoWithoutApply();
-                MessageChanged?.Invoke("Those cards cannot combine.");
+                MessageChanged?.Invoke("Those cards cannot combine. Drag one card onto another on the same side.");
                 return false;
             }
 
