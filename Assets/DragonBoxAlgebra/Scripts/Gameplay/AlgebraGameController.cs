@@ -207,7 +207,8 @@ namespace DragonBoxAlgebra.Gameplay
             };
 
             string otherSide = targetSide == "Left" ? "RIGHT" : "LEFT";
-            MessageChanged?.Invoke($"BALANCE! Drag the same card to the hole on YOUR {otherSide}.");
+            MessageChanged?.Invoke(
+                $"BALANCE! Drag the same tile to the ? on the {otherSide} — one on each side.");
             BoardChanged?.Invoke();
             ResolveCombines();
             return true;
