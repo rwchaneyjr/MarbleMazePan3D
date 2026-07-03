@@ -48,26 +48,10 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            VortexEffect.Play(_dragRoot, GetSideCenter(evt.SideName));
-
             if (DragonBoxAlgebra.Audio.AudioManager.Instance != null)
             {
                 DragonBoxAlgebra.Audio.AudioManager.Instance.PlayCombine();
             }
-
-            foreach (CardWidget widget in _widgets)
-            {
-                if (widget.SideName == evt.SideName)
-                {
-                    widget.ReactCombine();
-                }
-            }
-        }
-
-        private Vector3 GetSideCenter(string sideName)
-        {
-            RectTransform panel = sideName == "Left" ? _leftPanel : _rightPanel;
-            return panel.transform.position;
         }
 
         private void Refresh()
@@ -81,6 +65,21 @@ namespace DragonBoxAlgebra.UI
                 BalancePending pending = _controller.PendingBalance;
                 RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
                 BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card);
+            }
+
+            BuildCancelMarkers(_leftPanel, "Left");
+            BuildCancelMarkers(_rightPanel, "Right");
+        }
+
+        private void BuildCancelMarkers(RectTransform panel, string sideName)
+        {
+            IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
+            for (int i = 0; i < markers.Count; i++)
+            {
+                if (markers[i].SideName == sideName)
+                {
+                    AsteriskCancelWidget.Create(panel, _controller, i);
+                }
             }
         }
 
@@ -110,7 +109,13 @@ namespace DragonBoxAlgebra.UI
 
             for (int i = 0; i < side.Cards.Count; i++)
             {
-                CardWidget widget = CardWidget.Create(panel, side.Cards[i], i, sideName, _controller, _canvas, _dragRoot);
+                BoardCard card = side.Cards[i];
+                if (_controller.IsCardPendingCancel(card.Id))
+                {
+                    continue;
+                }
+
+                CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot);
                 widget.gameObject.AddComponent<CardDropZone>();
                 _widgets.Add(widget);
             }

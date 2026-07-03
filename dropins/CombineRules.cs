@@ -61,6 +61,48 @@ namespace DragonBoxAlgebra.Core
             side.Cards.RemoveAt(first);
         }
 
+        public static void RemovePairById(BoardSide side, string cardIdA, string cardIdB)
+        {
+            RemoveCardById(side, cardIdA);
+            RemoveCardById(side, cardIdB);
+        }
+
+        public static void RemoveCardById(BoardSide side, string cardId)
+        {
+            for (int i = side.Cards.Count - 1; i >= 0; i--)
+            {
+                if (side.Cards[i].Id == cardId)
+                {
+                    side.Cards.RemoveAt(i);
+                    return;
+                }
+            }
+        }
+
+        public static int FindOppositePartnerIndex(BoardSide side, int index)
+        {
+            if (index < 0 || index >= side.Cards.Count)
+            {
+                return -1;
+            }
+
+            BoardCard card = side.Cards[index];
+            for (int j = 0; j < side.Cards.Count; j++)
+            {
+                if (j == index)
+                {
+                    continue;
+                }
+
+                if (GetCombineAction(card, side.Cards[j]) == CombineActionType.OppositeCancel)
+                {
+                    return j;
+                }
+            }
+
+            return -1;
+        }
+
         private static bool IsOppositePair(BoardCard a, BoardCard b)
         {
             return (a.Kind == CardKind.DayCreature && b.Kind == CardKind.NightCreature && a.Value == b.Value)
