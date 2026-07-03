@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace DragonBoxAlgebra.UI
 {
-    public class BalanceHoleWidget : MonoBehaviour, IDropHandler
+    public class BalanceHoleWidget : MonoBehaviour, IPointerClickHandler
     {
         private AlgebraGameController _controller;
         private string _sideName;
@@ -18,15 +18,9 @@ namespace DragonBoxAlgebra.UI
             Build(card);
         }
 
-        public void OnDrop(PointerEventData eventData)
+        public void OnPointerClick(PointerEventData eventData)
         {
-            CardWidget dragged = eventData.pointerDrag?.GetComponent<CardWidget>();
-            if (dragged == null || dragged.SideName != "Hand")
-            {
-                return;
-            }
-
-            if (_controller.TryPlayFromHand(dragged.Index, _sideName))
+            if (_controller.TryCompleteBalanceHole(_sideName))
             {
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
             }

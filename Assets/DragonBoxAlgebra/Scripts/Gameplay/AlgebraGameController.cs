@@ -49,6 +49,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
+            HandRules.DedupeFlipFamilies(_hand);
             Moves.Reset();
             _undoStack.Clear();
             _levelComplete = false;
@@ -60,8 +61,8 @@ namespace DragonBoxAlgebra.Gameplay
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance);
             BoardChanged?.Invoke();
             MessageChanged?.Invoke(
-                "Goal: red box ALONE. BALANCE same card on both sides. Light + dark CANCEL (vanish). " +
-                "Click hand card to flip light/dark. No adding to One.");
+                "Goal: red box ALONE. Play a card, then TAP the yellow BALANCE hole. One card per kind in hand — flip before playing. " +
+                "Light + dark CANCEL (vanish).");
         }
 
         public void LoadNextLevel()
@@ -111,9 +112,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (_pendingBalance != null && handIndex != _pendingBalance.HandIndex)
+            if (_pendingBalance != null)
             {
-                MessageChanged?.Invoke("Fill the balance hole first.");
+                MessageChanged?.Invoke("Click the BALANCE hole on the other side first.");
                 return false;
             }
 
@@ -184,10 +185,34 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (_pendingBalance != null)
             {
-                return TryCompleteBalance(handIndex, targetSide, template);
+                MessageChanged?.Invoke("Click the yellow BALANCE hole on the other side.");
+                return false;
             }
 
             return TryStartBalance(handIndex, targetSide, template);
+        }
+
+        public bool TryCompleteBalanceHole(string side)
+        {
+            if (_levelComplete || _pendingBalance == null)
+            {
+                return false;
+            }
+
+            if (side != _pendingBalance.HoleSide)
+            {
+                MessageChanged?.Invoke("Click the BALANCE hole on the other side.");
+                return false;
+            }
+
+            PushUndo();
+            Board.GetSide(side).Cards.Add(_pendingBalance.Card.Clone());
+            _pendingBalance = null;
+
+            Moves.RegisterBalancedPlay();
+            MessageChanged?.Invoke("Balanced! Light and dark opposites vanish when they meet.");
+            ResolveCombines();
+            return true;
         }
 
         public bool TryPlayFromHand(int handIndex)
@@ -199,47 +224,19 @@ namespace DragonBoxAlgebra.Gameplay
         {
             PushUndo();
             Board.GetSide(targetSide).Cards.Add(template.Clone());
+            _hand.RemoveAt(handIndex);
+            HandChanged?.Invoke();
+
             _pendingBalance = new BalancePending
             {
                 Card = template.Clone(),
-                PlacedSide = targetSide,
-                HandIndex = handIndex
+                PlacedSide = targetSide
             };
 
             string otherSide = targetSide == "Left" ? "RIGHT" : "LEFT";
-            MessageChanged?.Invoke($"BALANCE! Drag the same card to the hole on YOUR {otherSide}.");
+            MessageChanged?.Invoke(
+                $"BALANCE! Click the yellow hole on the {otherSide} side. Flip before playing if you need light/dark.");
             BoardChanged?.Invoke();
-            ResolveCombines();
-            return true;
-        }
-
-        private bool TryCompleteBalance(int handIndex, string targetSide, BoardCard template)
-        {
-            if (handIndex != _pendingBalance.HandIndex)
-            {
-                MessageChanged?.Invoke("Use the same hand card to fill the hole.");
-                return false;
-            }
-
-            if (targetSide != _pendingBalance.HoleSide)
-            {
-                MessageChanged?.Invoke("Drag the same card to the hole on the other side.");
-                return false;
-            }
-
-            if (!_pendingBalance.Matches(template))
-            {
-                MessageChanged?.Invoke("The card must match the hole. Click to flip light/dark if needed.");
-                return false;
-            }
-
-            PushUndo();
-            Board.GetSide(targetSide).Cards.Add(template.Clone());
-            _hand.RemoveAt(handIndex);
-            _pendingBalance = null;
-
-            Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke("Balanced! Light and dark opposites vanish when they meet.");
             ResolveCombines();
             return true;
         }
