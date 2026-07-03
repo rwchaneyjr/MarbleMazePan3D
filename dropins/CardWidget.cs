@@ -64,21 +64,21 @@ namespace DragonBoxAlgebra.UI
 
         private void ApplyCreatureVisual()
         {
-            bool useEmoji = CardVisuals.PreferEmoji(Card);
-            Sprite creature = useEmoji ? null : CardVisuals.CreatureSprite(Card);
+            Sprite icon = CardVisuals.IconSprite(Card);
 
             if (_creatureImage != null)
             {
-                _creatureImage.sprite = creature;
-                _creatureImage.enabled = creature != null;
+                _creatureImage.sprite = icon;
+                _creatureImage.enabled = icon != null;
                 _creatureImage.preserveAspect = true;
             }
 
             if (_creatureText != null)
             {
+                _creatureText.font = EmojiFont.Get();
                 _creatureText.text = CardVisuals.Emoji(Card);
                 _creatureText.fontSize = CardVisuals.EmojiFontSize(Card);
-                _creatureText.enabled = useEmoji || creature == null;
+                _creatureText.enabled = icon == null;
             }
         }
 

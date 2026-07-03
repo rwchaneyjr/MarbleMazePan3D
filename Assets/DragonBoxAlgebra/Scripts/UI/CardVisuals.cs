@@ -63,11 +63,45 @@ namespace DragonBoxAlgebra.UI
             _ => 38
         };
 
-        public static bool PreferEmoji(BoardCard card) => card.Kind is CardKind.DayCreature or CardKind.NightCreature
-            or CardKind.Box or CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.One
-            or CardKind.DivideTool;
+        public static bool PreferEmoji(BoardCard card) => false;
 
-        public static Sprite CreatureSprite(BoardCard card) => null;
+        public static Sprite CreatureSprite(BoardCard card)
+        {
+            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box)
+            {
+                Sprite loaded = CardSpriteLoader.ForCard(card);
+                if (loaded != null)
+                {
+                    return loaded;
+                }
+            }
+
+            return card.Kind switch
+            {
+                CardKind.DayCreature => SpriteFactory.FishCreature,
+                CardKind.NightCreature => SpriteFactory.TurtleCreature,
+                CardKind.Box => SpriteFactory.BoxSprite,
+                _ => null
+            };
+        }
+
+        public static Sprite IconSprite(BoardCard card)
+        {
+            Sprite creature = CreatureSprite(card);
+            if (creature != null)
+            {
+                return creature;
+            }
+
+            return card.Kind switch
+            {
+                CardKind.PositiveConstant => SpriteFactory.DiceSprite,
+                CardKind.NegativeConstant => SpriteFactory.DiceSprite,
+                CardKind.One => SpriteFactory.SmileySprite,
+                CardKind.DivideTool => SpriteFactory.DiceSprite,
+                _ => null
+            };
+        }
 
         public static string AlgebraLabel(BoardCard card) => card.Kind switch
         {
