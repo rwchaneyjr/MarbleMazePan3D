@@ -63,7 +63,7 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
             MessageChanged?.Invoke(
                 "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                "Click hand tiles to flip light/dark.");
+                "Light + dark spin when they meet — click either to dismiss.");
         }
 
         public void LoadNextLevel()
@@ -150,9 +150,29 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            PushUndo();
             BoardSide side = Board.GetSide(sideName);
-            if (!Board.TryCombineOnSide(side, indexA, indexB, out CombineActionType action))
+            if (indexA < 0 || indexB < 0 || indexA >= side.Cards.Count || indexB >= side.Cards.Count)
+            {
+                return false;
+            }
+
+            CombineActionType? action = CombineRules.GetCombineAction(side.Cards[indexA], side.Cards[indexB]);
+            if (action == null)
+            {
+                MessageChanged?.Invoke("Those cards cannot combine. Drag one card onto another on the same side.");
+                return false;
+            }
+
+            if (action == CombineActionType.OppositeCancel)
+            {
+                MessageChanged?.Invoke("Light and dark are spinning — click either one to dismiss.");
+                BoardChanged?.Invoke();
+                CheckWin();
+                return true;
+            }
+
+            PushUndo();
+            if (!Board.TryCombineOnSide(side, indexA, indexB, out CombineActionType resolved))
             {
                 PopUndoWithoutApply();
                 MessageChanged?.Invoke("Those cards cannot combine. Drag one card onto another on the same side.");
@@ -163,12 +183,48 @@ namespace DragonBoxAlgebra.Gameplay
             CombineOccurred?.Invoke(new CombineEvent
             {
                 SideName = sideName,
-                Action = action,
+                Action = resolved,
                 IndexA = indexA,
                 IndexB = indexB
             });
 
             ResolveCombines();
+            return true;
+        }
+
+        public bool TryDismissOppositePair(string sideName, int index)
+        {
+            if (_levelComplete || _pendingBalance != null)
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            if (index < 0 || index >= side.Cards.Count)
+            {
+                return false;
+            }
+
+            int partner = CombineRules.FindOppositePartnerIndex(side, index);
+            if (partner < 0)
+            {
+                return false;
+            }
+
+            PushUndo();
+            CombineRules.RemovePair(side, index, partner);
+            Moves.RegisterCombine();
+            CombineOccurred?.Invoke(new CombineEvent
+            {
+                SideName = sideName,
+                Action = CombineActionType.OppositeCancel,
+                IndexA = index,
+                IndexB = partner
+            });
+
+            MessageChanged?.Invoke("Pair dismissed.");
+            BoardChanged?.Invoke();
+            CheckWin();
             return true;
         }
 
@@ -243,7 +299,7 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
 
             Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke("Balanced! Light and dark opposites vanish when they meet.");
+            MessageChanged?.Invoke("Balanced! Click spinning opposites to dismiss them.");
             ResolveCombines();
             return true;
         }
@@ -280,7 +336,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (WinChecker.HasPendingOpposites(Board))
             {
-                MessageChanged?.Invoke("The box is almost alone — cancel remaining light/dark pairs.");
+                MessageChanged?.Invoke("The box is almost alone — click the spinning pairs to dismiss them.");
                 return;
             }
 

@@ -12,8 +12,36 @@ namespace DragonBoxAlgebra.UI
             _baseScale = transform.localScale;
         }
 
+        private Coroutine _spinLoop;
+
+        public void StartOppositeSpin()
+        {
+            StopOppositeSpin();
+            _spinLoop = StartCoroutine(SpinLoop());
+        }
+
+        public void StopOppositeSpin()
+        {
+            if (_spinLoop != null)
+            {
+                StopCoroutine(_spinLoop);
+                _spinLoop = null;
+            }
+
+            transform.localRotation = Quaternion.identity;
+            transform.localScale = _baseScale;
+        }
+
+        private IEnumerator SpinLoop()
+        {
+            while (true)
+            {
+                transform.Rotate(0f, 0f, 220f * Time.deltaTime);
+                yield return null;
+            }
         public void PlayCombine()
         {
+            StopOppositeSpin();
             StopAllCoroutines();
             StartCoroutine(Punch(1.25f, 0.18f));
         }

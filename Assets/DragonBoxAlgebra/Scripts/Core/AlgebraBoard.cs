@@ -54,27 +54,6 @@ namespace DragonBoxAlgebra.Core
         public void ResolveAllAutoCombines(out List<(string side, int a, int b, CombineActionType action)> resolved)
         {
             resolved = new List<(string, int, int, CombineActionType)>();
-            bool changed = true;
-            while (changed)
-            {
-                changed = false;
-                changed |= ResolveSide(Left, "Left", resolved);
-                changed |= ResolveSide(Right, "Right", resolved);
-            }
-        }
-
-        private static bool ResolveSide(BoardSide side, string sideName,
-            List<(string side, int a, int b, CombineActionType action)> resolved)
-        {
-            if (!CombineRules.TryAutoCombine(side, out List<(int indexA, int indexB, CombineActionType action)> pairs))
-            {
-                return false;
-            }
-
-            (int indexA, int indexB, CombineActionType action) = pairs[0];
-            resolved.Add((sideName, indexA, indexB, action));
-            CombineRules.ApplyCombine(side, indexA, indexB, action);
-            return true;
         }
     }
 }

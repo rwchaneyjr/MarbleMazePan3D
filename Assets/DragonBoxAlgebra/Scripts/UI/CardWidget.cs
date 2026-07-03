@@ -32,16 +32,27 @@ namespace DragonBoxAlgebra.UI
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (_didDrag || SideName != "Hand" || _controller == null)
+            if (_didDrag || _controller == null)
             {
                 return;
             }
 
-            if (_controller.TryFlipHandCard(Index))
+            if (SideName == "Hand")
             {
-                Card = _controller.Hand[Index];
-                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
-                StartCoroutine(PlayHandFlip());
+                if (_controller.TryFlipHandCard(Index))
+                {
+                    Card = _controller.Hand[Index];
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
+                    StartCoroutine(PlayHandFlip());
+                }
+
+                return;
+            }
+
+            if (CombineRules.HasOppositePair(_controller.Board.GetSide(SideName), Index)
+                && _controller.TryDismissOppositePair(SideName, Index))
+            {
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCombine();
             }
         }
 
@@ -417,6 +428,7 @@ namespace DragonBoxAlgebra.UI
             return widget;
         }
 
+        public void StartOppositeSpin() => _reaction?.StartOppositeSpin();
         public void ReactCombine() => _reaction?.PlayCombine();
         public void ReactCelebrate() => _reaction?.PlayCelebrate();
         public void ReactUndo() => _reaction?.PlayUndo();

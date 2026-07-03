@@ -48,26 +48,10 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            VortexEffect.Play(_dragRoot, GetSideCenter(evt.SideName));
-
             if (DragonBoxAlgebra.Audio.AudioManager.Instance != null)
             {
                 DragonBoxAlgebra.Audio.AudioManager.Instance.PlayCombine();
             }
-
-            foreach (CardWidget widget in _widgets)
-            {
-                if (widget.SideName == evt.SideName)
-                {
-                    widget.ReactCombine();
-                }
-            }
-        }
-
-        private Vector3 GetSideCenter(string sideName)
-        {
-            RectTransform panel = sideName == "Left" ? _leftPanel : _rightPanel;
-            return panel.transform.position;
         }
 
         private void Refresh()
@@ -82,6 +66,42 @@ namespace DragonBoxAlgebra.UI
                 RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
                 BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card);
             }
+
+            MarkOppositeSpins();
+        }
+
+        private void MarkOppositeSpins()
+        {
+            MarkSideSpins(_controller.Board.Left, "Left");
+            MarkSideSpins(_controller.Board.Right, "Right");
+        }
+
+        private void MarkSideSpins(BoardSide side, string sideName)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                int partner = CombineRules.FindOppositePartnerIndex(side, i);
+                if (partner < 0 || partner <= i)
+                {
+                    continue;
+                }
+
+                FindWidget(sideName, i)?.StartOppositeSpin();
+                FindWidget(sideName, partner)?.StartOppositeSpin();
+            }
+        }
+
+        private CardWidget FindWidget(string sideName, int index)
+        {
+            foreach (CardWidget widget in _widgets)
+            {
+                if (widget.SideName == sideName && widget.Index == index)
+                {
+                    return widget;
+                }
+            }
+
+            return null;
         }
 
         private void RebuildSide(RectTransform panel, BoardSide side, string sideName)
