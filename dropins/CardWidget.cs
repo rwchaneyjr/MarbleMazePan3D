@@ -209,6 +209,12 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
+            if (SideName == "Hand" && (Index >= _controller.Hand.Count || _controller.Hand.Count == 0))
+            {
+                Destroy(gameObject);
+                return;
+            }
+
             transform.SetParent(_originalParent, false);
             transform.SetSiblingIndex(_originalSiblingIndex);
         }

@@ -46,7 +46,7 @@ namespace DragonBoxAlgebra.UI
             var image = gameObject.AddComponent<Image>();
             image.sprite = SpriteFactory.RoundedCard;
             image.type = Image.Type.Sliced;
-            image.color = new Color(0.05f, 0.05f, 0.08f, 0.55f);
+            image.color = new Color(0.98f, 0.84f, 0.14f, 1f);
             image.raycastTarget = true;
 
             var borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
@@ -60,7 +60,7 @@ namespace DragonBoxAlgebra.UI
             borderImage.sprite = SpriteFactory.RoundedCard;
             borderImage.type = Image.Type.Sliced;
             borderImage.raycastTarget = false;
-            borderImage.color = new Color(1f, 0.78f, 0.1f, 0.95f);
+            borderImage.color = new Color(0.72f, 0.48f, 0.04f, 1f);
 
             var questionGo = new GameObject("QuestionMark", typeof(RectTransform), typeof(Text));
             questionGo.transform.SetParent(transform, false);
@@ -75,7 +75,7 @@ namespace DragonBoxAlgebra.UI
             questionText.alignment = TextAnchor.MiddleCenter;
             questionText.fontSize = 88;
             questionText.fontStyle = FontStyle.Bold;
-            questionText.color = new Color(1f, 0.85f, 0.15f, 0.9f);
+            questionText.color = Color.black;
             questionText.text = "?";
             questionText.raycastTarget = false;
         }

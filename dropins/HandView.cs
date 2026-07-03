@@ -20,7 +20,6 @@ namespace DragonBoxAlgebra.UI
             _panel = panel;
             _canvas = canvas;
             _dragRoot = dragRoot;
-            _controller.BoardChanged += Refresh;
             _controller.HandChanged += RefreshHandInPlace;
             Refresh();
         }
@@ -29,7 +28,6 @@ namespace DragonBoxAlgebra.UI
         {
             if (_controller != null)
             {
-                _controller.BoardChanged -= Refresh;
                 _controller.HandChanged -= RefreshHandInPlace;
             }
         }

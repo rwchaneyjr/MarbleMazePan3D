@@ -49,6 +49,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
+            HandRules.DedupeFlipFamilies(_hand);
             Moves.Reset();
             _undoStack.Clear();
             _levelComplete = false;
@@ -59,6 +60,7 @@ namespace DragonBoxAlgebra.Gameplay
             ResolveCombines();
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance);
             BoardChanged?.Invoke();
+            HandChanged?.Invoke();
             MessageChanged?.Invoke(
                 "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
                 "Click hand tiles to flip light/dark.");
@@ -88,6 +90,7 @@ namespace DragonBoxAlgebra.Gameplay
             _undoStack.Clear();
             _levelComplete = false;
             BoardChanged?.Invoke();
+            HandChanged?.Invoke();
             MessageChanged?.Invoke("Rewound to the start of the level.");
         }
 
@@ -101,6 +104,7 @@ namespace DragonBoxAlgebra.Gameplay
             _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance);
             _levelComplete = false;
             BoardChanged?.Invoke();
+            HandChanged?.Invoke();
             MessageChanged?.Invoke("Undid the last move.");
         }
 
@@ -236,6 +240,7 @@ namespace DragonBoxAlgebra.Gameplay
             Board.GetSide(targetSide).Cards.Add(template.Clone());
             _hand.RemoveAt(handIndex);
             _pendingBalance = null;
+            HandChanged?.Invoke();
 
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke("Balanced! Light and dark opposites vanish when they meet.");
