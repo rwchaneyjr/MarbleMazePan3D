@@ -58,12 +58,26 @@ namespace DragonBoxAlgebra.UI
         {
             if (_background != null)
             {
-                _background.color = CardVisuals.Background(Card.Kind);
+                Color bg = CardVisuals.Background(Card.Kind);
+                if (SideName == "Hand" && _controller != null && _controller.HasPendingBalance
+                    && _controller.PendingBalance.HandIndex == Index)
+                {
+                    bg = Color.Lerp(bg, new Color(1f, 0.85f, 0.15f), 0.45f);
+                }
+
+                _background.color = bg;
             }
 
             if (_border != null)
             {
-                _border.color = CardVisuals.Border(Card.Kind);
+                Color border = CardVisuals.Border(Card.Kind);
+                if (SideName == "Hand" && _controller != null && _controller.HasPendingBalance
+                    && _controller.PendingBalance.HandIndex == Index)
+                {
+                    border = new Color(1f, 0.78f, 0.1f);
+                }
+
+                _border.color = border;
             }
 
             ApplyCreatureVisual();
