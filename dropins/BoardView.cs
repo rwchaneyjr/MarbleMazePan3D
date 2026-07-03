@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
 using DragonBoxAlgebra.Gameplay;
@@ -8,12 +9,23 @@ namespace DragonBoxAlgebra.UI
 {
     public class BoardView : MonoBehaviour
     {
+        private const float WinPreDelay = 0.4f;
+        private const float WinSlideDuration = 1.15f;
+        private const float WinPostDelay = 0.35f;
+
         private RectTransform _leftPanel;
         private RectTransform _rightPanel;
         private RectTransform _dragRoot;
         private Canvas _canvas;
         private AlgebraGameController _controller;
         private readonly List<CardWidget> _widgets = new();
+
+        private Vector2 _leftAnchorMinDefault;
+        private Vector2 _leftAnchorMaxDefault;
+        private Vector2 _rightAnchorMinDefault;
+        private Vector2 _rightAnchorMaxDefault;
+        private bool _playingWinSequence;
+        private Coroutine _winSequenceCoroutine;
 
         public void Initialize(AlgebraGameController controller, RectTransform left, RectTransform right,
             Canvas canvas, RectTransform dragRoot)
@@ -24,11 +36,18 @@ namespace DragonBoxAlgebra.UI
             _canvas = canvas;
             _dragRoot = dragRoot;
 
+            _leftAnchorMinDefault = left.anchorMin;
+            _leftAnchorMaxDefault = left.anchorMax;
+            _rightAnchorMinDefault = right.anchorMin;
+            _rightAnchorMaxDefault = right.anchorMax;
+
             left.gameObject.AddComponent<BoardDropZone>().SideName = "Left";
             right.gameObject.AddComponent<BoardDropZone>().SideName = "Right";
 
             _controller.BoardChanged += Refresh;
             _controller.CombineOccurred += OnCombine;
+            _controller.LevelLoaded += OnLevelLoaded;
+            _controller.WinSequenceStarted += OnWinSequenceStarted;
             Refresh();
         }
 
@@ -38,7 +57,71 @@ namespace DragonBoxAlgebra.UI
             {
                 _controller.BoardChanged -= Refresh;
                 _controller.CombineOccurred -= OnCombine;
+                _controller.LevelLoaded -= OnLevelLoaded;
+                _controller.WinSequenceStarted -= OnWinSequenceStarted;
             }
+        }
+
+        private void OnLevelLoaded(int current, int total)
+        {
+            if (_winSequenceCoroutine != null)
+            {
+                StopCoroutine(_winSequenceCoroutine);
+                _winSequenceCoroutine = null;
+            }
+
+            _playingWinSequence = false;
+            ResetPanelAnchors();
+        }
+
+        private void ResetPanelAnchors()
+        {
+            _leftPanel.anchorMin = _leftAnchorMinDefault;
+            _leftPanel.anchorMax = _leftAnchorMaxDefault;
+            _rightPanel.anchorMin = _rightAnchorMinDefault;
+            _rightPanel.anchorMax = _rightAnchorMaxDefault;
+        }
+
+        private void OnWinSequenceStarted(int stars, int moves)
+        {
+            if (_winSequenceCoroutine != null)
+            {
+                StopCoroutine(_winSequenceCoroutine);
+            }
+
+            _winSequenceCoroutine = StartCoroutine(PlayWinSequence(stars, moves));
+        }
+
+        private IEnumerator PlayWinSequence(int stars, int moves)
+        {
+            _playingWinSequence = true;
+
+            yield return new WaitForSeconds(WinPreDelay);
+
+            Vector2 leftTargetMin = new Vector2(0.34f, _leftAnchorMinDefault.y);
+            Vector2 leftTargetMax = new Vector2(0.48f, _leftAnchorMaxDefault.y);
+            Vector2 rightTargetMin = new Vector2(0.52f, _rightAnchorMinDefault.y);
+            Vector2 rightTargetMax = new Vector2(0.66f, _rightAnchorMaxDefault.y);
+
+            float elapsed = 0f;
+            while (elapsed < WinSlideDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / WinSlideDuration));
+
+                _leftPanel.anchorMin = Vector2.Lerp(_leftAnchorMinDefault, leftTargetMin, t);
+                _leftPanel.anchorMax = Vector2.Lerp(_leftAnchorMaxDefault, leftTargetMax, t);
+                _rightPanel.anchorMin = Vector2.Lerp(_rightAnchorMinDefault, rightTargetMin, t);
+                _rightPanel.anchorMax = Vector2.Lerp(_rightAnchorMaxDefault, rightTargetMax, t);
+
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(WinPostDelay);
+
+            _playingWinSequence = false;
+            _winSequenceCoroutine = null;
+            _controller.CompleteWinPresentation(stars, moves);
         }
 
         private void OnCombine(CombineEvent evt)
@@ -56,6 +139,11 @@ namespace DragonBoxAlgebra.UI
 
         private void Refresh()
         {
+            if (_playingWinSequence)
+            {
+                return;
+            }
+
             _widgets.Clear();
             RebuildSide(_leftPanel, _controller.Board.Left, "Left");
             RebuildSide(_rightPanel, _controller.Board.Right, "Right");

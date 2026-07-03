@@ -17,6 +17,7 @@ namespace DragonBoxAlgebra.Gameplay
         public event Action BoardChanged;
         public event Action HandChanged;
         public event Action<int, int> LevelCompleted;
+        public event Action<int, int> WinSequenceStarted;
         public event Action<int, int> LevelLoaded;
         public event Action<string> MessageChanged;
         public event Action<CombineEvent> CombineOccurred;
@@ -361,8 +362,14 @@ namespace DragonBoxAlgebra.Gameplay
 
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
-            LevelCompleted?.Invoke(stars, Moves.Moves);
+            int moves = Moves.Moves;
             MessageChanged?.Invoke("You win! The red box is alone.");
+            WinSequenceStarted?.Invoke(stars, moves);
+        }
+
+        public void CompleteWinPresentation(int stars, int moves)
+        {
+            LevelCompleted?.Invoke(stars, moves);
         }
 
         private void PushUndo()
