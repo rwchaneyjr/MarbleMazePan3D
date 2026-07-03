@@ -55,6 +55,11 @@ namespace DragonBoxAlgebra.Gameplay
             return false;
         }
 
+        public bool IsOppositePair(BoardCard a, BoardCard b)
+        {
+            return CombineRules.GetCombineAction(a, b) == CombineActionType.OppositeCancel;
+        }
+
         public void LoadLevel(int index)
         {
             _levelIndex = Math.Clamp(index, 0, LevelLibrary.Levels.Count - 1);
@@ -85,7 +90,7 @@ namespace DragonBoxAlgebra.Gameplay
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
                 ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
                 : "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                  "When light meets dark, a spinning * appears — click it to dismiss.");
+                  "When light meets dark on the same side, a spinning * appears — click it to dismiss that pair.");
         }
 
         public void LoadNextLevel()
@@ -187,9 +192,18 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (action == CombineActionType.OppositeCancel)
             {
+                BoardCard cardA = side.Cards[indexA];
+                BoardCard cardB = side.Cards[indexB];
+
+                if (IsCardPendingCancel(cardA.Id) || IsCardPendingCancel(cardB.Id))
+                {
+                    MessageChanged?.Invoke("Those tiles are already in a spinning * pair.");
+                    return false;
+                }
+
                 PushUndo();
-                TryCreateCancelMarker(sideName, side.Cards[indexA].Id, side.Cards[indexB].Id);
-                MessageChanged?.Invoke("A spinning * appeared — click it to dismiss the pair.");
+                TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
+                MessageChanged?.Invoke("Light met dark — spinning * appeared. Click it to dismiss the pair.");
                 BoardChanged?.Invoke();
                 CheckWin();
                 return true;
@@ -218,7 +232,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool TryDismissCancelMarker(int markerIndex)
         {
-            if (_levelComplete || _pendingBalance != null)
+            if (_levelComplete)
             {
                 return false;
             }
@@ -230,6 +244,15 @@ namespace DragonBoxAlgebra.Gameplay
 
             PendingCancelMarker marker = _pendingCancels[markerIndex];
             BoardSide side = Board.GetSide(marker.SideName);
+            BoardCard cardA = FindCardOnSide(side, marker.CardIdA);
+            BoardCard cardB = FindCardOnSide(side, marker.CardIdB);
+            if (cardA.Id == null || cardB.Id == null || !IsOppositePair(cardA, cardB))
+            {
+                _pendingCancels.RemoveAt(markerIndex);
+                BoardChanged?.Invoke();
+                return false;
+            }
+
             if (!SideContainsBothCards(side, marker.CardIdA, marker.CardIdB))
             {
                 _pendingCancels.RemoveAt(markerIndex);
@@ -295,7 +318,9 @@ namespace DragonBoxAlgebra.Gameplay
             };
 
             ActivateOppositePairForCard(targetSide, placedSide.Cards.Count - 1);
-            MessageChanged?.Invoke("? appeared on the other side — drag the same tile there.");
+            MessageChanged?.Invoke(_pendingCancels.Count > 0 && _pendingCancels[^1].SideName == targetSide
+                ? "? on the other side — drag the same tile there. Light met dark: spinning * appeared!"
+                : "? appeared on the other side — drag the same tile there.");
             BoardChanged?.Invoke();
             ResolveCombines();
             return true;
@@ -385,11 +410,25 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            int partner = CombineRules.FindOppositePartnerIndex(side, cardIndex);
-            if (partner >= 0)
+            BoardCard placed = side.Cards[cardIndex];
+            if (IsCardPendingCancel(placed.Id))
             {
-                TryCreateCancelMarker(sideName, side.Cards[cardIndex].Id, side.Cards[partner].Id);
+                return;
             }
+
+            int partner = CombineRules.FindOppositePartnerIndex(side, cardIndex);
+            if (partner < 0)
+            {
+                return;
+            }
+
+            BoardCard partnerCard = side.Cards[partner];
+            if (IsCardPendingCancel(partnerCard.Id))
+            {
+                return;
+            }
+
+            TryCreateCancelMarker(sideName, placed.Id, partnerCard.Id);
         }
 
         private void ActivatePreplacedOppositePairs()
@@ -413,6 +452,24 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
         {
+            if (IsCardPendingCancel(cardIdA) || IsCardPendingCancel(cardIdB))
+            {
+                return;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            BoardCard cardA = FindCardOnSide(side, cardIdA);
+            BoardCard cardB = FindCardOnSide(side, cardIdB);
+            if (cardA.Id == default || cardB.Id == default)
+            {
+                return;
+            }
+
+            if (!IsOppositePair(cardA, cardB))
+            {
+                return;
+            }
+
             foreach (PendingCancelMarker marker in _pendingCancels)
             {
                 if (marker.SideName != sideName)
@@ -433,6 +490,19 @@ namespace DragonBoxAlgebra.Gameplay
                 CardIdA = cardIdA,
                 CardIdB = cardIdB
             });
+        }
+
+        private static BoardCard FindCardOnSide(BoardSide side, string cardId)
+        {
+            foreach (BoardCard card in side.Cards)
+            {
+                if (card.Id == cardId)
+                {
+                    return card;
+                }
+            }
+
+            return default;
         }
 
         private static bool SideContainsBothCards(BoardSide side, string cardIdA, string cardIdB)
