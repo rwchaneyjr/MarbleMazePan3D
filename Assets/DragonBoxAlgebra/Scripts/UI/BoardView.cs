@@ -140,7 +140,7 @@ namespace DragonBoxAlgebra.UI
             BoardSide side = sideName == "Left" ? _controller.Board.Left : _controller.Board.Right;
             foreach (BoardCard card in side.Cards)
             {
-                if (!_controller.IsCardPendingCancel(card.Id))
+                if (!_controller.IsCardPendingCancelOnSide(card.Id, sideName))
                 {
                     return true;
                 }
@@ -223,7 +223,7 @@ namespace DragonBoxAlgebra.UI
             for (int i = 0; i < side.Cards.Count; i++)
             {
                 BoardCard card = side.Cards[i];
-                if (_controller.IsCardPendingCancel(card.Id))
+                if (_controller.IsCardPendingCancelOnSide(card.Id, sideName))
                 {
                     continue;
                 }
