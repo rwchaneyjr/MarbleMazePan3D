@@ -7,6 +7,7 @@ namespace DragonBoxAlgebra.Gameplay
         public BoardCard Card;
         public string PlacedSide;
         public int HandIndex;
+        public int HoleInsertIndex;
 
         public string HoleSide => PlacedSide == "Left" ? "Right" : "Left";
 

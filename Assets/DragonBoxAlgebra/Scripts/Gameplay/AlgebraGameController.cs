@@ -161,9 +161,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (_pendingBalance != null && handIndex != _pendingBalance.HandIndex)
+            if (_pendingBalance != null)
             {
-                MessageChanged?.Invoke("Fill the balance hole first.");
+                MessageChanged?.Invoke("Fill the ? hole first — flip the card before you play it.");
                 return false;
             }
 
@@ -391,12 +391,14 @@ namespace DragonBoxAlgebra.Gameplay
             BoardSide placedSide = Board.GetSide(targetSide);
             placedSide.Cards.Add(template.CloneForPlacement());
             int placedIndex = placedSide.Cards.Count - 1;
+            string holeSide = targetSide == "Left" ? "Right" : "Left";
 
             _pendingBalance = new BalancePending
             {
                 Card = template.Clone(),
                 PlacedSide = targetSide,
-                HandIndex = handIndex
+                HandIndex = handIndex,
+                HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
             };
 
             ActivateOppositePairOrCancelDice(targetSide, placedIndex);
@@ -431,8 +433,14 @@ namespace DragonBoxAlgebra.Gameplay
 
             PushUndo();
             BoardSide balancedSide = Board.GetSide(targetSide);
-            balancedSide.Cards.Add(template.CloneForPlacement());
-            int placedIndex = balancedSide.Cards.Count - 1;
+            int insertIndex = _pendingBalance.HoleInsertIndex;
+            if (insertIndex < 0 || insertIndex > balancedSide.Cards.Count)
+            {
+                insertIndex = balancedSide.Cards.Count;
+            }
+
+            balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
+            int placedIndex = insertIndex;
             _hand.RemoveAt(handIndex);
             _pendingBalance = null;
             HandChanged?.Invoke();
@@ -542,6 +550,11 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void ActivateOppositePairForCard(string sideName, int cardIndex)
         {
+            if (SideAlreadyHasCancelMarker(sideName))
+            {
+                return;
+            }
+
             BoardSide side = Board.GetSide(sideName);
             if (cardIndex < 0 || cardIndex >= side.Cards.Count)
             {
@@ -563,6 +576,11 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void ActivateAllOppositePairsOnSide(string sideName)
         {
+            if (SideAlreadyHasCancelMarker(sideName))
+            {
+                return;
+            }
+
             BoardSide side = Board.GetSide(sideName);
             for (int i = 0; i < side.Cards.Count; i++)
             {

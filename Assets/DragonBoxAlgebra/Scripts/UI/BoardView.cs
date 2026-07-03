@@ -177,7 +177,9 @@ namespace DragonBoxAlgebra.UI
             {
                 BalancePending pending = _controller.PendingBalance;
                 RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
-                BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card);
+                BalanceHoleWidget hole = BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card);
+                int holeSlot = Mathf.Clamp(pending.HoleInsertIndex, 0, holePanel.childCount - 1);
+                hole.transform.SetSiblingIndex(holeSlot);
             }
 
             BuildCancelMarkers(_leftPanel, "Left");
