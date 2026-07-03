@@ -46,7 +46,7 @@ namespace DragonBoxAlgebra.UI
             CardKind.NightCreature => "🐢",
             CardKind.PositiveConstant => "🎲",
             CardKind.NegativeConstant => "🎲",
-            CardKind.One => "①",
+            CardKind.One => "😊",
             CardKind.DivideTool => "➗",
             _ => "?"
         };
