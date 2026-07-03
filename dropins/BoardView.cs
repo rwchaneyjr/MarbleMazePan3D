@@ -79,6 +79,13 @@ namespace DragonBoxAlgebra.UI
             _widgets.Clear();
             RebuildSide(_leftPanel, _controller.Board.Left, "Left");
             RebuildSide(_rightPanel, _controller.Board.Right, "Right");
+
+            if (_controller.HasPendingBalance)
+            {
+                BalancePending pending = _controller.PendingBalance;
+                RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
+                BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card);
+            }
         }
 
         private void RebuildSide(RectTransform panel, BoardSide side, string sideName)
