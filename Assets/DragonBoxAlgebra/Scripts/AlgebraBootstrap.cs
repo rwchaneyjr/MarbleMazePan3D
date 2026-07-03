@@ -15,7 +15,10 @@ namespace DragonBoxAlgebra
                 cameraGo.tag = "MainCamera";
                 var camera = cameraGo.AddComponent<Camera>();
                 camera.orthographic = true;
+                camera.orthographicSize = 5f;
+                camera.clearFlags = CameraClearFlags.SolidColor;
                 camera.backgroundColor = new Color(0.12f, 0.34f, 0.42f);
+                cameraGo.AddComponent<AudioListener>();
             }
 
             if (AudioManager.Instance == null)

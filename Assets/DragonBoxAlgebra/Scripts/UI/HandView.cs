@@ -1,5 +1,6 @@
 using DragonBoxAlgebra.Core;
 using DragonBoxAlgebra.Gameplay;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,8 +20,7 @@ namespace DragonBoxAlgebra.UI
             _panel = panel;
             _canvas = canvas;
             _dragRoot = dragRoot;
-            _panel.gameObject.AddComponent<BoardDropZone>();
-            _controller.BoardChanged += Refresh;
+            _controller.HandChanged += RefreshHandInPlace;
             Refresh();
         }
 
@@ -28,8 +28,33 @@ namespace DragonBoxAlgebra.UI
         {
             if (_controller != null)
             {
-                _controller.BoardChanged -= Refresh;
+                _controller.HandChanged -= RefreshHandInPlace;
             }
+        }
+
+        private void RefreshHandInPlace()
+        {
+            var widgets = new List<CardWidget>();
+            for (int i = 0; i < _panel.childCount; i++)
+            {
+                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand")
+                {
+                    widgets.Add(widget);
+                }
+            }
+
+            if (widgets.Count == _controller.Hand.Count)
+            {
+                for (int i = 0; i < widgets.Count; i++)
+                {
+                    widgets[i].Bind(_controller.Hand[i], i, "Hand", _controller, _canvas, _dragRoot);
+                }
+
+                return;
+            }
+
+            Refresh();
         }
 
         private void Refresh()
@@ -49,6 +74,10 @@ namespace DragonBoxAlgebra.UI
                 layout = _panel.gameObject.AddComponent<HorizontalLayoutGroup>();
                 layout.spacing = 12f;
                 layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.childControlWidth = false;
+                layout.childControlHeight = false;
+                layout.childForceExpandWidth = false;
+                layout.childForceExpandHeight = false;
             }
 
             for (int i = 0; i < _controller.Hand.Count; i++)

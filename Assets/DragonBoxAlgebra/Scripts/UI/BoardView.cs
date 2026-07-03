@@ -24,8 +24,8 @@ namespace DragonBoxAlgebra.UI
             _canvas = canvas;
             _dragRoot = dragRoot;
 
-            left.gameObject.AddComponent<BoardDropZone>();
-            right.gameObject.AddComponent<BoardDropZone>();
+            left.gameObject.AddComponent<BoardDropZone>().SideName = "Left";
+            right.gameObject.AddComponent<BoardDropZone>().SideName = "Right";
 
             _controller.BoardChanged += Refresh;
             _controller.CombineOccurred += OnCombine;
@@ -43,35 +43,15 @@ namespace DragonBoxAlgebra.UI
 
         private void OnCombine(CombineEvent evt)
         {
-            VortexEffect.Play(_dragRoot, GetSideCenter(evt.SideName));
+            if (evt.Action != CombineActionType.OppositeCancel)
+            {
+                return;
+            }
 
             if (DragonBoxAlgebra.Audio.AudioManager.Instance != null)
             {
-                switch (evt.Action)
-                {
-                    case CombineActionType.MergeToOne:
-                    case CombineActionType.DividePair:
-                        DragonBoxAlgebra.Audio.AudioManager.Instance.PlayMergeToOne();
-                        break;
-                    default:
-                        DragonBoxAlgebra.Audio.AudioManager.Instance.PlayCombine();
-                        break;
-                }
+                DragonBoxAlgebra.Audio.AudioManager.Instance.PlayCombine();
             }
-
-            foreach (CardWidget widget in _widgets)
-            {
-                if (widget.SideName == evt.SideName)
-                {
-                    widget.ReactCombine();
-                }
-            }
-        }
-
-        private Vector3 GetSideCenter(string sideName)
-        {
-            RectTransform panel = sideName == "Left" ? _leftPanel : _rightPanel;
-            return panel.transform.position;
         }
 
         private void Refresh()
@@ -79,6 +59,28 @@ namespace DragonBoxAlgebra.UI
             _widgets.Clear();
             RebuildSide(_leftPanel, _controller.Board.Left, "Left");
             RebuildSide(_rightPanel, _controller.Board.Right, "Right");
+
+            if (_controller.HasPendingBalance)
+            {
+                BalancePending pending = _controller.PendingBalance;
+                RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
+                BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card);
+            }
+
+            BuildCancelMarkers(_leftPanel, "Left");
+            BuildCancelMarkers(_rightPanel, "Right");
+        }
+
+        private void BuildCancelMarkers(RectTransform panel, string sideName)
+        {
+            IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
+            for (int i = 0; i < markers.Count; i++)
+            {
+                if (markers[i].SideName == sideName)
+                {
+                    AsteriskCancelWidget.Create(panel, _controller, i);
+                }
+            }
         }
 
         private void RebuildSide(RectTransform panel, BoardSide side, string sideName)
@@ -98,12 +100,22 @@ namespace DragonBoxAlgebra.UI
                 layout = panel.gameObject.AddComponent<HorizontalLayoutGroup>();
                 layout.spacing = 16f;
                 layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.childControlWidth = false;
+                layout.childControlHeight = false;
+                layout.childForceExpandWidth = false;
+                layout.childForceExpandHeight = false;
                 layout.padding = new RectOffset(24, 24, 24, 24);
             }
 
             for (int i = 0; i < side.Cards.Count; i++)
             {
-                CardWidget widget = CardWidget.Create(panel, side.Cards[i], i, sideName, _controller, _canvas, _dragRoot);
+                BoardCard card = side.Cards[i];
+                if (_controller.IsCardPendingCancel(card.Id))
+                {
+                    continue;
+                }
+
+                CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot);
                 widget.gameObject.AddComponent<CardDropZone>();
                 _widgets.Add(widget);
             }
