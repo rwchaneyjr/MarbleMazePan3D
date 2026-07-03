@@ -43,11 +43,39 @@ namespace DragonBoxAlgebra.UI
         {
             CardKind.Box => "📦",
             CardKind.DayCreature => "🐟",
-            CardKind.NightCreature => "🌙",
+            CardKind.NightCreature => "🐢",
             CardKind.PositiveConstant => "🎲",
             CardKind.NegativeConstant => "🎲",
             CardKind.One => "①",
             CardKind.DivideTool => "➗",
+            _ => "?"
+        };
+
+        public static Sprite CreatureSprite(BoardCard card)
+        {
+            Sprite loaded = CardSpriteLoader.ForCard(card);
+            if (loaded != null)
+            {
+                return loaded;
+            }
+
+            return card.Kind switch
+            {
+                CardKind.DayCreature => SpriteFactory.FishCreature,
+                CardKind.NightCreature => SpriteFactory.TurtleCreature,
+                _ => null
+            };
+        }
+
+        public static string AlgebraLabel(BoardCard card) => card.Kind switch
+        {
+            CardKind.Box => "x",
+            CardKind.DayCreature => card.Value == 1 ? "x" : $"{card.Value}x",
+            CardKind.NightCreature => card.Value == 1 ? "-x" : $"-{card.Value}x",
+            CardKind.PositiveConstant => $"+{card.Value}",
+            CardKind.NegativeConstant => $"-{card.Value}",
+            CardKind.One => "1",
+            CardKind.DivideTool => "÷",
             _ => "?"
         };
     }

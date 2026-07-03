@@ -6,7 +6,12 @@ namespace DragonBoxAlgebra.UI
     {
         private static Sprite _roundedCard;
         private static Sprite _roundedButton;
+        private static Sprite _fishCreature;
+        private static Sprite _turtleCreature;
         private static Texture2D _boardTexture;
+
+        public static Sprite FishCreature => _fishCreature ??= CreateFishSprite();
+        public static Sprite TurtleCreature => _turtleCreature ??= CreateTurtleSprite();
 
         public static Sprite RoundedCard => _roundedCard ??= CreateRoundedSprite(128, 128, 18, Color.white);
         public static Sprite RoundedButton => _roundedButton ??= CreateRoundedSprite(128, 64, 14, Color.white);
@@ -53,6 +58,70 @@ namespace DragonBoxAlgebra.UI
 
             texture.Apply();
             return Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        public static Sprite CreateFishSprite()
+        {
+            return CreateCreatureSprite(new Color(0.2f, 0.55f, 0.95f), new Color(0.95f, 0.45f, 0.2f), true);
+        }
+
+        public static Sprite CreateTurtleSprite()
+        {
+            return CreateCreatureSprite(new Color(0.25f, 0.65f, 0.35f), new Color(0.85f, 0.75f, 0.2f), false);
+        }
+
+        private static Sprite CreateCreatureSprite(Color bodyColor, Color accentColor, bool isFish)
+        {
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    texture.SetPixel(x, y, Color.clear);
+                }
+            }
+
+            if (isFish)
+            {
+                FillEllipse(texture, 48, 50, 34, 18, bodyColor);
+                FillEllipse(texture, 72, 50, 10, 8, accentColor);
+                FillEllipse(texture, 28, 50, 8, 8, Color.white);
+                texture.SetPixel(26, 52, Color.black);
+            }
+            else
+            {
+                FillEllipse(texture, 48, 52, 30, 22, bodyColor);
+                FillEllipse(texture, 48, 68, 24, 10, accentColor);
+                FillEllipse(texture, 34, 44, 6, 6, Color.white);
+                FillEllipse(texture, 62, 44, 6, 6, Color.white);
+            }
+
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static void FillEllipse(Texture2D texture, int cx, int cy, int rx, int ry, Color color)
+        {
+            for (int y = cy - ry; y <= cy + ry; y++)
+            {
+                for (int x = cx - rx; x <= cx + rx; x++)
+                {
+                    if (x < 0 || y < 0 || x >= texture.width || y >= texture.height)
+                    {
+                        continue;
+                    }
+
+                    float dx = (x - cx) / (float)rx;
+                    float dy = (y - cy) / (float)ry;
+                    if (dx * dx + dy * dy <= 1f)
+                    {
+                        texture.SetPixel(x, y, color);
+                    }
+                }
+            }
         }
 
         private static bool IsInsideRoundedRect(int x, int y, int width, int height, int radius)

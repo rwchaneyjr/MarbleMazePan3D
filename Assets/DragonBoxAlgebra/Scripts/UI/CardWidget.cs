@@ -18,6 +18,9 @@ namespace DragonBoxAlgebra.UI
         private Canvas _canvas;
         private Image _background;
         private Image _border;
+        private Image _creatureImage;
+        private Text _creatureText;
+        private Text _labelText;
         private CreatureReaction _reaction;
         private Vector2 _dragOffset;
         private Transform _originalParent;
@@ -46,6 +49,35 @@ namespace DragonBoxAlgebra.UI
             if (_border != null)
             {
                 _border.color = CardVisuals.Border(Card.Kind);
+            }
+
+            ApplyCreatureVisual();
+            if (_labelText != null)
+            {
+                _labelText.text = CardVisuals.AlgebraLabel(Card);
+                if (Card.StackCount > 1)
+                {
+                    _labelText.text += $" x{Card.StackCount}";
+                }
+            }
+        }
+
+        private void ApplyCreatureVisual()
+        {
+            Sprite creature = CardVisuals.CreatureSprite(Card);
+            if (_creatureImage != null)
+            {
+                _creatureImage.sprite = creature;
+                _creatureImage.enabled = creature != null;
+                _creatureImage.preserveAspect = true;
+            }
+
+            if (_creatureText != null)
+            {
+                bool showEmoji = creature == null || Card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant
+                    or CardKind.One or CardKind.DivideTool or CardKind.Box;
+                _creatureText.text = CardVisuals.Emoji(Card);
+                _creatureText.enabled = showEmoji;
             }
         }
 
@@ -233,7 +265,7 @@ namespace DragonBoxAlgebra.UI
             widget._border = borderImage;
             widget.Bind(card, index, sideName, controller, canvas, dragRoot);
 
-            var emojiGo = new GameObject("Emoji", typeof(RectTransform), typeof(Text), typeof(CreatureReaction));
+            var emojiGo = new GameObject("Creature", typeof(RectTransform), typeof(Image), typeof(Text), typeof(CreatureReaction));
             emojiGo.transform.SetParent(root.transform, false);
             var emojiRect = emojiGo.GetComponent<RectTransform>();
             emojiRect.anchorMin = Vector2.zero;
@@ -241,12 +273,18 @@ namespace DragonBoxAlgebra.UI
             emojiRect.offsetMin = new Vector2(8f, 28f);
             emojiRect.offsetMax = new Vector2(-8f, -8f);
 
+            var creatureImage = emojiGo.GetComponent<Image>();
+            creatureImage.raycastTarget = false;
+            widget._creatureImage = creatureImage;
+
             var emojiText = emojiGo.GetComponent<Text>();
             emojiText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             emojiText.alignment = TextAnchor.MiddleCenter;
             emojiText.fontSize = 38;
-            emojiText.text = CardVisuals.Emoji(card);
+            emojiText.raycastTarget = false;
+            widget._creatureText = emojiText;
             widget._reaction = emojiGo.GetComponent<CreatureReaction>();
+            widget.ApplyCreatureVisual();
 
             var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
             labelGo.transform.SetParent(root.transform, false);
@@ -261,7 +299,8 @@ namespace DragonBoxAlgebra.UI
             labelText.alignment = TextAnchor.MiddleCenter;
             labelText.fontSize = 13;
             labelText.color = Color.white;
-            labelText.text = CardVisuals.Label(card);
+            labelText.text = CardVisuals.AlgebraLabel(card);
+            widget._labelText = labelText;
 
             if (card.StackCount > 1)
             {
