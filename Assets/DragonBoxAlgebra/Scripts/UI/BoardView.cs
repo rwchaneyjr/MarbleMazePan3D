@@ -223,13 +223,14 @@ namespace DragonBoxAlgebra.UI
             for (int i = 0; i < side.Cards.Count; i++)
             {
                 BoardCard card = side.Cards[i];
-                if (_controller.IsCardPendingCancel(card.Id))
-                {
-                    continue;
-                }
-
                 CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot);
                 widget.gameObject.AddComponent<CardDropZone>();
+
+                if (_controller.IsCardPendingCancel(card.Id))
+                {
+                    widget.SetPendingCancelOverlay(true);
+                }
+
                 _widgets.Add(widget);
             }
         }

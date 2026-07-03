@@ -117,6 +117,18 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
+        public void SetPendingCancelOverlay(bool on)
+        {
+            CanvasGroup group = GetComponent<CanvasGroup>();
+            if (group == null)
+            {
+                group = gameObject.AddComponent<CanvasGroup>();
+            }
+
+            group.alpha = on ? 0.65f : 1f;
+            group.blocksRaycasts = !on;
+        }
+
         private IEnumerator PlayHandFlip()
         {
             if (_rect == null)
