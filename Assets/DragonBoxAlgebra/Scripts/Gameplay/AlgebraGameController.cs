@@ -109,7 +109,7 @@ namespace DragonBoxAlgebra.Gameplay
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
                 ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
                 : "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                  "When matching light and dark creatures meet on one side, a spinning * appears — click it to dismiss.");
+                  "Matching light + dark creatures on one side make a spinning *. +1 and -1 dice cancel instantly.");
         }
 
         public void LoadNextLevel()
@@ -399,7 +399,7 @@ namespace DragonBoxAlgebra.Gameplay
                 HandIndex = handIndex
             };
 
-            ActivateOppositePairForCard(targetSide, placedIndex);
+            ActivateOppositePairOrCancelDice(targetSide, placedIndex);
 
             MessageChanged?.Invoke(_pendingCancels.Count > 0
                 ? "? on the other side — drag the same tile to fill the hole. Light met dark: spinning * appeared!"
@@ -438,10 +438,12 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
 
             // Only pair on the hole side — the placed side was handled in TryStartBalance.
-            ActivateOppositePairForCard(targetSide, placedIndex);
+            ActivateOppositePairOrCancelDice(targetSide, placedIndex);
 
             Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke("Balanced! Click the spinning * to dismiss opposites.");
+            MessageChanged?.Invoke(_pendingCancels.Count > 0
+                ? "Balanced! Click the spinning * to dismiss creatures."
+                : "Balanced!");
             PruneInvalidCancelMarkers();
             ResolveCombines();
             return true;
@@ -487,6 +489,55 @@ namespace DragonBoxAlgebra.Gameplay
         private void PushUndo()
         {
             _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels));
+        }
+
+        private void ActivateOppositePairOrCancelDice(string sideName, int cardIndex)
+        {
+            if (TryInstantDiceCancelForCard(sideName, cardIndex))
+            {
+                return;
+            }
+
+            ActivateOppositePairForCard(sideName, cardIndex);
+        }
+
+        private bool TryInstantDiceCancelForCard(string sideName, int cardIndex)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            if (cardIndex < 0 || cardIndex >= side.Cards.Count)
+            {
+                return false;
+            }
+
+            BoardCard placed = side.Cards[cardIndex];
+            for (int j = 0; j < side.Cards.Count; j++)
+            {
+                if (j == cardIndex)
+                {
+                    continue;
+                }
+
+                if (!CombineRules.IsDiceOppositePair(placed, side.Cards[j]))
+                {
+                    continue;
+                }
+
+                string partnerId = side.Cards[j].Id;
+                string placedId = placed.Id;
+                CombineRules.RemovePairById(side, placedId, partnerId);
+                Moves.RegisterCombine();
+                CombineOccurred?.Invoke(new CombineEvent
+                {
+                    SideName = sideName,
+                    Action = CombineActionType.OppositeCancel,
+                    IndexA = cardIndex,
+                    IndexB = j
+                });
+                MessageChanged?.Invoke("Dice canceled.");
+                return true;
+            }
+
+            return false;
         }
 
         private void ActivateOppositePairForCard(string sideName, int cardIndex)
