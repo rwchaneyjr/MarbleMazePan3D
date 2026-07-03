@@ -8,7 +8,6 @@ namespace DragonBoxAlgebra.Gameplay
         public List<BoardCard> Left = new();
         public List<BoardCard> Hand = new();
         public List<BoardCard> Right = new();
-        public List<PendingCancelMarker> PendingCancels = new();
         public int Moves;
         public int CardsPlayed;
         public bool HasPendingBalance;
@@ -17,7 +16,7 @@ namespace DragonBoxAlgebra.Gameplay
         public BoardCard PendingCard;
 
         public static GameSnapshot Capture(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves,
-            BalancePending pendingBalance, IReadOnlyList<PendingCancelMarker> pendingCancels)
+            BalancePending pendingBalance)
         {
             var snapshot = new GameSnapshot
             {
@@ -40,16 +39,6 @@ namespace DragonBoxAlgebra.Gameplay
                 snapshot.Hand.Add(card.Clone());
             }
 
-            foreach (PendingCancelMarker marker in pendingCancels)
-            {
-                snapshot.PendingCancels.Add(new PendingCancelMarker
-                {
-                    SideName = marker.SideName,
-                    CardIdA = marker.CardIdA,
-                    CardIdB = marker.CardIdB
-                });
-            }
-
             if (pendingBalance != null)
             {
                 snapshot.HasPendingBalance = true;
@@ -61,14 +50,12 @@ namespace DragonBoxAlgebra.Gameplay
             return snapshot;
         }
 
-        public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves, out BalancePending pendingBalance,
-            List<PendingCancelMarker> pendingCancels)
+        public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves, out BalancePending pendingBalance)
         {
             board.Left.Cards.Clear();
             board.Right.Cards.Clear();
             hand.Clear();
             pendingBalance = null;
-            pendingCancels.Clear();
 
             foreach (BoardCard card in Left)
             {
@@ -83,16 +70,6 @@ namespace DragonBoxAlgebra.Gameplay
             foreach (BoardCard card in Hand)
             {
                 hand.Add(card.Clone());
-            }
-
-            foreach (PendingCancelMarker marker in PendingCancels)
-            {
-                pendingCancels.Add(new PendingCancelMarker
-                {
-                    SideName = marker.SideName,
-                    CardIdA = marker.CardIdA,
-                    CardIdB = marker.CardIdB
-                });
             }
 
             moves.Moves = Moves;

@@ -32,19 +32,16 @@ namespace DragonBoxAlgebra.UI
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (_didDrag || _controller == null)
+            if (_didDrag || SideName != "Hand" || _controller == null)
             {
                 return;
             }
 
-            if (SideName == "Hand")
+            if (_controller.TryFlipHandCard(Index))
             {
-                if (_controller.TryFlipHandCard(Index))
-                {
-                    Card = _controller.Hand[Index];
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
-                    StartCoroutine(PlayHandFlip());
-                }
+                Card = _controller.Hand[Index];
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
+                StartCoroutine(PlayHandFlip());
             }
         }
 
