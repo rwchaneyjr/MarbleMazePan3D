@@ -38,7 +38,7 @@ namespace DragonBoxAlgebra.Core
         public bool IsDraggableFromBoard => Kind != CardKind.Box;
 
         public bool IsPlayableFromHand => Kind is CardKind.DayCreature or CardKind.NightCreature
-            or CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.DivideTool;
+            or CardKind.PositiveConstant or CardKind.NegativeConstant;
 
         public int SignedValue => Kind switch
         {

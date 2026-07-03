@@ -43,6 +43,11 @@ namespace DragonBoxAlgebra.UI
 
         private void OnCombine(CombineEvent evt)
         {
+            if (evt.Action != CombineActionType.OppositeCancel)
+            {
+                return;
+            }
+
             VortexEffect.Play(_dragRoot, GetSideCenter(evt.SideName));
 
             if (DragonBoxAlgebra.Audio.AudioManager.Instance != null)

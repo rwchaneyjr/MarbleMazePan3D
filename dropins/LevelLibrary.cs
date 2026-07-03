@@ -14,7 +14,7 @@ namespace DragonBoxAlgebra.Gameplay
                 RightCards = new List<CardKind> { CardKind.DayCreature },
                 HandCards = new List<CardKind> { CardKind.NightCreature },
                 HandValues = new List<int> { 1 },
-                ParMoves = 3,
+                ParMoves = 2,
                 ParCards = 1
             },
             new()
@@ -23,15 +23,10 @@ namespace DragonBoxAlgebra.Gameplay
                 LeftCards = new List<CardKind> { CardKind.Box, CardKind.NightCreature },
                 RightCards = new List<CardKind> { CardKind.PositiveConstant },
                 RightValues = new List<int> { 1 },
-                HandCards = new List<CardKind>
-                {
-                    CardKind.DayCreature,
-                    CardKind.PositiveConstant,
-                    CardKind.NegativeConstant
-                },
-                HandValues = new List<int> { 1, 1, 1 },
-                ParMoves = 5,
-                ParCards = 2
+                HandCards = new List<CardKind> { CardKind.DayCreature },
+                HandValues = new List<int> { 1 },
+                ParMoves = 2,
+                ParCards = 1
             },
             new()
             {
@@ -39,42 +34,41 @@ namespace DragonBoxAlgebra.Gameplay
                 LeftCards = new List<CardKind> { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
                 RightCards = new List<CardKind> { CardKind.DayCreature, CardKind.NightCreature },
                 HandCards = new List<CardKind>(),
-                ParMoves = 2,
+                ParMoves = 1,
                 ParCards = 0
             },
             new()
             {
-                Title = "Dice and Box",
+                Title = "Cancel the Dice",
                 LeftCards = new List<CardKind> { CardKind.Box, CardKind.PositiveConstant },
                 LeftValues = new List<int> { 1, 1 },
                 RightCards = new List<CardKind> { CardKind.PositiveConstant, CardKind.NegativeConstant },
                 RightValues = new List<int> { 1, 1 },
                 HandCards = new List<CardKind> { CardKind.NegativeConstant },
                 HandValues = new List<int> { 1 },
-                ParMoves = 6,
+                ParMoves = 2,
                 ParCards = 1
             },
             new()
             {
-                Title = "Merge to One",
+                Title = "Fish and Turtle",
                 LeftCards = new List<CardKind> { CardKind.Box, CardKind.DayCreature },
                 RightCards = new List<CardKind> { CardKind.NightCreature },
                 HandCards = new List<CardKind> { CardKind.NightCreature },
                 HandValues = new List<int> { 1 },
-                ParMoves = 5,
+                ParMoves = 2,
                 ParCards = 1
             },
             new()
             {
-                Title = "Divide Identical Pair",
-                LeftCards = new List<CardKind> { CardKind.Box, CardKind.PositiveConstant, CardKind.PositiveConstant },
-                LeftValues = new List<int> { 1, 1, 1 },
-                RightCards = new List<CardKind> { CardKind.NegativeConstant },
+                Title = "Final Balance",
+                LeftCards = new List<CardKind> { CardKind.Box, CardKind.NegativeConstant },
+                RightCards = new List<CardKind> { CardKind.PositiveConstant },
                 RightValues = new List<int> { 1 },
-                HandCards = new List<CardKind> { CardKind.DivideTool, CardKind.NegativeConstant },
-                HandValues = new List<int> { 1, 1 },
-                ParMoves = 7,
-                ParCards = 2
+                HandCards = new List<CardKind> { CardKind.PositiveConstant },
+                HandValues = new List<int> { 1 },
+                ParMoves = 2,
+                ParCards = 1
             }
         };
     }

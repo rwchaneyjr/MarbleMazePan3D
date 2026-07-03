@@ -59,8 +59,8 @@ namespace DragonBoxAlgebra.Gameplay
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance);
             BoardChanged?.Invoke();
             MessageChanged?.Invoke(
-                "Goal: red box (x) ALONE on one side. BALANCE: drag to one side, fill the hole on the other. " +
-                "Click to flip light/dark. Light + dark cancel out.");
+                "Goal: red box ALONE. BALANCE same card on both sides. Light + dark CANCEL (vanish). " +
+                "Click hand card to flip light/dark. No adding to One.");
         }
 
         public void LoadNextLevel()
@@ -175,15 +175,10 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             BoardCard template = _hand[handIndex];
-            if (template.Kind == CardKind.DivideTool)
+            if (template.Kind == CardKind.DivideTool || template.Kind == CardKind.One)
             {
-                if (_pendingBalance != null)
-                {
-                    MessageChanged?.Invoke("Fill the balance hole first.");
-                    return false;
-                }
-
-                return TryUseDivideTool(handIndex);
+                MessageChanged?.Invoke("Only light/dark cards and dice can be played.");
+                return false;
             }
 
             if (_pendingBalance != null)
@@ -314,6 +309,7 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             LevelCompleted?.Invoke(stars, Moves.Moves);
+            MessageChanged?.Invoke("You win! The red box is alone.");
         }
 
         private void PushUndo()
