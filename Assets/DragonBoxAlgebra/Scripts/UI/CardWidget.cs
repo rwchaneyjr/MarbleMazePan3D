@@ -234,7 +234,23 @@ namespace DragonBoxAlgebra.UI
         {
             if (SideName == "Hand")
             {
-                if (_controller.TryPlayFromHand(Index, target.SideName))
+                bool played = false;
+                if (target.SideName != "Hand" && Index < _controller.Hand.Count)
+                {
+                    BoardSide side = _controller.Board.GetSide(target.SideName);
+                    if (target.Index >= 0 && target.Index < side.Cards.Count
+                        && CombineRules.CanCombine(_controller.Hand[Index], side.Cards[target.Index]))
+                    {
+                        played = _controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index);
+                    }
+                }
+
+                if (!played)
+                {
+                    played = _controller.TryPlayFromHand(Index, target.SideName);
+                }
+
+                if (played)
                 {
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
