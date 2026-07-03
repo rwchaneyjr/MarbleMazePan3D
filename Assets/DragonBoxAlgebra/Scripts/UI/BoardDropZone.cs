@@ -29,6 +29,7 @@ namespace DragonBoxAlgebra.UI
 
             if (ui.Controller.TryPlayFromHand(dragged.Index, SideName))
             {
+                dragged.MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
             }
         }

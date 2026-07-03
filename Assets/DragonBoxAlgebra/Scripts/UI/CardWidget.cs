@@ -29,6 +29,7 @@ namespace DragonBoxAlgebra.UI
         private int _originalSiblingIndex;
         private bool _isDragging;
         private bool _didDrag;
+        private bool _handPlayHandled;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -160,6 +161,7 @@ namespace DragonBoxAlgebra.UI
 
             _isDragging = true;
             _didDrag = false;
+            _handPlayHandled = false;
             _originalParent = transform.parent;
             _originalSiblingIndex = transform.GetSiblingIndex();
             transform.SetParent(_dragRoot, true);
@@ -183,6 +185,8 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
+        public void MarkHandPlayHandled() => _handPlayHandled = true;
+
         public void OnEndDrag(PointerEventData eventData)
         {
             if (!_isDragging)
@@ -194,21 +198,27 @@ namespace DragonBoxAlgebra.UI
 
             if (SideName == "Hand")
             {
-                TryPlayHandDrop(eventData);
-            }
-            else
-            {
-                CardWidget target = FindDropTarget(eventData);
-                if (target != null && target != this)
+                if (!_handPlayHandled)
                 {
-                    HandleDropOnCard(target);
+                    TryPlayHandDrop(eventData);
                 }
+
+                if (_controller.Hand.Count == 0 || Index >= _controller.Hand.Count)
+                {
+                    Destroy(gameObject);
+                    return;
+                }
+
+                transform.SetParent(_originalParent, false);
+                transform.SetSiblingIndex(_originalSiblingIndex);
+                Bind(_controller.Hand[Index], Index, "Hand", _controller, _canvas, _dragRoot);
+                return;
             }
 
-            if (SideName == "Hand" && (Index >= _controller.Hand.Count || _controller.Hand.Count == 0))
+            CardWidget target = FindDropTarget(eventData);
+            if (target != null && target != this)
             {
-                Destroy(gameObject);
-                return;
+                HandleDropOnCard(target);
             }
 
             transform.SetParent(_originalParent, false);
@@ -226,6 +236,7 @@ namespace DragonBoxAlgebra.UI
                 {
                     if (_controller.TryPlayFromHand(Index, holeSide))
                     {
+                        MarkHandPlayHandled();
                         DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                     }
 
@@ -237,6 +248,7 @@ namespace DragonBoxAlgebra.UI
                 {
                     if (_controller.TryPlayFromHand(Index, holeSide))
                     {
+                        MarkHandPlayHandled();
                         DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                     }
 
@@ -247,6 +259,7 @@ namespace DragonBoxAlgebra.UI
                 if (boardZone != null && boardZone.SideName == holeSide
                     && _controller.TryPlayFromHand(Index, holeSide))
                 {
+                    MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
 
@@ -258,6 +271,7 @@ namespace DragonBoxAlgebra.UI
             {
                 if (_controller.TryPlayFromHand(Index, targetCard.SideName))
                 {
+                    MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
 
@@ -267,6 +281,7 @@ namespace DragonBoxAlgebra.UI
             BoardDropZone zone = FindBoardZone(eventData);
             if (zone != null && _controller.TryPlayFromHand(Index, zone.SideName))
             {
+                MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
             }
         }
@@ -291,6 +306,7 @@ namespace DragonBoxAlgebra.UI
                     if (target.SideName == _controller.PendingBalance.HoleSide
                         && _controller.TryPlayFromHand(Index, target.SideName))
                     {
+                        MarkHandPlayHandled();
                         DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                     }
 
@@ -300,6 +316,7 @@ namespace DragonBoxAlgebra.UI
                 if (target.SideName != "Hand"
                     && _controller.TryPlayFromHand(Index, target.SideName))
                 {
+                    MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
 
