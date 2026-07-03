@@ -166,12 +166,6 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (_pendingBalance != null)
-            {
-                MessageChanged?.Invoke("Fill the balance hole first.");
-                return false;
-            }
-
             BoardSide side = Board.GetSide(sideName);
             if (indexA < 0 || indexB < 0 || indexA >= side.Cards.Count || indexB >= side.Cards.Count)
             {
@@ -188,11 +182,18 @@ namespace DragonBoxAlgebra.Gameplay
             if (action == CombineActionType.OppositeCancel)
             {
                 PushUndo();
+                ClearPendingBalanceKeepBoard();
                 TryCreateCancelMarker(sideName, side.Cards[indexA].Id, side.Cards[indexB].Id);
-                MessageChanged?.Invoke("A spinning * appeared — click it to dismiss the pair.");
+                MessageChanged?.Invoke("Light met dark — click the spinning ✳️ to dismiss.");
                 BoardChanged?.Invoke();
                 CheckWin();
                 return true;
+            }
+
+            if (_pendingBalance != null)
+            {
+                MessageChanged?.Invoke("Fill the balance hole first.");
+                return false;
             }
 
             PushUndo();
@@ -289,12 +290,6 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (_pendingBalance != null)
-            {
-                MessageChanged?.Invoke("Fill the balance hole first.");
-                return false;
-            }
-
             BoardSide side = Board.GetSide(sideName);
             if (targetBoardIndex < 0 || targetBoardIndex >= side.Cards.Count)
             {
@@ -315,6 +310,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             PushUndo();
+            ClearPendingBalanceKeepBoard();
             side.Cards.Add(handCard.Clone());
             BoardCard placed = side.Cards[side.Cards.Count - 1];
             TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
@@ -338,6 +334,7 @@ namespace DragonBoxAlgebra.Gameplay
             int partner = CombineRules.FindOppositePartnerIndex(placedSide, placedIndex);
             if (partner >= 0 && !IsCardPendingCancel(placedSide.Cards[partner].Id))
             {
+                ClearPendingBalanceKeepBoard();
                 TryCreateCancelMarker(targetSide, placedSide.Cards[partner].Id, placed.Id);
                 _hand.RemoveAt(handIndex);
                 HandChanged?.Invoke();
@@ -430,6 +427,16 @@ namespace DragonBoxAlgebra.Gameplay
         public void CompleteWinPresentation(int stars, int moves)
         {
             LevelCompleted?.Invoke(stars, moves);
+        }
+
+        private void ClearPendingBalanceKeepBoard()
+        {
+            if (_pendingBalance == null)
+            {
+                return;
+            }
+
+            _pendingBalance = null;
         }
 
         private void PushUndo()
