@@ -33,6 +33,5 @@ Thumbs.db
 # Crash reports
 sysinfo.txt
 
-# Large reference media (keep frames if needed)
-reference/*.mp4
-reference/*.mov
+# Local reference media (not part of the game)
+reference/

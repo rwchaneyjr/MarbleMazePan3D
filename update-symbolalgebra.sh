@@ -4,7 +4,7 @@ set -euo pipefail
 
 TARGET="${1:-/c/Users/rober/SymbolAlgebra}"
 REPO="https://github.com/rwchaneyjr/MarbleMazePan3D.git"
-BRANCH="cursor/symbols-balance-features-1ad2"
+BRANCH="cursor/clean-repo-1ad2"
 CACHE="/c/Users/rober/_MarbleMazePan3D_cache"
 
 echo "=== SymbolAlgebra updater ==="
