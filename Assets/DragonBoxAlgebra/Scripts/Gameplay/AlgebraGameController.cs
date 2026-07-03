@@ -310,15 +310,13 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             PushUndo();
-            string placedSide = _pendingBalance.PlacedSide;
             BoardSide balancedSide = Board.GetSide(targetSide);
             balancedSide.Cards.Add(template.Clone());
             _hand.RemoveAt(handIndex);
             _pendingBalance = null;
             HandChanged?.Invoke();
 
-            ActivateOppositePairsOnSide(placedSide);
-            ActivateOppositePairsOnSide(targetSide);
+            ActivateOppositePairForCard(targetSide, balancedSide.Cards.Count - 1);
 
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke("Balanced! Click spinning opposites to dismiss them.");
@@ -379,16 +377,18 @@ namespace DragonBoxAlgebra.Gameplay
             _spinningCardIds.Add(side.Cards[indexB].Id);
         }
 
-        private void ActivateOppositePairsOnSide(string sideName)
+        private void ActivateOppositePairForCard(string sideName, int cardIndex)
         {
             BoardSide side = Board.GetSide(sideName);
-            for (int i = 0; i < side.Cards.Count; i++)
+            if (cardIndex < 0 || cardIndex >= side.Cards.Count)
             {
-                int partner = CombineRules.FindOppositePartnerIndex(side, i);
-                if (partner >= 0)
-                {
-                    ActivateSpinPair(side, i, partner);
-                }
+                return;
+            }
+
+            int partner = CombineRules.FindOppositePartnerIndex(side, cardIndex);
+            if (partner >= 0)
+            {
+                ActivateSpinPair(side, cardIndex, partner);
             }
         }
 
