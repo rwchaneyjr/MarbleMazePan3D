@@ -166,6 +166,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            if (_pendingBalance != null)
+            {
+                MessageChanged?.Invoke("Fill the balance hole first.");
+                return false;
+            }
+
             BoardSide side = Board.GetSide(sideName);
             if (indexA < 0 || indexB < 0 || indexA >= side.Cards.Count || indexB >= side.Cards.Count)
             {
@@ -182,18 +188,11 @@ namespace DragonBoxAlgebra.Gameplay
             if (action == CombineActionType.OppositeCancel)
             {
                 PushUndo();
-                ClearPendingBalanceKeepBoard();
                 TryCreateCancelMarker(sideName, side.Cards[indexA].Id, side.Cards[indexB].Id);
-                MessageChanged?.Invoke("Light met dark — click the spinning ✳️ to dismiss.");
+                MessageChanged?.Invoke("A spinning * appeared — click it to dismiss the pair.");
                 BoardChanged?.Invoke();
                 CheckWin();
                 return true;
-            }
-
-            if (_pendingBalance != null)
-            {
-                MessageChanged?.Invoke("Fill the balance hole first.");
-                return false;
             }
 
             PushUndo();
@@ -283,68 +282,11 @@ namespace DragonBoxAlgebra.Gameplay
             return TryPlayFromHand(handIndex, "Left");
         }
 
-        public bool TryPlayHandOntoOpposite(int handIndex, string sideName, int targetBoardIndex)
-        {
-            if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
-            {
-                return false;
-            }
-
-            BoardSide side = Board.GetSide(sideName);
-            if (targetBoardIndex < 0 || targetBoardIndex >= side.Cards.Count)
-            {
-                return false;
-            }
-
-            BoardCard handCard = _hand[handIndex];
-            BoardCard targetCard = side.Cards[targetBoardIndex];
-
-            if (IsCardPendingCancel(targetCard.Id))
-            {
-                return false;
-            }
-
-            if (CombineRules.GetCombineAction(handCard, targetCard) != CombineActionType.OppositeCancel)
-            {
-                return false;
-            }
-
-            PushUndo();
-            ClearPendingBalanceKeepBoard();
-            side.Cards.Add(handCard.Clone());
-            BoardCard placed = side.Cards[side.Cards.Count - 1];
-            TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
-            _hand.RemoveAt(handIndex);
-            HandChanged?.Invoke();
-            Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
-            BoardChanged?.Invoke();
-            CheckWin();
-            return true;
-        }
-
         private bool TryStartBalance(int handIndex, string targetSide, BoardCard template)
         {
             PushUndo();
             BoardSide placedSide = Board.GetSide(targetSide);
             placedSide.Cards.Add(template.Clone());
-            int placedIndex = placedSide.Cards.Count - 1;
-            BoardCard placed = placedSide.Cards[placedIndex];
-
-            int partner = CombineRules.FindOppositePartnerIndex(placedSide, placedIndex);
-            if (partner >= 0 && !IsCardPendingCancel(placedSide.Cards[partner].Id))
-            {
-                ClearPendingBalanceKeepBoard();
-                TryCreateCancelMarker(targetSide, placedSide.Cards[partner].Id, placed.Id);
-                _hand.RemoveAt(handIndex);
-                HandChanged?.Invoke();
-                Moves.RegisterBalancedPlay();
-                MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
-                BoardChanged?.Invoke();
-                CheckWin();
-                return true;
-            }
-
             _pendingBalance = new BalancePending
             {
                 Card = template.Clone(),
@@ -352,7 +294,8 @@ namespace DragonBoxAlgebra.Gameplay
                 HandIndex = handIndex
             };
 
-            MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
+            ActivateOppositePairForCard(targetSide, placedSide.Cards.Count - 1);
+            MessageChanged?.Invoke("? appeared on the other side — drag the same tile there.");
             BoardChanged?.Invoke();
             ResolveCombines();
             return true;
@@ -427,16 +370,6 @@ namespace DragonBoxAlgebra.Gameplay
         public void CompleteWinPresentation(int stars, int moves)
         {
             LevelCompleted?.Invoke(stars, moves);
-        }
-
-        private void ClearPendingBalanceKeepBoard()
-        {
-            if (_pendingBalance == null)
-            {
-                return;
-            }
-
-            _pendingBalance = null;
         }
 
         private void PushUndo()
