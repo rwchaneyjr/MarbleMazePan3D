@@ -370,12 +370,13 @@ namespace DragonBoxAlgebra.Gameplay
             PushUndo();
             BoardSide balancedSide = Board.GetSide(targetSide);
             balancedSide.Cards.Add(template.CloneForPlacement());
+            int placedIndex = balancedSide.Cards.Count - 1;
             _hand.RemoveAt(handIndex);
             _pendingBalance = null;
             HandChanged?.Invoke();
 
-            ActivateAllOppositePairsOnSide("Left");
-            ActivateAllOppositePairsOnSide("Right");
+            // Only pair on the hole side — the placed side was handled in TryStartBalance.
+            ActivateOppositePairForCard(targetSide, placedIndex);
 
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke("Balanced! Click the spinning * to dismiss opposites.");
