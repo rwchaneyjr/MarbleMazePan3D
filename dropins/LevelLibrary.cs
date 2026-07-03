@@ -23,8 +23,13 @@ namespace DragonBoxAlgebra.Gameplay
                 LeftCards = new List<CardKind> { CardKind.Box, CardKind.NightCreature },
                 RightCards = new List<CardKind> { CardKind.PositiveConstant },
                 RightValues = new List<int> { 1 },
-                HandCards = new List<CardKind> { CardKind.NegativeConstant, CardKind.PositiveConstant },
-                HandValues = new List<int> { 1, 1 },
+                HandCards = new List<CardKind>
+                {
+                    CardKind.DayCreature,
+                    CardKind.PositiveConstant,
+                    CardKind.NegativeConstant
+                },
+                HandValues = new List<int> { 1, 1, 1 },
                 ParMoves = 5,
                 ParCards = 2
             },
@@ -34,7 +39,7 @@ namespace DragonBoxAlgebra.Gameplay
                 LeftCards = new List<CardKind> { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
                 RightCards = new List<CardKind> { CardKind.DayCreature, CardKind.NightCreature },
                 HandCards = new List<CardKind>(),
-                ParMoves = 4,
+                ParMoves = 2,
                 ParCards = 0
             },
             new()
@@ -52,7 +57,7 @@ namespace DragonBoxAlgebra.Gameplay
             new()
             {
                 Title = "Merge to One",
-                LeftCards = new List<CardKind> { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
+                LeftCards = new List<CardKind> { CardKind.Box, CardKind.DayCreature },
                 RightCards = new List<CardKind> { CardKind.NightCreature },
                 HandCards = new List<CardKind> { CardKind.NightCreature },
                 HandValues = new List<int> { 1 },

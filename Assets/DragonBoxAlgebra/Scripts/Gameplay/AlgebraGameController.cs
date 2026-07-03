@@ -55,10 +55,12 @@ namespace DragonBoxAlgebra.Gameplay
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
+            ResolveCombines();
+            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance);
             BoardChanged?.Invoke();
             MessageChanged?.Invoke(
-                "BALANCE: drag a card to one side → hole appears on the other → drag the SAME card to the hole. " +
-                "Click to flip light/dark. Goal: box alone on one side.");
+                "Goal: red box (x) ALONE on one side. BALANCE: drag to one side, fill the hole on the other. " +
+                "Click to flip light/dark. Light + dark cancel out.");
         }
 
         public void LoadNextLevel()
