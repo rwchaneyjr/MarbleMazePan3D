@@ -400,6 +400,7 @@ namespace DragonBoxAlgebra.Gameplay
             };
 
             ActivateOppositePairOrCancelDice(targetSide, placedIndex);
+            EnsureCreaturePairMarkersOnSide(targetSide);
 
             MessageChanged?.Invoke(_pendingCancels.Count > 0
                 ? "? on the other side — drag the same tile to fill the hole. Light met dark: spinning * appeared!"
@@ -433,12 +434,15 @@ namespace DragonBoxAlgebra.Gameplay
             BoardSide balancedSide = Board.GetSide(targetSide);
             balancedSide.Cards.Add(template.CloneForPlacement());
             int placedIndex = balancedSide.Cards.Count - 1;
+            string placedSide = _pendingBalance.PlacedSide;
             _hand.RemoveAt(handIndex);
             _pendingBalance = null;
             HandChanged?.Invoke();
 
-            // Only pair on the hole side — the placed side was handled in TryStartBalance.
+            // Hole side: pair the tile that filled the ?. Placed side: pair from first drag.
             ActivateOppositePairOrCancelDice(targetSide, placedIndex);
+            EnsureCreaturePairMarkersOnSide(placedSide);
+            EnsureCreaturePairMarkersOnSide(targetSide);
 
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke(_pendingCancels.Count > 0
@@ -604,6 +608,31 @@ namespace DragonBoxAlgebra.Gameplay
             return -1;
         }
 
+        private void EnsureCreaturePairMarkersOnSide(string sideName)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (IsCardPendingCancelOnSide(side.Cards[i].Id, sideName))
+                {
+                    continue;
+                }
+
+                for (int j = i + 1; j < side.Cards.Count; j++)
+                {
+                    if (IsCardPendingCancelOnSide(side.Cards[j].Id, sideName))
+                    {
+                        continue;
+                    }
+
+                    if (CombineRules.IsCreatureOppositePair(side.Cards[i], side.Cards[j]))
+                    {
+                        TryCreateCancelMarker(sideName, side.Cards[i].Id, side.Cards[j].Id);
+                    }
+                }
+            }
+        }
+
         private void PruneInvalidCancelMarkers()
         {
             for (int i = _pendingCancels.Count - 1; i >= 0; i--)
@@ -619,7 +648,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
         {
-            if (IsCardPendingCancel(cardIdA) || IsCardPendingCancel(cardIdB))
+            if (IsCardPendingCancelOnSide(cardIdA, sideName) || IsCardPendingCancelOnSide(cardIdB, sideName))
             {
                 return;
             }
@@ -654,12 +683,6 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 if (marker.SideName != sideName)
                 {
-                    if (marker.CardIdA == cardIdA || marker.CardIdB == cardIdA
-                        || marker.CardIdA == cardIdB || marker.CardIdB == cardIdB)
-                    {
-                        return;
-                    }
-
                     continue;
                 }
 
