@@ -438,12 +438,6 @@ namespace DragonBoxAlgebra.Gameplay
             return null;
         }
 
-        private bool HasPendingSpins()
-        {
-            PruneStaleSpinIds();
-            return _spinningCardIds.Count > 0;
-        }
-
         private void PruneStaleSpinIds()
         {
             var onBoard = new HashSet<string>();
