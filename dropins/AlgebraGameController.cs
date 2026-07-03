@@ -73,7 +73,10 @@ namespace DragonBoxAlgebra.Gameplay
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
-            ActivatePreplacedOppositePairs();
+            if (_hand.Count == 0)
+            {
+                ActivatePreplacedOppositePairs();
+            }
             ResolveCombines();
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
             BoardChanged?.Invoke();

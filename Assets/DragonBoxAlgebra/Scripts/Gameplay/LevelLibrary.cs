@@ -31,11 +31,12 @@ namespace DragonBoxAlgebra.Gameplay
             new()
             {
                 Title = "Clear the Creatures",
-                LeftCards = new List<CardKind> { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
-                RightCards = new List<CardKind> { CardKind.DayCreature, CardKind.NightCreature },
-                HandCards = new List<CardKind>(),
+                LeftCards = new List<CardKind> { CardKind.Box, CardKind.DayCreature },
+                RightCards = new List<CardKind>(),
+                HandCards = new List<CardKind> { CardKind.NightCreature },
+                HandValues = new List<int> { 1 },
                 ParMoves = 1,
-                ParCards = 0
+                ParCards = 1
             },
             new()
             {
