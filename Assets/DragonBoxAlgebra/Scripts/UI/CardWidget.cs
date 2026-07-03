@@ -64,7 +64,9 @@ namespace DragonBoxAlgebra.UI
 
         private void ApplyCreatureVisual()
         {
-            Sprite creature = CardVisuals.CreatureSprite(Card);
+            bool useEmoji = CardVisuals.PreferEmoji(Card);
+            Sprite creature = useEmoji ? null : CardVisuals.CreatureSprite(Card);
+
             if (_creatureImage != null)
             {
                 _creatureImage.sprite = creature;
@@ -74,10 +76,9 @@ namespace DragonBoxAlgebra.UI
 
             if (_creatureText != null)
             {
-                bool showEmoji = creature == null || Card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant
-                    or CardKind.One or CardKind.DivideTool or CardKind.Box;
                 _creatureText.text = CardVisuals.Emoji(Card);
-                _creatureText.enabled = showEmoji;
+                _creatureText.fontSize = CardVisuals.EmojiFontSize(Card);
+                _creatureText.enabled = useEmoji || creature == null;
             }
         }
 
@@ -308,7 +309,7 @@ namespace DragonBoxAlgebra.UI
             var emojiText = creatureTextGo.GetComponent<Text>();
             emojiText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             emojiText.alignment = TextAnchor.MiddleCenter;
-            emojiText.fontSize = 38;
+            emojiText.fontSize = CardVisuals.EmojiFontSize(card);
             emojiText.raycastTarget = false;
             widget._creatureText = emojiText;
 

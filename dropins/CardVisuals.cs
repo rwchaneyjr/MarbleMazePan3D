@@ -8,10 +8,10 @@ namespace DragonBoxAlgebra.UI
         public static Color Background(CardKind kind) => kind switch
         {
             CardKind.Box => new Color(0.78f, 0.28f, 0.22f),
-            CardKind.DayCreature => new Color(0.45f, 0.72f, 0.92f),
-            CardKind.NightCreature => new Color(0.18f, 0.16f, 0.28f),
-            CardKind.PositiveConstant => new Color(0.92f, 0.86f, 0.55f),
-            CardKind.NegativeConstant => new Color(0.55f, 0.55f, 0.62f),
+            CardKind.DayCreature => new Color(0.35f, 0.78f, 0.95f),
+            CardKind.NightCreature => new Color(0.22f, 0.28f, 0.55f),
+            CardKind.PositiveConstant => new Color(0.72f, 0.88f, 0.55f),
+            CardKind.NegativeConstant => new Color(0.48f, 0.52f, 0.68f),
             CardKind.One => new Color(0.95f, 0.95f, 0.88f),
             CardKind.DivideTool => new Color(0.95f, 0.55f, 0.18f),
             _ => Color.white
@@ -42,7 +42,7 @@ namespace DragonBoxAlgebra.UI
         public static string Emoji(BoardCard card) => card.Kind switch
         {
             CardKind.Box => "📦",
-            CardKind.DayCreature => "🐟",
+            CardKind.DayCreature => "🐠",
             CardKind.NightCreature => "🐢",
             CardKind.PositiveConstant => "🎲",
             CardKind.NegativeConstant => "🎲",
@@ -51,21 +51,23 @@ namespace DragonBoxAlgebra.UI
             _ => "?"
         };
 
-        public static Sprite CreatureSprite(BoardCard card)
+        public static int EmojiFontSize(BoardCard card) => card.Kind switch
         {
-            Sprite loaded = CardSpriteLoader.ForCard(card);
-            if (loaded != null)
-            {
-                return loaded;
-            }
+            CardKind.Box => 44,
+            CardKind.DayCreature => 52,
+            CardKind.NightCreature => 52,
+            CardKind.PositiveConstant => 46,
+            CardKind.NegativeConstant => 46,
+            CardKind.One => 44,
+            CardKind.DivideTool => 40,
+            _ => 38
+        };
 
-            return card.Kind switch
-            {
-                CardKind.DayCreature => SpriteFactory.FishCreature,
-                CardKind.NightCreature => SpriteFactory.TurtleCreature,
-                _ => null
-            };
-        }
+        public static bool PreferEmoji(BoardCard card) => card.Kind is CardKind.DayCreature or CardKind.NightCreature
+            or CardKind.Box or CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.One
+            or CardKind.DivideTool;
+
+        public static Sprite CreatureSprite(BoardCard card) => null;
 
         public static string AlgebraLabel(BoardCard card) => card.Kind switch
         {
