@@ -310,6 +310,7 @@ namespace DragonBoxAlgebra.Gameplay
             PushUndo();
             BoardSide placedSide = Board.GetSide(targetSide);
             placedSide.Cards.Add(template.Clone());
+            BoardCard placed = placedSide.Cards[placedSide.Cards.Count - 1];
             _pendingBalance = new BalancePending
             {
                 Card = template.Clone(),
@@ -318,7 +319,7 @@ namespace DragonBoxAlgebra.Gameplay
             };
 
             ActivateOppositePairForCard(targetSide, placedSide.Cards.Count - 1);
-            MessageChanged?.Invoke(_pendingCancels.Count > 0 && _pendingCancels[^1].SideName == targetSide
+            MessageChanged?.Invoke(IsCardPendingCancel(placed.Id)
                 ? "? on the other side — drag the same tile there. Light met dark: spinning * appeared!"
                 : "? appeared on the other side — drag the same tile there.");
             BoardChanged?.Invoke();
