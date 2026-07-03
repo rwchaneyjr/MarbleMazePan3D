@@ -24,15 +24,16 @@ namespace DragonBoxAlgebra.Gameplay
         public AlgebraBoard Board { get; } = new();
         public MoveTracker Moves { get; } = new();
         public IReadOnlyList<BoardCard> Hand => _hand;
+        public IReadOnlyList<PendingCancelMarker> PendingCancels => _pendingCancels;
         public bool CanUndo => _undoStack.Count > 0;
         public bool HasPendingBalance => _pendingBalance != null;
         public BalancePending PendingBalance => _pendingBalance;
 
         private readonly List<BoardCard> _hand = new();
+        private readonly List<PendingCancelMarker> _pendingCancels = new();
         private readonly Stack<GameSnapshot> _undoStack = new();
         private GameSnapshot _initialSnapshot;
         private BalancePending _pendingBalance;
-        private readonly HashSet<string> _spinningCardIds = new();
         private int _levelIndex;
         private bool _levelComplete;
 
@@ -40,7 +41,18 @@ namespace DragonBoxAlgebra.Gameplay
         public int LevelCount => LevelLibrary.Levels.Count;
         public LevelDefinition CurrentLevel => LevelLibrary.Levels[_levelIndex];
 
-        public bool IsSpinningCard(string cardId) => _spinningCardIds.Contains(cardId);
+        public bool IsCardPendingCancel(string cardId)
+        {
+            foreach (PendingCancelMarker marker in _pendingCancels)
+            {
+                if (marker.CardIdA == cardId || marker.CardIdB == cardId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         public void LoadLevel(int index)
         {
@@ -57,8 +69,8 @@ namespace DragonBoxAlgebra.Gameplay
             _undoStack.Clear();
             _levelComplete = false;
             _pendingBalance = null;
-            _spinningCardIds.Clear();
-            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _spinningCardIds);
+            _pendingCancels.Clear();
+            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
             ResolveCombines();
@@ -68,7 +80,7 @@ namespace DragonBoxAlgebra.Gameplay
                 ActivatePreplacedOppositePairs();
             }
 
-            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _spinningCardIds);
+            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             MessageChanged?.Invoke(GetLevelStartMessage(level));
@@ -78,11 +90,11 @@ namespace DragonBoxAlgebra.Gameplay
         {
             if (level.SpinPreplacedOppositesAtStart)
             {
-                return "Fish and turtle are spinning — click either one to dismiss. Leave the red box alone!";
+                return "Click the spinning * to dismiss the creatures. Leave the red box alone!";
             }
 
             return "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                   "When light meets dark, they spin — click either to dismiss.";
+                   "When light meets dark, a spinning * appears — click it to dismiss.";
         }
 
         public void LoadNextLevel()
@@ -105,7 +117,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _spinningCardIds);
+            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels);
             _undoStack.Clear();
             _levelComplete = false;
             BoardChanged?.Invoke();
@@ -120,7 +132,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _spinningCardIds);
+            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels);
             _levelComplete = false;
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
@@ -184,8 +196,8 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (action == CombineActionType.OppositeCancel)
             {
-                ActivateSpinPair(side, indexA, indexB);
-                MessageChanged?.Invoke("Light and dark are spinning — click either one to dismiss.");
+                TryCreateCancelMarker(sideName, side.Cards[indexA].Id, side.Cards[indexB].Id);
+                MessageChanged?.Invoke("A spinning * appeared — click it to dismiss the pair.");
                 BoardChanged?.Invoke();
                 CheckWin();
                 return true;
@@ -212,44 +224,38 @@ namespace DragonBoxAlgebra.Gameplay
             return true;
         }
 
-        public bool TryDismissOppositePair(string sideName, int index)
+        public bool TryDismissCancelMarker(int markerIndex)
         {
             if (_levelComplete || _pendingBalance != null)
             {
                 return false;
             }
 
-            BoardSide side = Board.GetSide(sideName);
-            if (index < 0 || index >= side.Cards.Count)
+            if (markerIndex < 0 || markerIndex >= _pendingCancels.Count)
             {
                 return false;
             }
 
-            int partner = CombineRules.FindOppositePartnerIndex(side, index);
-            if (partner < 0)
+            PendingCancelMarker marker = _pendingCancels[markerIndex];
+            BoardSide side = Board.GetSide(marker.SideName);
+            if (!SideContainsBothCards(side, marker.CardIdA, marker.CardIdB))
             {
-                return false;
-            }
-
-            BoardCard cardA = side.Cards[index];
-            BoardCard cardB = side.Cards[partner];
-            if (!_spinningCardIds.Contains(cardA.Id) || !_spinningCardIds.Contains(cardB.Id))
-            {
-                MessageChanged?.Invoke("Drag light onto dark first to make them spin.");
+                _pendingCancels.RemoveAt(markerIndex);
+                BoardChanged?.Invoke();
                 return false;
             }
 
             PushUndo();
-            CombineRules.RemovePair(side, index, partner);
-            _spinningCardIds.Remove(cardA.Id);
-            _spinningCardIds.Remove(cardB.Id);
+            RemoveCardsById(side, marker.CardIdA);
+            RemoveCardsById(side, marker.CardIdB);
+            _pendingCancels.RemoveAt(markerIndex);
             Moves.RegisterCombine();
             CombineOccurred?.Invoke(new CombineEvent
             {
-                SideName = sideName,
+                SideName = marker.SideName,
                 Action = CombineActionType.OppositeCancel,
-                IndexA = index,
-                IndexB = partner
+                IndexA = -1,
+                IndexB = -1
             });
 
             MessageChanged?.Invoke("Pair dismissed.");
@@ -334,7 +340,7 @@ namespace DragonBoxAlgebra.Gameplay
             ActivateOppositePairForCard(targetSide, balancedSide.Cards.Count - 1);
 
             Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke("Balanced! Click spinning opposites to dismiss them.");
+            MessageChanged?.Invoke("Balanced! Click the spinning * to dismiss opposites.");
             ResolveCombines();
             return true;
         }
@@ -369,9 +375,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (HasPendingSpinsOnBoxSide())
+            if (HasPendingCancelsOnBoxSide())
             {
-                MessageChanged?.Invoke("The box is almost alone — click the spinning pairs on its side to dismiss them.");
+                MessageChanged?.Invoke("The box is almost alone — click the spinning * on its side.");
                 return;
             }
 
@@ -383,13 +389,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void PushUndo()
         {
-            _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _spinningCardIds));
-        }
-
-        private void ActivateSpinPair(BoardSide side, int indexA, int indexB)
-        {
-            _spinningCardIds.Add(side.Cards[indexA].Id);
-            _spinningCardIds.Add(side.Cards[indexB].Id);
+            _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels));
         }
 
         private void ActivateOppositePairForCard(string sideName, int cardIndex)
@@ -403,7 +403,7 @@ namespace DragonBoxAlgebra.Gameplay
             int partner = CombineRules.FindOppositePartnerIndex(side, cardIndex);
             if (partner >= 0)
             {
-                ActivateSpinPair(side, cardIndex, partner);
+                TryCreateCancelMarker(sideName, side.Cards[cardIndex].Id, side.Cards[partner].Id);
             }
         }
 
@@ -419,30 +419,48 @@ namespace DragonBoxAlgebra.Gameplay
             for (int i = 0; i < side.Cards.Count; i++)
             {
                 int partner = CombineRules.FindOppositePartnerIndex(side, i);
-                if (partner >= 0)
+                if (partner > i)
                 {
-                    ActivateSpinPair(side, i, partner);
+                    TryCreateCancelMarker(sideName, side.Cards[i].Id, side.Cards[partner].Id);
                 }
             }
         }
 
-        private bool HasPendingSpinsOnBoxSide()
+        private void TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
         {
-            PruneStaleSpinIds();
-            if (_spinningCardIds.Count == 0)
+            foreach (PendingCancelMarker marker in _pendingCancels)
             {
-                return false;
+                if (marker.SideName != sideName)
+                {
+                    continue;
+                }
+
+                if ((marker.CardIdA == cardIdA && marker.CardIdB == cardIdB)
+                    || (marker.CardIdA == cardIdB && marker.CardIdB == cardIdA))
+                {
+                    return;
+                }
             }
 
-            BoardSide boxSide = GetBoxSide();
+            _pendingCancels.Add(new PendingCancelMarker
+            {
+                SideName = sideName,
+                CardIdA = cardIdA,
+                CardIdB = cardIdB
+            });
+        }
+
+        private bool HasPendingCancelsOnBoxSide()
+        {
+            string boxSide = GetBoxSideName();
             if (boxSide == null)
             {
                 return false;
             }
 
-            foreach (BoardCard card in boxSide.Cards)
+            foreach (PendingCancelMarker marker in _pendingCancels)
             {
-                if (_spinningCardIds.Contains(card.Id))
+                if (marker.SideName == boxSide)
                 {
                     return true;
                 }
@@ -451,13 +469,13 @@ namespace DragonBoxAlgebra.Gameplay
             return false;
         }
 
-        private BoardSide GetBoxSide()
+        private string GetBoxSideName()
         {
             foreach (BoardCard card in Board.Left.Cards)
             {
                 if (card.Kind == CardKind.Box)
                 {
-                    return Board.Left;
+                    return "Left";
                 }
             }
 
@@ -465,27 +483,43 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 if (card.Kind == CardKind.Box)
                 {
-                    return Board.Right;
+                    return "Right";
                 }
             }
 
             return null;
         }
 
-        private void PruneStaleSpinIds()
+        private static bool SideContainsBothCards(BoardSide side, string cardIdA, string cardIdB)
         {
-            var onBoard = new HashSet<string>();
-            foreach (BoardCard card in Board.Left.Cards)
+            bool hasA = false;
+            bool hasB = false;
+            foreach (BoardCard card in side.Cards)
             {
-                onBoard.Add(card.Id);
+                if (card.Id == cardIdA)
+                {
+                    hasA = true;
+                }
+
+                if (card.Id == cardIdB)
+                {
+                    hasB = true;
+                }
             }
 
-            foreach (BoardCard card in Board.Right.Cards)
-            {
-                onBoard.Add(card.Id);
-            }
+            return hasA && hasB;
+        }
 
-            _spinningCardIds.RemoveWhere(id => !onBoard.Contains(id));
+        private static void RemoveCardsById(BoardSide side, string cardId)
+        {
+            for (int i = side.Cards.Count - 1; i >= 0; i--)
+            {
+                if (side.Cards[i].Id == cardId)
+                {
+                    side.Cards.RemoveAt(i);
+                    return;
+                }
+            }
         }
 
         private void PopUndoWithoutApply()
