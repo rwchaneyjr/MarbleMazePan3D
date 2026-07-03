@@ -16,7 +16,7 @@ A **DragonBox-style algebra puzzle game** in Unity — drag cards on a two-sided
 
 ## Project path (local)
 
-`C:\Users\rober\SymbolAlgebra`
+`C:\Users\rober\Desktop\SymbolAlgebra`
 
 ## License
 
