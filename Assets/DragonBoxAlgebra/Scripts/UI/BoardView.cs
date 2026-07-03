@@ -98,6 +98,10 @@ namespace DragonBoxAlgebra.UI
                 layout = panel.gameObject.AddComponent<HorizontalLayoutGroup>();
                 layout.spacing = 16f;
                 layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.childControlWidth = false;
+                layout.childControlHeight = false;
+                layout.childForceExpandWidth = false;
+                layout.childForceExpandHeight = false;
                 layout.padding = new RectOffset(24, 24, 24, 24);
             }
 

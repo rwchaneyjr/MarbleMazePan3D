@@ -182,6 +182,11 @@ namespace DragonBoxAlgebra.UI
 
         private BoardDropZone FindBoardZone(PointerEventData eventData)
         {
+            if (eventData.hovered == null)
+            {
+                return null;
+            }
+
             foreach (GameObject go in eventData.hovered)
             {
                 if (go == null)
@@ -201,6 +206,11 @@ namespace DragonBoxAlgebra.UI
 
         private CardWidget FindDropTarget(PointerEventData eventData)
         {
+            if (eventData.hovered == null)
+            {
+                return null;
+            }
+
             foreach (GameObject go in eventData.hovered)
             {
                 if (go == null)
@@ -263,28 +273,41 @@ namespace DragonBoxAlgebra.UI
             widget._rect = rect;
             widget._background = image;
             widget._border = borderImage;
-            widget.Bind(card, index, sideName, controller, canvas, dragRoot);
 
-            var emojiGo = new GameObject("Creature", typeof(RectTransform), typeof(Image), typeof(Text), typeof(CreatureReaction));
-            emojiGo.transform.SetParent(root.transform, false);
-            var emojiRect = emojiGo.GetComponent<RectTransform>();
-            emojiRect.anchorMin = Vector2.zero;
-            emojiRect.anchorMax = Vector2.one;
-            emojiRect.offsetMin = new Vector2(8f, 28f);
-            emojiRect.offsetMax = new Vector2(-8f, -8f);
+            var creatureGo = new GameObject("Creature", typeof(RectTransform), typeof(CreatureReaction));
+            creatureGo.transform.SetParent(root.transform, false);
+            var creatureRect = creatureGo.GetComponent<RectTransform>();
+            creatureRect.anchorMin = Vector2.zero;
+            creatureRect.anchorMax = Vector2.one;
+            creatureRect.offsetMin = new Vector2(8f, 28f);
+            creatureRect.offsetMax = new Vector2(-8f, -8f);
+            widget._reaction = creatureGo.GetComponent<CreatureReaction>();
 
-            var creatureImage = emojiGo.GetComponent<Image>();
+            var creatureImageGo = new GameObject("Sprite", typeof(RectTransform), typeof(Image));
+            creatureImageGo.transform.SetParent(creatureGo.transform, false);
+            var creatureImageRect = creatureImageGo.GetComponent<RectTransform>();
+            creatureImageRect.anchorMin = Vector2.zero;
+            creatureImageRect.anchorMax = Vector2.one;
+            creatureImageRect.offsetMin = Vector2.zero;
+            creatureImageRect.offsetMax = Vector2.zero;
+            var creatureImage = creatureImageGo.GetComponent<Image>();
             creatureImage.raycastTarget = false;
+            creatureImage.preserveAspect = true;
             widget._creatureImage = creatureImage;
 
-            var emojiText = emojiGo.GetComponent<Text>();
+            var creatureTextGo = new GameObject("Emoji", typeof(RectTransform), typeof(Text));
+            creatureTextGo.transform.SetParent(creatureGo.transform, false);
+            var creatureTextRect = creatureTextGo.GetComponent<RectTransform>();
+            creatureTextRect.anchorMin = Vector2.zero;
+            creatureTextRect.anchorMax = Vector2.one;
+            creatureTextRect.offsetMin = Vector2.zero;
+            creatureTextRect.offsetMax = Vector2.zero;
+            var emojiText = creatureTextGo.GetComponent<Text>();
             emojiText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             emojiText.alignment = TextAnchor.MiddleCenter;
             emojiText.fontSize = 38;
             emojiText.raycastTarget = false;
             widget._creatureText = emojiText;
-            widget._reaction = emojiGo.GetComponent<CreatureReaction>();
-            widget.ApplyCreatureVisual();
 
             var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
             labelGo.transform.SetParent(root.transform, false);
@@ -299,13 +322,15 @@ namespace DragonBoxAlgebra.UI
             labelText.alignment = TextAnchor.MiddleCenter;
             labelText.fontSize = 13;
             labelText.color = Color.white;
-            labelText.text = CardVisuals.AlgebraLabel(card);
             widget._labelText = labelText;
 
-            if (card.StackCount > 1)
-            {
-                labelText.text += $" x{card.StackCount}";
-            }
+            var layoutElement = root.AddComponent<LayoutElement>();
+            layoutElement.minWidth = 110f;
+            layoutElement.minHeight = 120f;
+            layoutElement.preferredWidth = 110f;
+            layoutElement.preferredHeight = 120f;
+
+            widget.Bind(card, index, sideName, controller, canvas, dragRoot);
 
             root.GetComponent<CanvasGroup>().blocksRaycasts = true;
             return widget;
