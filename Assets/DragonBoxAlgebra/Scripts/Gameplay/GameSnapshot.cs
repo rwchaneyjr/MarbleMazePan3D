@@ -10,13 +10,8 @@ namespace DragonBoxAlgebra.Gameplay
         public List<BoardCard> Right = new();
         public int Moves;
         public int CardsPlayed;
-        public bool HasPendingBalance;
-        public string PendingPlacedSide;
-        public int PendingHandIndex;
-        public BoardCard PendingCard;
 
-        public static GameSnapshot Capture(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves,
-            BalancePending pendingBalance)
+        public static GameSnapshot Capture(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves)
         {
             var snapshot = new GameSnapshot
             {
@@ -39,23 +34,14 @@ namespace DragonBoxAlgebra.Gameplay
                 snapshot.Hand.Add(card.Clone());
             }
 
-            if (pendingBalance != null)
-            {
-                snapshot.HasPendingBalance = true;
-                snapshot.PendingPlacedSide = pendingBalance.PlacedSide;
-                snapshot.PendingHandIndex = pendingBalance.HandIndex;
-                snapshot.PendingCard = pendingBalance.Card.Clone();
-            }
-
             return snapshot;
         }
 
-        public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves, out BalancePending pendingBalance)
+        public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves)
         {
             board.Left.Cards.Clear();
             board.Right.Cards.Clear();
             hand.Clear();
-            pendingBalance = null;
 
             foreach (BoardCard card in Left)
             {
@@ -74,16 +60,6 @@ namespace DragonBoxAlgebra.Gameplay
 
             moves.Moves = Moves;
             moves.CardsPlayed = CardsPlayed;
-
-            if (HasPendingBalance)
-            {
-                pendingBalance = new BalancePending
-                {
-                    PlacedSide = PendingPlacedSide,
-                    HandIndex = PendingHandIndex,
-                    Card = PendingCard.Clone()
-                };
-            }
         }
     }
 }

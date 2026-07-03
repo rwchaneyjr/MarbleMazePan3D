@@ -19,7 +19,6 @@ namespace DragonBoxAlgebra.UI
             _panel = panel;
             _canvas = canvas;
             _dragRoot = dragRoot;
-            _panel.gameObject.AddComponent<BoardDropZone>();
             _controller.BoardChanged += Refresh;
             Refresh();
         }

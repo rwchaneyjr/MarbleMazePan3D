@@ -6,7 +6,8 @@ using UnityEngine.UI;
 
 namespace DragonBoxAlgebra.UI
 {
-    public class CardWidget : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
+    public class CardWidget : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
+        IPointerClickHandler
     {
         public BoardCard Card { get; private set; }
         public int Index { get; private set; }
@@ -26,6 +27,20 @@ namespace DragonBoxAlgebra.UI
         private Transform _originalParent;
         private int _originalSiblingIndex;
         private bool _isDragging;
+        private bool _didDrag;
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (_didDrag || SideName != "Hand" || _controller == null)
+            {
+                return;
+            }
+
+            if (_controller.TryFlipHandCard(Index))
+            {
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
+            }
+        }
 
         public void Bind(BoardCard card, int index, string sideName, AlgebraGameController controller, Canvas canvas,
             RectTransform dragRoot)
@@ -100,6 +115,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             _isDragging = true;
+            _didDrag = false;
             _originalParent = transform.parent;
             _originalSiblingIndex = transform.GetSiblingIndex();
             transform.SetParent(_dragRoot, true);
@@ -118,6 +134,7 @@ namespace DragonBoxAlgebra.UI
             if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                     eventData.pressEventCamera, out Vector2 localPoint))
             {
+                _didDrag = true;
                 _rect.localPosition = localPoint + _dragOffset;
             }
         }
