@@ -8,6 +8,7 @@ namespace DragonBoxAlgebra.Gameplay
         public List<BoardCard> Left = new();
         public List<BoardCard> Hand = new();
         public List<BoardCard> Right = new();
+        public List<string> SpinningCardIds = new();
         public int Moves;
         public int CardsPlayed;
         public bool HasPendingBalance;
@@ -16,7 +17,7 @@ namespace DragonBoxAlgebra.Gameplay
         public BoardCard PendingCard;
 
         public static GameSnapshot Capture(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves,
-            BalancePending pendingBalance)
+            BalancePending pendingBalance, IEnumerable<string> spinningCardIds)
         {
             var snapshot = new GameSnapshot
             {
@@ -39,6 +40,8 @@ namespace DragonBoxAlgebra.Gameplay
                 snapshot.Hand.Add(card.Clone());
             }
 
+            snapshot.SpinningCardIds.AddRange(spinningCardIds);
+
             if (pendingBalance != null)
             {
                 snapshot.HasPendingBalance = true;
@@ -50,12 +53,14 @@ namespace DragonBoxAlgebra.Gameplay
             return snapshot;
         }
 
-        public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves, out BalancePending pendingBalance)
+        public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves, out BalancePending pendingBalance,
+            HashSet<string> spinningCardIds)
         {
             board.Left.Cards.Clear();
             board.Right.Cards.Clear();
             hand.Clear();
             pendingBalance = null;
+            spinningCardIds.Clear();
 
             foreach (BoardCard card in Left)
             {
@@ -70,6 +75,11 @@ namespace DragonBoxAlgebra.Gameplay
             foreach (BoardCard card in Hand)
             {
                 hand.Add(card.Clone());
+            }
+
+            foreach (string id in SpinningCardIds)
+            {
+                spinningCardIds.Add(id);
             }
 
             moves.Moves = Moves;

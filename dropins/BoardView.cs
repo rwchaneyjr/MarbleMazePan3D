@@ -80,14 +80,12 @@ namespace DragonBoxAlgebra.UI
         {
             for (int i = 0; i < side.Cards.Count; i++)
             {
-                int partner = CombineRules.FindOppositePartnerIndex(side, i);
-                if (partner < 0 || partner <= i)
+                if (!_controller.IsSpinningCard(side.Cards[i].Id))
                 {
                     continue;
                 }
 
                 FindWidget(sideName, i)?.StartOppositeSpin();
-                FindWidget(sideName, partner)?.StartOppositeSpin();
             }
         }
 
