@@ -66,12 +66,11 @@ namespace DragonBoxAlgebra.UI
             _symbolRect.offsetMax = Vector2.zero;
 
             var symbolText = symbolGo.GetComponent<Text>();
-            symbolText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            symbolText.font = EmojiFont.Get();
             symbolText.alignment = TextAnchor.MiddleCenter;
-            symbolText.fontSize = 88;
-            symbolText.fontStyle = FontStyle.Bold;
+            symbolText.fontSize = 72;
             symbolText.color = Color.black;
-            symbolText.text = "*";
+            symbolText.text = "✳️";
             symbolText.raycastTarget = false;
 
             StartCoroutine(SpinSymbol());
