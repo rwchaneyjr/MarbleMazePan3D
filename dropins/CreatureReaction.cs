@@ -39,6 +39,8 @@ namespace DragonBoxAlgebra.UI
                 transform.Rotate(0f, 0f, 220f * Time.deltaTime);
                 yield return null;
             }
+        }
+
         public void PlayCombine()
         {
             StopOppositeSpin();
@@ -48,12 +50,14 @@ namespace DragonBoxAlgebra.UI
 
         public void PlayCelebrate()
         {
+            StopOppositeSpin();
             StopAllCoroutines();
             StartCoroutine(Punch(1.4f, 0.28f));
         }
 
         public void PlayUndo()
         {
+            StopOppositeSpin();
             StopAllCoroutines();
             StartCoroutine(Wobble());
         }
