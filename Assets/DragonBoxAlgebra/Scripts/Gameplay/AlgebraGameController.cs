@@ -62,12 +62,27 @@ namespace DragonBoxAlgebra.Gameplay
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
             ResolveCombines();
+
+            if (level.SpinPreplacedOppositesAtStart)
+            {
+                ActivatePreplacedOppositePairs();
+            }
+
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _spinningCardIds);
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
-            MessageChanged?.Invoke(
-                "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                "When light meets dark, they spin — click either to dismiss.");
+            MessageChanged?.Invoke(GetLevelStartMessage(level));
+        }
+
+        private static string GetLevelStartMessage(LevelDefinition level)
+        {
+            if (level.SpinPreplacedOppositesAtStart)
+            {
+                return "Fish and turtle are spinning — click either one to dismiss. Leave the red box alone!";
+            }
+
+            return "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
+                   "When light meets dark, they spin — click either to dismiss.";
         }
 
         public void LoadNextLevel()
@@ -389,6 +404,25 @@ namespace DragonBoxAlgebra.Gameplay
             if (partner >= 0)
             {
                 ActivateSpinPair(side, cardIndex, partner);
+            }
+        }
+
+        private void ActivatePreplacedOppositePairs()
+        {
+            ActivateAllOppositePairsOnSide("Left");
+            ActivateAllOppositePairsOnSide("Right");
+        }
+
+        private void ActivateAllOppositePairsOnSide(string sideName)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                int partner = CombineRules.FindOppositePartnerIndex(side, i);
+                if (partner >= 0)
+                {
+                    ActivateSpinPair(side, i, partner);
+                }
             }
         }
 

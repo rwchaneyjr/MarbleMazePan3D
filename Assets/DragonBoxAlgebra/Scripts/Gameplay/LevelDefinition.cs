@@ -16,6 +16,7 @@ namespace DragonBoxAlgebra.Gameplay
         public List<int> HandValues = new();
         public int ParMoves = 6;
         public int ParCards = 2;
+        public bool SpinPreplacedOppositesAtStart;
 
         public BoardSide BuildSide(List<CardKind> kinds, List<int> values)
         {
