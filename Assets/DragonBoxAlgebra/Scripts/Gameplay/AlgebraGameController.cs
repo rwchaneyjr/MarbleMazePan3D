@@ -111,8 +111,26 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
                 ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
-                : "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                  "Light + dark on the same side become one *. Pairs never cross the middle.");
+                : HandMessage(level));
+        }
+
+        private static string HandMessage(LevelDefinition level)
+        {
+            int count = level.HandCards.Count;
+            if (count <= 1)
+            {
+                return "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
+                       "Light + dark on the same side become one *. Pairs never cross the middle.";
+            }
+
+            if (count == 2)
+            {
+                return "Two tiles in hand — play each one: drag to a side, then drag the same tile to the ?. " +
+                       "Finish one tile before starting the next.";
+            }
+
+            return "Three tiles in hand — play each one: drag to a side, then drag the same tile to the ?. " +
+                   "Light + dark on the same side become one *.";
         }
 
         public void LoadNextLevel()
@@ -183,7 +201,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (_pendingBalance != null)
             {
-                MessageChanged?.Invoke("Fill the ? hole first — flip the card before you play it.");
+                MessageChanged?.Invoke("Fill the ? hole first — finish this tile before playing another.");
                 return false;
             }
 
@@ -435,7 +453,7 @@ namespace DragonBoxAlgebra.Gameplay
         {
             if (handIndex != _pendingBalance.HandIndex)
             {
-                MessageChanged?.Invoke("Use the same hand card to fill the hole.");
+                MessageChanged?.Invoke("Fill the ? hole first — finish the tile you started.");
                 return false;
             }
 

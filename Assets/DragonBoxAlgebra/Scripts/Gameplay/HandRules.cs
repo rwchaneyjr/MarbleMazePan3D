@@ -19,9 +19,10 @@ namespace DragonBoxAlgebra.Gameplay
 
         private static int FlipFamilyKey(BoardCard card) => card.Kind switch
         {
-            CardKind.DayCreature or CardKind.NightCreature => 1,
-            CardKind.PositiveConstant or CardKind.NegativeConstant => 10 + card.Value,
-            _ => 100 + (int)card.Kind
+            CardKind.DayCreature => 100 + card.Value,
+            CardKind.NightCreature => 200 + card.Value,
+            CardKind.PositiveConstant or CardKind.NegativeConstant => 300 + card.Value,
+            _ => 1000 + (int)card.Kind
         };
     }
 }

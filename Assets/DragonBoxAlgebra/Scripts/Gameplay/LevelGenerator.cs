@@ -7,49 +7,66 @@ namespace DragonBoxAlgebra.Gameplay
     public static class LevelGenerator
     {
         private const int GeneratedCount = 24;
+        private const int TwoCardFromIndex = 12;
+        private const int ThreeCardFromIndex = 18;
 
         public static IReadOnlyList<LevelDefinition> GenerateAll(int seed = 20260703)
         {
             var levels = new List<LevelDefinition>();
             levels.AddRange(TutorialLevels());
-            levels.AddRange(GenerateProcedural(seed));
+            levels.AddRange(GenerateProcedural(seed, levels.Count));
             return levels;
+        }
+
+        public static int HandCountForLevelIndex(int levelIndex)
+        {
+            if (levelIndex < TwoCardFromIndex)
+            {
+                return 1;
+            }
+
+            if (levelIndex < ThreeCardFromIndex)
+            {
+                return 2;
+            }
+
+            return 3;
         }
 
         private static IEnumerable<LevelDefinition> TutorialLevels()
         {
-            yield return CreatureLevel("Isolate the Box", 0, 1,
+            yield return CreatureLevel("Isolate the Box", 0, 1, 1,
                 new[] { CardKind.Box, CardKind.DayCreature },
                 new[] { CardKind.DayCreature },
                 CardKind.NightCreature, 1, 2, 1);
 
-            yield return CreatureLevel("Balance Both Sides", 1, 1,
+            yield return CreatureLevel("Balance Both Sides", 1, 1, 1,
                 new[] { CardKind.Box, CardKind.NightCreature },
                 new[] { CardKind.PositiveConstant },
                 CardKind.DayCreature, 1, 2, 1);
 
-            yield return CreatureLevel("Clear the Creatures", 2, 1,
+            yield return CreatureLevel("Clear the Creatures", 2, 1, 1,
                 new[] { CardKind.Box, CardKind.DayCreature },
                 Array.Empty<CardKind>(),
                 CardKind.NightCreature, 1, 1, 1);
 
-            yield return DiceLevel("Cancel the Dice", 3, 1,
+            yield return DiceLevel("Cancel the Dice", 3, 1, 1,
                 new[] { CardKind.Box, CardKind.PositiveConstant },
                 new[] { CardKind.PositiveConstant, CardKind.NegativeConstant },
                 CardKind.NegativeConstant, 1, 2, 1);
 
-            yield return CreatureLevel("Fish and Turtle", 0, 1,
+            yield return CreatureLevel("Fish and Turtle", 0, 1, 1,
                 new[] { CardKind.Box, CardKind.DayCreature },
                 new[] { CardKind.NightCreature },
                 CardKind.NightCreature, 1, 2, 1);
 
-            yield return DiceLevel("Final Balance", 4, 1,
+            yield return DiceLevel("Final Balance", 4, 1, 1,
                 new[] { CardKind.Box, CardKind.NegativeConstant },
                 new[] { CardKind.PositiveConstant },
                 CardKind.PositiveConstant, 1, 2, 1);
         }
 
-        private static List<LevelDefinition> GenerateProcedural(int seed)
+        private static List<LevelDefinition> GenerateProcedural(int seed, int startIndex)
         {
             var rng = new Random(seed);
             var levels = new List<LevelDefinition>();
@@ -62,50 +79,54 @@ namespace DragonBoxAlgebra.Gameplay
 
             for (int i = 0; i < GeneratedCount; i++)
             {
+                int levelIndex = startIndex + i;
+                int handCount = HandCountForLevelIndex(levelIndex);
                 int theme = i % 10;
                 int value = 1 + (i / 10);
                 int pattern = i % 5;
                 string place = placeNames[i % placeNames.Length];
-                string title = $"{place} Puzzle {i + 1}";
+                string handLabel = handCount == 1 ? string.Empty : handCount == 2 ? " (2 tiles)" : " (3 tiles)";
+                string title = $"{place} Puzzle {i + 1}{handLabel}";
 
-                levels.Add(pattern switch
+                LevelDefinition level = pattern switch
                 {
-                    0 => CreatureLevel(title, theme, value,
+                    0 => CreatureLevel(title, theme, value, handCount,
                         new[] { CardKind.Box, CardKind.DayCreature },
                         new[] { CardKind.DayCreature },
-                        CardKind.NightCreature, value, 2, 1),
-                    1 => CreatureLevel(title, theme, value,
+                        CardKind.NightCreature, value, handCount * 2, handCount),
+                    1 => CreatureLevel(title, theme, value, handCount,
                         new[] { CardKind.Box, CardKind.NightCreature },
                         new[] { CardKind.NightCreature },
-                        CardKind.DayCreature, value, 2, 1),
-                    2 => CreatureLevel(title, theme, value,
+                        CardKind.DayCreature, value, handCount * 2, handCount),
+                    2 => CreatureLevel(title, theme, value, handCount,
                         new[] { CardKind.Box, CardKind.DayCreature },
                         Array.Empty<CardKind>(),
-                        CardKind.NightCreature, value, 1, 1),
-                    3 => CreatureLevel(title, theme, value,
+                        CardKind.NightCreature, value, handCount * 2, handCount),
+                    3 => CreatureLevel(title, theme, value, handCount,
                         new[] { CardKind.Box, CardKind.DayCreature },
                         new[] { CardKind.NightCreature },
-                        CardKind.NightCreature, value, 2, 1),
-                    _ => DiceLevel(title, theme, value,
+                        CardKind.NightCreature, value, handCount * 2, handCount),
+                    _ => DiceLevel(title, theme, value, handCount,
                         new[] { CardKind.Box, CardKind.PositiveConstant },
                         new[] { CardKind.PositiveConstant, CardKind.NegativeConstant },
-                        CardKind.NegativeConstant, value, 2, 1)
-                });
+                        CardKind.NegativeConstant, value, handCount * 2, handCount)
+                };
+
+                levels.Add(level);
 
                 if (rng.NextDouble() < 0.15)
                 {
-                    LevelDefinition last = levels[levels.Count - 1];
-                    last.ParMoves++;
+                    level.ParMoves++;
                 }
             }
 
             return levels;
         }
 
-        private static LevelDefinition CreatureLevel(string title, int theme, int value,
-            CardKind[] left, CardKind[] right, CardKind hand, int handValue, int parMoves, int parCards)
+        private static LevelDefinition CreatureLevel(string title, int theme, int value, int handCount,
+            CardKind[] left, CardKind[] right, CardKind primaryHand, int handValue, int parMoves, int parCards)
         {
-            return new LevelDefinition
+            var level = new LevelDefinition
             {
                 Title = title,
                 CreatureTheme = theme,
@@ -113,17 +134,17 @@ namespace DragonBoxAlgebra.Gameplay
                 RightCards = new List<CardKind>(right),
                 LeftValues = ValuesForCreatures(left, value),
                 RightValues = ValuesForCreatures(right, value),
-                HandCards = new List<CardKind> { hand },
-                HandValues = new List<int> { handValue },
                 ParMoves = parMoves,
                 ParCards = parCards
             };
+            FillHand(level, handCount, primaryHand, handValue, value);
+            return level;
         }
 
-        private static LevelDefinition DiceLevel(string title, int theme, int value,
-            CardKind[] left, CardKind[] right, CardKind hand, int handValue, int parMoves, int parCards)
+        private static LevelDefinition DiceLevel(string title, int theme, int value, int handCount,
+            CardKind[] left, CardKind[] right, CardKind primaryHand, int handValue, int parMoves, int parCards)
         {
-            return new LevelDefinition
+            var level = new LevelDefinition
             {
                 Title = title,
                 CreatureTheme = theme,
@@ -131,11 +152,42 @@ namespace DragonBoxAlgebra.Gameplay
                 RightCards = new List<CardKind>(right),
                 LeftValues = ValuesForDice(left, value),
                 RightValues = ValuesForDice(right, value),
-                HandCards = new List<CardKind> { hand },
-                HandValues = new List<int> { handValue },
                 ParMoves = parMoves,
                 ParCards = parCards
             };
+            FillHand(level, handCount, primaryHand, handValue, value);
+            return level;
+        }
+
+        private static void FillHand(LevelDefinition level, int handCount, CardKind primaryHand, int handValue, int value)
+        {
+            level.HandCards.Clear();
+            level.HandValues.Clear();
+
+            if (handCount <= 1)
+            {
+                level.HandCards.Add(primaryHand);
+                level.HandValues.Add(handValue);
+                return;
+            }
+
+            if (handCount == 2)
+            {
+                level.HandCards.Add(CardKind.NightCreature);
+                level.HandValues.Add(value);
+                level.HandCards.Add(CardKind.DayCreature);
+                level.HandValues.Add(value);
+                return;
+            }
+
+            level.HandCards.Add(CardKind.NightCreature);
+            level.HandValues.Add(value);
+            level.HandCards.Add(CardKind.DayCreature);
+            level.HandValues.Add(value);
+            level.HandCards.Add(primaryHand is CardKind.PositiveConstant or CardKind.NegativeConstant
+                ? primaryHand
+                : CardKind.NegativeConstant);
+            level.HandValues.Add(value);
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)
