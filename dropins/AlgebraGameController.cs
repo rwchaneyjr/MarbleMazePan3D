@@ -15,6 +15,7 @@ namespace DragonBoxAlgebra.Gameplay
     public class AlgebraGameController
     {
         public event Action BoardChanged;
+        public event Action HandChanged;
         public event Action<int, int> LevelCompleted;
         public event Action<int, int> LevelLoaded;
         public event Action<string> MessageChanged;
@@ -125,10 +126,10 @@ namespace DragonBoxAlgebra.Gameplay
 
             PushUndo();
             _hand[handIndex] = CardFlipRules.Flip(card);
-            BoardChanged?.Invoke();
+            HandChanged?.Invoke();
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
-                ? "Flipped to light."
-                : "Flipped to dark.");
+                ? "Flipped to yellow (light). Click again for dark."
+                : "Flipped to dark. Click again for yellow (light).");
             return true;
         }
 

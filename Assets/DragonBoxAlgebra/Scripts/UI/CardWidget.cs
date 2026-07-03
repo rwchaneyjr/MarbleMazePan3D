@@ -1,3 +1,4 @@
+using System.Collections;
 using DragonBoxAlgebra.Core;
 using DragonBoxAlgebra.Gameplay;
 using UnityEngine;
@@ -38,7 +39,9 @@ namespace DragonBoxAlgebra.UI
 
             if (_controller.TryFlipHandCard(Index))
             {
+                Card = _controller.Hand[Index];
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
+                StartCoroutine(PlayHandFlip());
             }
         }
 
@@ -58,26 +61,16 @@ namespace DragonBoxAlgebra.UI
         {
             if (_background != null)
             {
-                Color bg = CardVisuals.Background(Card.Kind);
-                if (SideName == "Hand" && _controller != null && _controller.HasPendingBalance
-                    && _controller.PendingBalance.HandIndex == Index)
-                {
-                    bg = Color.Lerp(bg, new Color(1f, 0.85f, 0.15f), 0.45f);
-                }
-
-                _background.color = bg;
+                _background.color = SideName == "Hand"
+                    ? CardVisuals.HandFaceBackground(Card)
+                    : CardVisuals.Background(Card.Kind);
             }
 
             if (_border != null)
             {
-                Color border = CardVisuals.Border(Card.Kind);
-                if (SideName == "Hand" && _controller != null && _controller.HasPendingBalance
-                    && _controller.PendingBalance.HandIndex == Index)
-                {
-                    border = new Color(1f, 0.78f, 0.1f);
-                }
-
-                _border.color = border;
+                _border.color = SideName == "Hand"
+                    ? CardVisuals.HandFaceBorder(Card)
+                    : CardVisuals.Border(Card.Kind);
             }
 
             ApplyCreatureVisual();
@@ -115,10 +108,47 @@ namespace DragonBoxAlgebra.UI
         {
             if (_background != null)
             {
-                _background.color = on
-                    ? Color.Lerp(CardVisuals.Background(Card.Kind), Color.white, 0.35f)
+                Color baseColor = SideName == "Hand"
+                    ? CardVisuals.HandFaceBackground(Card)
                     : CardVisuals.Background(Card.Kind);
+                _background.color = on
+                    ? Color.Lerp(baseColor, Color.white, 0.35f)
+                    : baseColor;
             }
+        }
+
+        private IEnumerator PlayHandFlip()
+        {
+            if (_rect == null)
+            {
+                RefreshVisual();
+                yield break;
+            }
+
+            const float halfDuration = 0.1f;
+            Vector3 scale = _rect.localScale;
+
+            float elapsed = 0f;
+            while (elapsed < halfDuration)
+            {
+                elapsed += Time.deltaTime;
+                float n = elapsed / halfDuration;
+                _rect.localScale = new Vector3(Mathf.Lerp(scale.x, 0.05f, n), scale.y, scale.z);
+                yield return null;
+            }
+
+            RefreshVisual();
+
+            elapsed = 0f;
+            while (elapsed < halfDuration)
+            {
+                elapsed += Time.deltaTime;
+                float n = elapsed / halfDuration;
+                _rect.localScale = new Vector3(Mathf.Lerp(0.05f, scale.x, n), scale.y, scale.z);
+                yield return null;
+            }
+
+            _rect.localScale = scale;
         }
 
         public void OnBeginDrag(PointerEventData eventData)

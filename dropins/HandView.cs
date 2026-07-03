@@ -1,5 +1,6 @@
 using DragonBoxAlgebra.Core;
 using DragonBoxAlgebra.Gameplay;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -20,6 +21,7 @@ namespace DragonBoxAlgebra.UI
             _canvas = canvas;
             _dragRoot = dragRoot;
             _controller.BoardChanged += Refresh;
+            _controller.HandChanged += RefreshHandInPlace;
             Refresh();
         }
 
@@ -28,7 +30,33 @@ namespace DragonBoxAlgebra.UI
             if (_controller != null)
             {
                 _controller.BoardChanged -= Refresh;
+                _controller.HandChanged -= RefreshHandInPlace;
             }
+        }
+
+        private void RefreshHandInPlace()
+        {
+            var widgets = new List<CardWidget>();
+            for (int i = 0; i < _panel.childCount; i++)
+            {
+                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand")
+                {
+                    widgets.Add(widget);
+                }
+            }
+
+            if (widgets.Count == _controller.Hand.Count)
+            {
+                for (int i = 0; i < widgets.Count; i++)
+                {
+                    widgets[i].Bind(_controller.Hand[i], i, "Hand", _controller, _canvas, _dragRoot);
+                }
+
+                return;
+            }
+
+            Refresh();
         }
 
         private void Refresh()

@@ -1,10 +1,21 @@
 using DragonBoxAlgebra.Core;
+using DragonBoxAlgebra.Gameplay;
 using UnityEngine;
 
 namespace DragonBoxAlgebra.UI
 {
     public static class CardVisuals
     {
+        public static Color HandFaceBackground(BoardCard card) =>
+            CardFlipRules.IsLight(card)
+                ? new Color(0.98f, 0.84f, 0.14f)
+                : new Color(0.08f, 0.08f, 0.12f);
+
+        public static Color HandFaceBorder(BoardCard card) =>
+            CardFlipRules.IsLight(card)
+                ? new Color(0.72f, 0.48f, 0.04f)
+                : new Color(0.35f, 0.35f, 0.42f);
+
         public static Color Background(CardKind kind) => kind switch
         {
             CardKind.Box => new Color(0.78f, 0.28f, 0.22f),
