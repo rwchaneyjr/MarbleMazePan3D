@@ -254,9 +254,13 @@ namespace DragonBoxAlgebra.UI
             }
 
             CardWidget targetCard = FindDropTarget(eventData);
-            if (targetCard != null && targetCard != this)
+            if (targetCard != null && targetCard != this && targetCard.SideName != "Hand")
             {
-                HandleDropOnCard(targetCard);
+                if (_controller.TryPlayFromHand(Index, targetCard.SideName))
+                {
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+
                 return;
             }
 
@@ -293,23 +297,8 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
-                bool played = false;
-                if (target.SideName != "Hand" && Index < _controller.Hand.Count)
-                {
-                    BoardSide side = _controller.Board.GetSide(target.SideName);
-                    if (target.Index >= 0 && target.Index < side.Cards.Count
-                        && CombineRules.CanCombine(_controller.Hand[Index], side.Cards[target.Index]))
-                    {
-                        played = _controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index);
-                    }
-                }
-
-                if (!played)
-                {
-                    played = _controller.TryPlayFromHand(Index, target.SideName);
-                }
-
-                if (played)
+                if (target.SideName != "Hand"
+                    && _controller.TryPlayFromHand(Index, target.SideName))
                 {
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }

@@ -109,7 +109,7 @@ namespace DragonBoxAlgebra.Gameplay
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
                 ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
                 : "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                  "Matching light + dark creatures on one side make a spinning *. +1 and -1 dice cancel instantly.");
+                  "Light + dark on the same side become one *. Pairs never cross the middle.");
         }
 
         public void LoadNextLevel()
@@ -623,7 +623,9 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 PendingCancelMarker marker = _pendingCancels[i];
                 BoardSide side = Board.GetSide(marker.SideName);
-                if (!SideContainsBothCards(side, marker.CardIdA, marker.CardIdB))
+                if (!SideContainsBothCards(side, marker.CardIdA, marker.CardIdB)
+                    || !CardExistsOnlyOnSide(Board, marker.SideName, marker.CardIdA)
+                    || !CardExistsOnlyOnSide(Board, marker.SideName, marker.CardIdB))
                 {
                     _pendingCancels.RemoveAt(i);
                 }
@@ -668,6 +670,11 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
+            if (!CardExistsOnlyOnSide(sideName, cardIdA) || !CardExistsOnlyOnSide(sideName, cardIdB))
+            {
+                return;
+            }
+
             foreach (PendingCancelMarker marker in _pendingCancels)
             {
                 if (marker.SideName != sideName)
@@ -689,6 +696,41 @@ namespace DragonBoxAlgebra.Gameplay
                 CardIdB = cardIdB
             });
         }
+
+        private static bool CardExistsOnlyOnSide(AlgebraBoard board, string sideName, string cardId)
+        {
+            BoardSide side = board.GetSide(sideName);
+            string otherSide = sideName == "Left" ? "Right" : "Left";
+            BoardSide other = board.GetSide(otherSide);
+
+            bool onSide = false;
+            foreach (BoardCard card in side.Cards)
+            {
+                if (card.Id == cardId)
+                {
+                    onSide = true;
+                    break;
+                }
+            }
+
+            if (!onSide)
+            {
+                return false;
+            }
+
+            foreach (BoardCard card in other.Cards)
+            {
+                if (card.Id == cardId)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private bool CardExistsOnlyOnSide(string sideName, string cardId) =>
+            CardExistsOnlyOnSide(Board, sideName, cardId);
 
         private static bool SideContainsBothCards(BoardSide side, string cardIdA, string cardIdB)
         {
