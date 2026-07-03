@@ -67,7 +67,7 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
             MessageChanged?.Invoke(
                 "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                "Light + dark spin when they meet — click either to dismiss.");
+                "When light meets dark, they spin — click either to dismiss.");
         }
 
         public void LoadNextLevel()
@@ -273,7 +273,8 @@ namespace DragonBoxAlgebra.Gameplay
         private bool TryStartBalance(int handIndex, string targetSide, BoardCard template)
         {
             PushUndo();
-            Board.GetSide(targetSide).Cards.Add(template.Clone());
+            BoardSide placedSide = Board.GetSide(targetSide);
+            placedSide.Cards.Add(template.Clone());
             _pendingBalance = new BalancePending
             {
                 Card = template.Clone(),
@@ -281,6 +282,7 @@ namespace DragonBoxAlgebra.Gameplay
                 HandIndex = handIndex
             };
 
+            ActivateOppositePairsOnSide(targetSide);
             MessageChanged?.Invoke("? appeared on the other side — drag the same tile there.");
             BoardChanged?.Invoke();
             ResolveCombines();
@@ -308,12 +310,15 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             PushUndo();
+            string placedSide = _pendingBalance.PlacedSide;
             BoardSide balancedSide = Board.GetSide(targetSide);
             balancedSide.Cards.Add(template.Clone());
             _hand.RemoveAt(handIndex);
             _pendingBalance = null;
             HandChanged?.Invoke();
-            ActivateOppositePairForCard(targetSide, balancedSide.Cards.Count - 1);
+
+            ActivateOppositePairsOnSide(placedSide);
+            ActivateOppositePairsOnSide(targetSide);
 
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke("Balanced! Click spinning opposites to dismiss them.");
@@ -351,9 +356,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (HasPendingSpins())
+            if (HasPendingSpinsOnBoxSide())
             {
-                MessageChanged?.Invoke("The box is almost alone — click the spinning pairs to dismiss them.");
+                MessageChanged?.Invoke("The box is almost alone — click the spinning pairs on its side to dismiss them.");
                 return;
             }
 
@@ -374,14 +379,63 @@ namespace DragonBoxAlgebra.Gameplay
             _spinningCardIds.Add(side.Cards[indexB].Id);
         }
 
-        private void ActivateOppositePairForCard(string sideName, int cardIndex)
+        private void ActivateOppositePairsOnSide(string sideName)
         {
             BoardSide side = Board.GetSide(sideName);
-            int partner = CombineRules.FindOppositePartnerIndex(side, cardIndex);
-            if (partner >= 0)
+            for (int i = 0; i < side.Cards.Count; i++)
             {
-                ActivateSpinPair(side, cardIndex, partner);
+                int partner = CombineRules.FindOppositePartnerIndex(side, i);
+                if (partner >= 0)
+                {
+                    ActivateSpinPair(side, i, partner);
+                }
             }
+        }
+
+        private bool HasPendingSpinsOnBoxSide()
+        {
+            PruneStaleSpinIds();
+            if (_spinningCardIds.Count == 0)
+            {
+                return false;
+            }
+
+            BoardSide boxSide = GetBoxSide();
+            if (boxSide == null)
+            {
+                return false;
+            }
+
+            foreach (BoardCard card in boxSide.Cards)
+            {
+                if (_spinningCardIds.Contains(card.Id))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private BoardSide GetBoxSide()
+        {
+            foreach (BoardCard card in Board.Left.Cards)
+            {
+                if (card.Kind == CardKind.Box)
+                {
+                    return Board.Left;
+                }
+            }
+
+            foreach (BoardCard card in Board.Right.Cards)
+            {
+                if (card.Kind == CardKind.Box)
+                {
+                    return Board.Right;
+                }
+            }
+
+            return null;
         }
 
         private bool HasPendingSpins()
