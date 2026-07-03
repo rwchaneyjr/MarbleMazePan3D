@@ -98,10 +98,21 @@ namespace DragonBoxAlgebra.UI
 
             yield return new WaitForSeconds(WinPreDelay);
 
-            Vector2 leftTargetMin = new Vector2(0.34f, _leftAnchorMinDefault.y);
-            Vector2 leftTargetMax = new Vector2(0.48f, _leftAnchorMaxDefault.y);
-            Vector2 rightTargetMin = new Vector2(0.52f, _rightAnchorMinDefault.y);
-            Vector2 rightTargetMax = new Vector2(0.66f, _rightAnchorMaxDefault.y);
+            bool animateLeft = SideHasVisibleCards("Left");
+            bool animateRight = SideHasVisibleCards("Right");
+
+            Vector2 leftTargetMin = animateLeft
+                ? new Vector2(0.36f, _leftAnchorMinDefault.y)
+                : _leftAnchorMinDefault;
+            Vector2 leftTargetMax = animateLeft
+                ? new Vector2(0.49f, _leftAnchorMaxDefault.y)
+                : _leftAnchorMaxDefault;
+            Vector2 rightTargetMin = animateRight
+                ? new Vector2(0.51f, _rightAnchorMinDefault.y)
+                : _rightAnchorMinDefault;
+            Vector2 rightTargetMax = animateRight
+                ? new Vector2(0.64f, _rightAnchorMaxDefault.y)
+                : _rightAnchorMaxDefault;
 
             float elapsed = 0f;
             while (elapsed < WinSlideDuration)
@@ -109,10 +120,10 @@ namespace DragonBoxAlgebra.UI
                 elapsed += Time.deltaTime;
                 float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / WinSlideDuration));
 
-                _leftPanel.anchorMin = Vector2.Lerp(_leftAnchorMinDefault, leftTargetMin, t);
-                _leftPanel.anchorMax = Vector2.Lerp(_leftAnchorMaxDefault, leftTargetMax, t);
-                _rightPanel.anchorMin = Vector2.Lerp(_rightAnchorMinDefault, rightTargetMin, t);
-                _rightPanel.anchorMax = Vector2.Lerp(_rightAnchorMaxDefault, rightTargetMax, t);
+                _leftPanel.anchorMin = Vector2.Lerp(_leftAnchorMinDefault, leftTargetMin, animateLeft ? t : 0f);
+                _leftPanel.anchorMax = Vector2.Lerp(_leftAnchorMaxDefault, leftTargetMax, animateLeft ? t : 0f);
+                _rightPanel.anchorMin = Vector2.Lerp(_rightAnchorMinDefault, rightTargetMin, animateRight ? t : 0f);
+                _rightPanel.anchorMax = Vector2.Lerp(_rightAnchorMaxDefault, rightTargetMax, animateRight ? t : 0f);
 
                 yield return null;
             }
@@ -122,6 +133,20 @@ namespace DragonBoxAlgebra.UI
             _playingWinSequence = false;
             _winSequenceCoroutine = null;
             _controller.CompleteWinPresentation(stars, moves);
+        }
+
+        private bool SideHasVisibleCards(string sideName)
+        {
+            BoardSide side = sideName == "Left" ? _controller.Board.Left : _controller.Board.Right;
+            foreach (BoardCard card in side.Cards)
+            {
+                if (!_controller.IsCardPendingCancel(card.Id))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void OnCombine(CombineEvent evt)

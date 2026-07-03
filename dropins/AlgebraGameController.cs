@@ -354,9 +354,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (HasPendingCancelsOnBoxSide())
+            if (_pendingCancels.Count > 0)
             {
-                MessageChanged?.Invoke("The box is almost alone — click the spinning * on its side.");
+                MessageChanged?.Invoke("Click all spinning * tiles first.");
                 return;
             }
 
@@ -433,46 +433,6 @@ namespace DragonBoxAlgebra.Gameplay
                 CardIdA = cardIdA,
                 CardIdB = cardIdB
             });
-        }
-
-        private bool HasPendingCancelsOnBoxSide()
-        {
-            string boxSide = GetBoxSideName();
-            if (boxSide == null)
-            {
-                return false;
-            }
-
-            foreach (PendingCancelMarker marker in _pendingCancels)
-            {
-                if (marker.SideName == boxSide)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private string GetBoxSideName()
-        {
-            foreach (BoardCard card in Board.Left.Cards)
-            {
-                if (card.Kind == CardKind.Box)
-                {
-                    return "Left";
-                }
-            }
-
-            foreach (BoardCard card in Board.Right.Cards)
-            {
-                if (card.Kind == CardKind.Box)
-                {
-                    return "Right";
-                }
-            }
-
-            return null;
         }
 
         private static bool SideContainsBothCards(BoardSide side, string cardIdA, string cardIdB)
