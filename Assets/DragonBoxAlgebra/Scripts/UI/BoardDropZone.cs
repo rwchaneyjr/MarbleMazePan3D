@@ -6,6 +6,8 @@ namespace DragonBoxAlgebra.UI
 {
     public class BoardDropZone : MonoBehaviour, IDropHandler
     {
+        public string SideName;
+
         public void OnDrop(PointerEventData eventData)
         {
             CardWidget dragged = eventData.pointerDrag?.GetComponent<CardWidget>();
@@ -15,8 +17,19 @@ namespace DragonBoxAlgebra.UI
             }
 
             var ui = FindObjectOfType<AlgebraUI>();
-            if (ui?.Controller.TryPlayFromHand(dragged.Index) == true)
+            if (ui?.Controller == null)
             {
+                return;
+            }
+
+            if (ui.Controller.HasPendingBalance && SideName != ui.Controller.PendingBalance.HoleSide)
+            {
+                return;
+            }
+
+            if (ui.Controller.TryPlayFromHand(dragged.Index, SideName))
+            {
+                dragged.MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
             }
         }

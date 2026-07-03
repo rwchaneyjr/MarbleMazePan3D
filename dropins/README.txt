@@ -1,53 +1,49 @@
-# Drop-in scripts for Unity `algebra` project
+# SymbolAlgebra — copy these files into your Unity project
 
-Copy **all `.cs` files** from this folder into your Unity project:
+## Where to copy (SymbolAlgebra on main branch)
+
+Copy each file from this `dropins/` folder into the matching path under your project:
 
 ```
-C:\Users\rober\algebra\Assets\
+C:\Users\rober\SymbolAlgebra\Assets\DragonBoxAlgebra\Scripts\
 ```
 
-(Replace existing files when Windows asks.)
+| Drop-in file | Copy to |
+|--------------|---------|
+| AlgebraGameController.cs | Gameplay/ |
+| BalancePending.cs | Gameplay/ |
+| GameSnapshot.cs | Gameplay/ |
+| CardFlipRules.cs | Gameplay/ |
+| HandRules.cs | Gameplay/ |
+| PendingCancelMarker.cs | Gameplay/ |
+| LevelLibrary.cs | Gameplay/ |
+| CombineRules.cs | Core/ |
+| BoardCard.cs | Core/ |
+| BoardView.cs | UI/ |
+| CardWidget.cs | UI/ |
+| HandView.cs | UI/ |
+| BoardDropZone.cs | UI/ |
+| BalanceHoleWidget.cs | UI/ |
+| AsteriskCancelWidget.cs | UI/ |
+| AlgebraBootstrap.cs | Scripts/ (parent of Core) |
+| AlgebraUI.cs | UI/ |
+
+**New files** (create folder if missing): `BalancePending.cs`, `BalanceHoleWidget.cs`, `AsteriskCancelWidget.cs`, `PendingCancelMarker.cs`, `CardFlipRules.cs`, `HandRules.cs`
 
 ## After copying
 
-1. Return to Unity — wait for compile to finish
-2. Click **Exit Safe Mode** if shown
-3. Create an empty scene (or use any scene)
-4. **GameObject → Create Empty** → name it `Bootstrap`
-5. Add component: **Algebra Bootstrap**
-6. Press **Play**
+1. Return to Unity — wait for compile
+2. Press **Play**
+3. Level 1 test:
+   - Drag night to RIGHT → * on right, ? on left
+   - Same card stays in hand at bottom
+   - Drag it to the ? on LEFT → hand empty, balanced
 
-Or open `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity` if you copied that scene too.
+## Fixes included
 
-## Files included (23 scripts)
-
-| File | Purpose |
-|------|---------|
-| `AlgebraBootstrap.cs` | Starts the game |
-| `AlgebraUI.cs` | Builds UI (fixed) |
-| `CardWidget.cs` | Drag-drop cards (fixed) |
-| `BoardView.cs` | Left/right board |
-| `HandView.cs` | Hand bar |
-| `AlgebraGameController.cs` | Game logic |
-| `LevelLibrary.cs` | 6 levels |
-| ... | See folder for full list |
-
-## Fixes in this version
-
-- Unity 2022: `eventData.hovered` uses `GameObject` not `RaycastResult`
-- Unity 2022: `completePanel.gameObject` passed to LevelCompleteView
-
-## Folder structure (optional)
-
-You can put files flat in `Assets/` (like you have now) OR organize as:
-
-```
-Assets/DragonBoxAlgebra/Scripts/
-  Core/
-  Gameplay/
-  UI/
-  Audio/
-  AlgebraBootstrap.cs
-```
-
-Both work as long as all files are in the project.
+- ? hole merges with incoming tile
+- Hand card stays visible after first drag
+- One * per side max
+- Light + dark on same side → spinning *
+- Click hand card to flip light/dark before playing
+- Dice cancel instantly (level 4), no asterisks

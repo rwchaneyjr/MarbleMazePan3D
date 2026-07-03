@@ -29,6 +29,17 @@ namespace DragonBoxAlgebra.Core
             };
         }
 
+        public BoardCard CloneForPlacement()
+        {
+            return new BoardCard
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Kind = Kind,
+                Value = Value,
+                StackCount = StackCount
+            };
+        }
+
         public bool IsVariable =>
             Kind is CardKind.Box or CardKind.DayCreature or CardKind.NightCreature;
 
@@ -38,7 +49,7 @@ namespace DragonBoxAlgebra.Core
         public bool IsDraggableFromBoard => Kind != CardKind.Box;
 
         public bool IsPlayableFromHand => Kind is CardKind.DayCreature or CardKind.NightCreature
-            or CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.DivideTool;
+            or CardKind.PositiveConstant or CardKind.NegativeConstant;
 
         public int SignedValue => Kind switch
         {
