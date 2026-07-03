@@ -73,13 +73,15 @@ namespace DragonBoxAlgebra.Gameplay
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
+            ActivatePreplacedOppositePairs();
             ResolveCombines();
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
-            MessageChanged?.Invoke(
-                "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                "When light meets dark, a spinning * appears — click it to dismiss.");
+            MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
+                ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
+                : "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
+                  "When light meets dark, a spinning * appears — click it to dismiss.");
         }
 
         public void LoadNextLevel()
@@ -377,6 +379,25 @@ namespace DragonBoxAlgebra.Gameplay
             if (partner >= 0)
             {
                 TryCreateCancelMarker(sideName, side.Cards[cardIndex].Id, side.Cards[partner].Id);
+            }
+        }
+
+        private void ActivatePreplacedOppositePairs()
+        {
+            ActivateAllOppositePairsOnSide("Left");
+            ActivateAllOppositePairsOnSide("Right");
+        }
+
+        private void ActivateAllOppositePairsOnSide(string sideName)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                int partner = CombineRules.FindOppositePartnerIndex(side, i);
+                if (partner > i)
+                {
+                    TryCreateCancelMarker(sideName, side.Cards[i].Id, side.Cards[partner].Id);
+                }
             }
         }
 
