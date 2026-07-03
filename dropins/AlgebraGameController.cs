@@ -24,10 +24,13 @@ namespace DragonBoxAlgebra.Gameplay
         public MoveTracker Moves { get; } = new();
         public IReadOnlyList<BoardCard> Hand => _hand;
         public bool CanUndo => _undoStack.Count > 0;
+        public bool HasPendingBalance => _pendingBalance != null;
+        public BalancePending PendingBalance => _pendingBalance;
 
         private readonly List<BoardCard> _hand = new();
         private readonly Stack<GameSnapshot> _undoStack = new();
         private GameSnapshot _initialSnapshot;
+        private BalancePending _pendingBalance;
         private int _levelIndex;
         private bool _levelComplete;
 
@@ -48,11 +51,12 @@ namespace DragonBoxAlgebra.Gameplay
             Moves.Reset();
             _undoStack.Clear();
             _levelComplete = false;
-            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves);
+            _pendingBalance = null;
+            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
             BoardChanged?.Invoke();
-            MessageChanged?.Invoke("Drag cards together on the same side, or drag from your hand to the board.");
+            MessageChanged?.Invoke("Drag from hand to one side — a hole appears on the other. Match it to balance.");
         }
 
         public void LoadNextLevel()
@@ -75,7 +79,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _initialSnapshot.Apply(Board, _hand, Moves);
+            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance);
             _undoStack.Clear();
             _levelComplete = false;
             BoardChanged?.Invoke();
@@ -89,7 +93,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _undoStack.Pop().Apply(Board, _hand, Moves);
+            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance);
             _levelComplete = false;
             BoardChanged?.Invoke();
             MessageChanged?.Invoke("Undid the last move.");
@@ -97,8 +101,13 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool TryCombine(string sideName, int indexA, int indexB)
         {
-            if (_levelComplete)
+            if (_levelComplete || _pendingBalance != null)
             {
+                if (_pendingBalance != null)
+                {
+                    MessageChanged?.Invoke("Complete the balance hole first.");
+                }
+
                 return false;
             }
 
@@ -124,7 +133,7 @@ namespace DragonBoxAlgebra.Gameplay
             return true;
         }
 
-        public bool TryPlayFromHand(int handIndex)
+        public bool TryPlayFromHand(int handIndex, string targetSide)
         {
             if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
             {
@@ -134,17 +143,57 @@ namespace DragonBoxAlgebra.Gameplay
             BoardCard template = _hand[handIndex];
             if (template.Kind == CardKind.DivideTool)
             {
+                if (_pendingBalance != null)
+                {
+                    MessageChanged?.Invoke("Complete the balance hole before using divide.");
+                    return false;
+                }
+
                 return TryUseDivideTool(handIndex);
             }
 
-            PushUndo();
-            Board.TryAddBalanced(template);
-            _hand.RemoveAt(handIndex);
+            if (_pendingBalance != null)
+            {
+                if (handIndex != _pendingBalance.HandIndex)
+                {
+                    MessageChanged?.Invoke("Use the same card to fill the hole on the other side.");
+                    return false;
+                }
 
-            Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke("Balanced move! Same card added to both sides.");
+                if (targetSide != _pendingBalance.HoleSide)
+                {
+                    MessageChanged?.Invoke("Drag the same card to the hole on the other side.");
+                    return false;
+                }
+
+                PushUndo();
+                Board.GetSide(targetSide).Cards.Add(template.Clone());
+                _hand.RemoveAt(handIndex);
+                _pendingBalance = null;
+
+                Moves.RegisterBalancedPlay();
+                MessageChanged?.Invoke("Balanced! Light and dark opposites vanish when they meet.");
+                ResolveCombines();
+                return true;
+            }
+
+            PushUndo();
+            Board.GetSide(targetSide).Cards.Add(template.Clone());
+            _pendingBalance = new BalancePending
+            {
+                Card = template.Clone(),
+                PlacedSide = targetSide,
+                HandIndex = handIndex
+            };
+
+            MessageChanged?.Invoke("Same card stays in hand — drag it again to the hole on the other side.");
             ResolveCombines();
             return true;
+        }
+
+        public bool TryPlayFromHand(int handIndex)
+        {
+            return TryPlayFromHand(handIndex, "Left");
         }
 
         public bool TryUseDivideTool(int handIndex)
@@ -212,7 +261,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void PushUndo()
         {
-            _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves));
+            _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance));
         }
 
         private void PopUndoWithoutApply()

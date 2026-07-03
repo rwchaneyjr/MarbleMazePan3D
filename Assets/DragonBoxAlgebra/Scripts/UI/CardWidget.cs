@@ -141,8 +141,10 @@ namespace DragonBoxAlgebra.UI
                 BoardDropZone boardZone = FindBoardZone(eventData);
                 if (boardZone != null)
                 {
-                    _controller.TryPlayFromHand(Index);
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    if (_controller.TryPlayFromHand(Index, boardZone.SideName))
+                    {
+                        DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    }
                 }
             }
 
@@ -165,8 +167,11 @@ namespace DragonBoxAlgebra.UI
         {
             if (SideName == "Hand")
             {
-                _controller.TryPlayFromHand(Index);
-                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                if (_controller.TryPlayFromHand(Index, target.SideName))
+                {
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+
                 return;
             }
 
@@ -193,6 +198,11 @@ namespace DragonBoxAlgebra.UI
                 }
 
                 BoardDropZone zone = go.GetComponent<BoardDropZone>();
+                if (zone == null)
+                {
+                    zone = go.GetComponentInParent<BoardDropZone>();
+                }
+
                 if (zone != null)
                 {
                     return zone;

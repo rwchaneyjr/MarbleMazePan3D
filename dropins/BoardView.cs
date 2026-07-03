@@ -24,8 +24,8 @@ namespace DragonBoxAlgebra.UI
             _canvas = canvas;
             _dragRoot = dragRoot;
 
-            left.gameObject.AddComponent<BoardDropZone>();
-            right.gameObject.AddComponent<BoardDropZone>();
+            left.gameObject.AddComponent<BoardDropZone>().SideName = "Left";
+            right.gameObject.AddComponent<BoardDropZone>().SideName = "Right";
 
             _controller.BoardChanged += Refresh;
             _controller.CombineOccurred += OnCombine;
@@ -79,6 +79,13 @@ namespace DragonBoxAlgebra.UI
             _widgets.Clear();
             RebuildSide(_leftPanel, _controller.Board.Left, "Left");
             RebuildSide(_rightPanel, _controller.Board.Right, "Right");
+
+            if (_controller.HasPendingBalance)
+            {
+                BalancePending pending = _controller.PendingBalance;
+                RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
+                BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card);
+            }
         }
 
         private void RebuildSide(RectTransform panel, BoardSide side, string sideName)
