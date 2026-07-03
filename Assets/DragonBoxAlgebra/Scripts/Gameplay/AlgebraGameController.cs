@@ -85,7 +85,7 @@ namespace DragonBoxAlgebra.Gameplay
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
                 ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
                 : "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                  "When light meets dark, a spinning * appears — click it to dismiss.");
+                  "When matching light and dark creatures meet on one side, a spinning * appears — click it to dismiss.");
         }
 
         public void LoadNextLevel()
@@ -183,8 +183,27 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 PushUndo();
                 _pendingBalance = null;
-                TryCreateCancelMarker(sideName, side.Cards[indexA].Id, side.Cards[indexB].Id);
-                MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
+                BoardCard cardA = side.Cards[indexA];
+                BoardCard cardB = side.Cards[indexB];
+                if (CombineRules.UsesAsteriskCancel(cardA, cardB))
+                {
+                    TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
+                    MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
+                }
+                else
+                {
+                    CombineRules.RemovePair(side, indexA, indexB);
+                    Moves.RegisterCombine();
+                    CombineOccurred?.Invoke(new CombineEvent
+                    {
+                        SideName = sideName,
+                        Action = CombineActionType.OppositeCancel,
+                        IndexA = indexA,
+                        IndexB = indexB
+                    });
+                    MessageChanged?.Invoke("Dice canceled.");
+                }
+
                 BoardChanged?.Invoke();
                 CheckWin();
                 return true;
@@ -311,13 +330,32 @@ namespace DragonBoxAlgebra.Gameplay
 
             PushUndo();
             _pendingBalance = null;
-            side.Cards.Add(handCard.CloneForPlacement());
-            BoardCard placed = side.Cards[side.Cards.Count - 1];
-            TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
-            _hand.RemoveAt(handIndex);
-            HandChanged?.Invoke();
-            Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
+            if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
+            {
+                side.Cards.Add(handCard.CloneForPlacement());
+                BoardCard placed = side.Cards[side.Cards.Count - 1];
+                TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
+                _hand.RemoveAt(handIndex);
+                HandChanged?.Invoke();
+                Moves.RegisterBalancedPlay();
+                MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
+            }
+            else
+            {
+                CombineRules.RemoveCardById(side, targetCard.Id);
+                _hand.RemoveAt(handIndex);
+                HandChanged?.Invoke();
+                Moves.RegisterCombine();
+                CombineOccurred?.Invoke(new CombineEvent
+                {
+                    SideName = sideName,
+                    Action = CombineActionType.OppositeCancel,
+                    IndexA = targetBoardIndex,
+                    IndexB = -1
+                });
+                MessageChanged?.Invoke("Dice canceled.");
+            }
+
             BoardChanged?.Invoke();
             CheckWin();
             return true;
@@ -479,7 +517,7 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
-                if (CombineRules.GetCombineAction(card, side.Cards[j]) == CombineActionType.OppositeCancel)
+                if (CombineRules.IsCreatureOppositePair(card, side.Cards[j]))
                 {
                     return j;
                 }
@@ -491,6 +529,27 @@ namespace DragonBoxAlgebra.Gameplay
         private void TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
         {
             if (IsCardPendingCancel(cardIdA) || IsCardPendingCancel(cardIdB))
+            {
+                return;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            BoardCard? cardA = null;
+            BoardCard? cardB = null;
+            foreach (BoardCard card in side.Cards)
+            {
+                if (card.Id == cardIdA)
+                {
+                    cardA = card;
+                }
+
+                if (card.Id == cardIdB)
+                {
+                    cardB = card;
+                }
+            }
+
+            if (cardA == null || cardB == null || !CombineRules.UsesAsteriskCancel(cardA.Value, cardB.Value))
             {
                 return;
             }

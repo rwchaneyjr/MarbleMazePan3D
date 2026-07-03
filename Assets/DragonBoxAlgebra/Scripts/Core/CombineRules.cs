@@ -105,10 +105,21 @@ namespace DragonBoxAlgebra.Core
 
         private static bool IsOppositePair(BoardCard a, BoardCard b)
         {
+            return IsCreatureOppositePair(a, b) || IsDiceOppositePair(a, b);
+        }
+
+        public static bool IsCreatureOppositePair(BoardCard a, BoardCard b)
+        {
             return (a.Kind == CardKind.DayCreature && b.Kind == CardKind.NightCreature && a.Value == b.Value)
-                || (a.Kind == CardKind.NightCreature && b.Kind == CardKind.DayCreature && a.Value == b.Value)
-                || (a.Kind == CardKind.PositiveConstant && b.Kind == CardKind.NegativeConstant && a.Value == b.Value)
+                || (a.Kind == CardKind.NightCreature && b.Kind == CardKind.DayCreature && a.Value == b.Value);
+        }
+
+        public static bool IsDiceOppositePair(BoardCard a, BoardCard b)
+        {
+            return (a.Kind == CardKind.PositiveConstant && b.Kind == CardKind.NegativeConstant && a.Value == b.Value)
                 || (a.Kind == CardKind.NegativeConstant && b.Kind == CardKind.PositiveConstant && a.Value == b.Value);
         }
+
+        public static bool UsesAsteriskCancel(BoardCard a, BoardCard b) => IsCreatureOppositePair(a, b);
     }
 }
