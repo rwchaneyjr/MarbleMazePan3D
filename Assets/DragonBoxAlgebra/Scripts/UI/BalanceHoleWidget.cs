@@ -11,6 +11,8 @@ namespace DragonBoxAlgebra.UI
         private AlgebraGameController _controller;
         private string _sideName;
 
+        public string SideName => _sideName;
+
         public void Initialize(AlgebraGameController controller, string sideName, BoardCard card)
         {
             _controller = controller;

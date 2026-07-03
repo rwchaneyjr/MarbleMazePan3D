@@ -17,7 +17,17 @@ namespace DragonBoxAlgebra.UI
             }
 
             var ui = FindObjectOfType<AlgebraUI>();
-            if (ui?.Controller.TryPlayFromHand(dragged.Index, SideName) == true)
+            if (ui?.Controller == null)
+            {
+                return;
+            }
+
+            if (ui.Controller.HasPendingBalance && SideName != ui.Controller.PendingBalance.HoleSide)
+            {
+                return;
+            }
+
+            if (ui.Controller.TryPlayFromHand(dragged.Index, SideName))
             {
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
             }

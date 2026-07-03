@@ -192,20 +192,16 @@ namespace DragonBoxAlgebra.UI
 
             _isDragging = false;
 
-            CardWidget target = FindDropTarget(eventData);
-            if (target != null && target != this)
+            if (SideName == "Hand")
             {
-                HandleDropOnCard(target);
+                TryPlayHandDrop(eventData);
             }
-            else if (SideName == "Hand")
+            else
             {
-                BoardDropZone boardZone = FindBoardZone(eventData);
-                if (boardZone != null)
+                CardWidget target = FindDropTarget(eventData);
+                if (target != null && target != this)
                 {
-                    if (_controller.TryPlayFromHand(Index, boardZone.SideName))
-                    {
-                        DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                    }
+                    HandleDropOnCard(target);
                 }
             }
 
@@ -217,6 +213,58 @@ namespace DragonBoxAlgebra.UI
 
             transform.SetParent(_originalParent, false);
             transform.SetSiblingIndex(_originalSiblingIndex);
+        }
+
+        private void TryPlayHandDrop(PointerEventData eventData)
+        {
+            if (_controller.HasPendingBalance)
+            {
+                string holeSide = _controller.PendingBalance.HoleSide;
+
+                BalanceHoleWidget balanceHole = FindBalanceHole(eventData);
+                if (balanceHole != null && balanceHole.SideName == holeSide)
+                {
+                    if (_controller.TryPlayFromHand(Index, holeSide))
+                    {
+                        DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    }
+
+                    return;
+                }
+
+                CardWidget target = FindDropTarget(eventData);
+                if (target != null && target != this && target.SideName == holeSide)
+                {
+                    if (_controller.TryPlayFromHand(Index, holeSide))
+                    {
+                        DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    }
+
+                    return;
+                }
+
+                BoardDropZone boardZone = FindBoardZone(eventData);
+                if (boardZone != null && boardZone.SideName == holeSide
+                    && _controller.TryPlayFromHand(Index, holeSide))
+                {
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+
+                return;
+            }
+
+            CardWidget targetCard = FindDropTarget(eventData);
+            if (targetCard != null && targetCard != this)
+            {
+                HandleDropOnCard(targetCard);
+                return;
+            }
+
+            BoardDropZone zone = FindBoardZone(eventData);
+            if (zone != null && _controller.TryPlayFromHand(Index, zone.SideName))
+            {
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+            }
         }
 
         public void OnDrop(PointerEventData eventData)
@@ -234,6 +282,17 @@ namespace DragonBoxAlgebra.UI
         {
             if (SideName == "Hand")
             {
+                if (_controller.HasPendingBalance)
+                {
+                    if (target.SideName == _controller.PendingBalance.HoleSide
+                        && _controller.TryPlayFromHand(Index, target.SideName))
+                    {
+                        DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    }
+
+                    return;
+                }
+
                 bool played = false;
                 if (target.SideName != "Hand" && Index < _controller.Hand.Count)
                 {
@@ -264,6 +323,35 @@ namespace DragonBoxAlgebra.UI
             }
 
             _controller.TryCombine(SideName, Index, target.Index);
+        }
+
+        private BalanceHoleWidget FindBalanceHole(PointerEventData eventData)
+        {
+            if (eventData.hovered == null)
+            {
+                return null;
+            }
+
+            foreach (GameObject go in eventData.hovered)
+            {
+                if (go == null)
+                {
+                    continue;
+                }
+
+                BalanceHoleWidget hole = go.GetComponent<BalanceHoleWidget>();
+                if (hole == null)
+                {
+                    hole = go.GetComponentInParent<BalanceHoleWidget>();
+                }
+
+                if (hole != null)
+                {
+                    return hole;
+                }
+            }
+
+            return null;
         }
 
         private BoardDropZone FindBoardZone(PointerEventData eventData)

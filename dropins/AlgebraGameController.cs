@@ -311,7 +311,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             PushUndo();
             _pendingBalance = null;
-            side.Cards.Add(handCard.Clone());
+            side.Cards.Add(handCard.CloneForPlacement());
             BoardCard placed = side.Cards[side.Cards.Count - 1];
             TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
             _hand.RemoveAt(handIndex);
@@ -327,7 +327,8 @@ namespace DragonBoxAlgebra.Gameplay
         {
             PushUndo();
             BoardSide placedSide = Board.GetSide(targetSide);
-            placedSide.Cards.Add(template.Clone());
+            placedSide.Cards.Add(template.CloneForPlacement());
+            int placedIndex = placedSide.Cards.Count - 1;
 
             _pendingBalance = new BalancePending
             {
@@ -336,7 +337,11 @@ namespace DragonBoxAlgebra.Gameplay
                 HandIndex = handIndex
             };
 
-            MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
+            ActivateOppositePairForCard(targetSide, placedIndex);
+
+            MessageChanged?.Invoke(_pendingCancels.Count > 0
+                ? "? on the other side — drag the same tile to fill the hole. Light met dark: spinning * appeared!"
+                : "? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
             ResolveCombines();
             return true;
@@ -364,7 +369,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             PushUndo();
             BoardSide balancedSide = Board.GetSide(targetSide);
-            balancedSide.Cards.Add(template.Clone());
+            balancedSide.Cards.Add(template.CloneForPlacement());
             _hand.RemoveAt(handIndex);
             _pendingBalance = null;
             HandChanged?.Invoke();
