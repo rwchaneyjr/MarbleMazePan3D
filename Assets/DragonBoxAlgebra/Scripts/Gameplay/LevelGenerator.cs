@@ -179,7 +179,6 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 if (diceLevel)
                 {
-                    // Dice + creature — both flip (+/- and day/night), different images
                     level.HandCards.Add(primaryHand);
                     level.HandValues.Add(value);
                     level.HandCards.Add(CardKind.DayCreature);
@@ -187,18 +186,16 @@ namespace DragonBoxAlgebra.Gameplay
                 }
                 else
                 {
-                    // Night + day — both flip, different creature families (e.g. owl + fish)
                     level.HandCards.Add(CardKind.NightCreature);
                     level.HandValues.Add(value);
                     level.HandCards.Add(CardKind.DayCreature);
                     level.HandValues.Add(value);
                 }
 
-                AssignDistinctHandVisualThemes(level);
+                AddHandVisualThemes(level);
                 return;
             }
 
-            // 3 tiles — night + day + dice (e.g. turtle, sun, die). All flip light/dark or +/-
             level.HandCards.Add(CardKind.NightCreature);
             level.HandValues.Add(value);
             level.HandCards.Add(CardKind.DayCreature);
@@ -207,30 +204,20 @@ namespace DragonBoxAlgebra.Gameplay
                 ? primaryHand
                 : CardKind.NegativeConstant);
             level.HandValues.Add(value);
-            AssignDistinctHandVisualThemes(level);
+            AddHandVisualThemes(level);
         }
 
-        private static void AssignDistinctHandVisualThemes(LevelDefinition level)
+        private static void AddHandVisualThemes(LevelDefinition level)
         {
             int boardTheme = level.CreatureTheme;
-            int alt1 = (boardTheme + 3) % 10;
-            int alt2 = (boardTheme + 7) % 10;
-            if (alt2 == alt1)
+            int themeA = NextHandTheme(boardTheme, 3);
+            int themeB = NextHandTheme(boardTheme, 7);
+            if (themeB == themeA)
             {
-                alt2 = (alt2 + 1) % 10;
+                themeB = NextHandTheme(boardTheme, 5);
             }
 
-            if (alt1 == boardTheme)
-            {
-                alt1 = (boardTheme + 5) % 10;
-            }
-
-            if (alt2 == boardTheme)
-            {
-                alt2 = (boardTheme + 7) % 10;
-            }
-
-            int creatureIndex = 0;
+            int creatureSlot = 0;
             foreach (CardKind kind in level.HandCards)
             {
                 if (kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
@@ -241,10 +228,16 @@ namespace DragonBoxAlgebra.Gameplay
 
                 if (kind is CardKind.DayCreature or CardKind.NightCreature)
                 {
-                    level.HandVisualThemes.Add(creatureIndex == 0 ? alt1 : alt2);
-                    creatureIndex++;
+                    level.HandVisualThemes.Add(creatureSlot == 0 ? themeA : themeB);
+                    creatureSlot++;
                 }
             }
+        }
+
+        private static int NextHandTheme(int boardTheme, int offset)
+        {
+            int theme = (boardTheme + offset) % 10;
+            return theme == boardTheme ? (boardTheme + 5) % 10 : theme;
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)
