@@ -10,11 +10,33 @@ namespace DragonBoxAlgebra.UI
         private const float DefaultCardWidth = 110f;
         private const float DefaultCardHeight = 120f;
         private const float MinCardWidth = 48f;
-        private const float HorizontalPadding = 28f;
-        private const float VerticalPadding = 28f;
-        private const float BoxGapFactor = 0.18f;
-        private const float ColOverlap = 0.52f;
-        private const float RowOverlap = 0.52f;
+        private const float HorizontalPadding = 32f;
+        private const float VerticalPadding = 32f;
+        private const float TileGap = 10f;
+
+        // Creature slots for the pattern:
+        //   + +
+        // x   + +
+        //     + +
+        private static readonly GridCell[] BoxSideCreatureSlots =
+        {
+            new GridCell(0, 1), new GridCell(0, 2),
+            new GridCell(1, 2), new GridCell(1, 3),
+            new GridCell(2, 1), new GridCell(2, 2)
+        };
+
+        // Same stagger without the box column:
+        // + +
+        //   + +
+        // + +
+        private static readonly GridCell[] CreatureOnlySlots =
+        {
+            new GridCell(0, 0), new GridCell(0, 1),
+            new GridCell(1, 1), new GridCell(1, 2),
+            new GridCell(2, 0), new GridCell(2, 1)
+        };
+
+        private static readonly GridCell BoxSlot = new GridCell(1, 0);
 
         public static void FitPanelToShowAllTiles(RectTransform panel)
         {
@@ -56,7 +78,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             RectTransform box = null;
-            var stack = new List<RectTransform>();
+            var creatures = new List<RectTransform>();
             foreach (LayoutItem item in items)
             {
                 if (item.IsBox)
@@ -65,123 +87,71 @@ namespace DragonBoxAlgebra.UI
                 }
                 else
                 {
-                    stack.Add(item.Rect);
+                    creatures.Add(item.Rect);
                 }
             }
 
             float cardWidth = DefaultCardWidth;
             float cardHeight = DefaultCardHeight;
-            float scale = ComputeFitScale(panelWidth, panelHeight, box != null, stack.Count, cardWidth, cardHeight);
+            GridCell[] slots = box != null ? BoxSideCreatureSlots : CreatureOnlySlots;
+            int maxCol = box != null ? BoxSlot.Col : 0;
+            foreach (GridCell slot in slots)
+            {
+                maxCol = Mathf.Max(maxCol, slot.Col);
+            }
+
+            float scale = ComputeFitScale(panelWidth, panelHeight, maxCol, cardWidth, cardHeight);
             cardWidth *= scale;
             cardHeight *= scale;
 
-            if (box != null && stack.Count > 0)
+            float colPitch = cardWidth + TileGap * scale;
+            float rowPitch = cardHeight + TileGap * scale;
+            int rowCount = 3;
+            float gridWidth = (maxCol + 1) * colPitch - TileGap * scale;
+            float gridHeight = rowCount * rowPitch - TileGap * scale;
+            float originX = -gridWidth * 0.5f + cardWidth * 0.5f;
+            float originY = gridHeight * 0.5f - cardHeight * 0.5f;
+
+            if (box != null)
             {
-                LayoutBoxWithBrickStack(box, stack, cardWidth, cardHeight);
-                return;
+                ApplyTileSize(box, cardWidth, cardHeight, ignoreLayout: true);
+                box.anchoredPosition = CellCenter(BoxSlot, originX, originY, colPitch, rowPitch);
             }
 
-            float colStep = cardWidth * ColOverlap;
-            float brickHalf = colStep * 0.5f;
-            float stackWidth = MaxRowWidth(stack.Count, cardWidth, colStep, brickHalf);
-            LayoutBrickStack(stack, cardWidth, cardHeight, -stackWidth * 0.5f);
+            for (int i = 0; i < creatures.Count; i++)
+            {
+                GridCell slot = i < slots.Length ? slots[i] : ExtraSlot(i, slots.Length, box != null);
+                ApplyTileSize(creatures[i], cardWidth, cardHeight, ignoreLayout: true);
+                creatures[i].anchoredPosition = CellCenter(slot, originX, originY, colPitch, rowPitch);
+            }
         }
 
-        private static float ComputeFitScale(float panelWidth, float panelHeight, bool hasBox, int stackCount,
-            float cardWidth, float cardHeight)
+        private static Vector2 CellCenter(GridCell cell, float originX, float originY, float colPitch, float rowPitch)
         {
-            float colStep = cardWidth * ColOverlap;
-            float rowStep = cardHeight * RowOverlap;
-            float brickHalf = colStep * 0.5f;
-            int rowCount = RowCountFor(stackCount);
-            float stackWidth = MaxRowWidth(stackCount, cardWidth, colStep, brickHalf);
-            float stackHeight = cardHeight + Mathf.Max(0, rowCount - 1) * rowStep;
-            float boxGap = cardWidth * BoxGapFactor;
-            float totalWidth = (hasBox ? cardWidth + boxGap : 0f) + stackWidth;
-            float availableWidth = Mathf.Max(cardWidth, panelWidth - HorizontalPadding);
-            float availableHeight = Mathf.Max(cardHeight, panelHeight - VerticalPadding);
-            float widthScale = totalWidth > availableWidth ? availableWidth / totalWidth : 1f;
-            float heightScale = stackHeight > availableHeight ? availableHeight / stackHeight : 1f;
-            float scale = Mathf.Min(widthScale, heightScale, 1f);
-            return Mathf.Max(scale, MinCardWidth / DefaultCardWidth);
+            return new Vector2(originX + cell.Col * colPitch, originY - cell.Row * rowPitch);
         }
 
-        private static void LayoutBoxWithBrickStack(RectTransform box, List<RectTransform> stack, float cardWidth,
+        private static GridCell ExtraSlot(int index, int baseSlotCount, bool hasBox)
+        {
+            int overflow = index - baseSlotCount;
+            int row = overflow / 2;
+            int col = (overflow % 2) + (hasBox ? 4 : 3);
+            return new GridCell(row % 3, col);
+        }
+
+        private static float ComputeFitScale(float panelWidth, float panelHeight, int maxCol, float cardWidth,
             float cardHeight)
         {
-            float colStep = cardWidth * ColOverlap;
-            float rowStep = cardHeight * RowOverlap;
-            float brickHalf = colStep * 0.5f;
-            float boxGap = cardWidth * BoxGapFactor;
-            int rowCount = RowCountFor(stack.Count);
-            float stackWidth = MaxRowWidth(stack.Count, cardWidth, colStep, brickHalf);
-            float totalWidth = cardWidth + boxGap + stackWidth;
-            float boxX = -totalWidth * 0.5f + cardWidth * 0.5f;
-            float stackOriginX = boxX + cardWidth * 0.5f + boxGap;
-
-            ApplyTileSize(box, cardWidth, cardHeight, ignoreLayout: true);
-            box.anchoredPosition = new Vector2(boxX, 0f);
-
-            LayoutBrickStack(stack, cardWidth, cardHeight, stackOriginX);
-        }
-
-        private static void LayoutBrickStack(List<RectTransform> stack, float cardWidth, float cardHeight,
-            float originX)
-        {
-            if (stack.Count == 0)
-            {
-                return;
-            }
-
-            float colStep = cardWidth * ColOverlap;
-            float rowStep = cardHeight * RowOverlap;
-            float brickHalf = colStep * 0.5f;
-            int rowCount = RowCountFor(stack.Count);
-            float topY = (rowCount - 1) * rowStep * 0.5f;
-
-            int tileIndex = 0;
-            for (int row = 0; row < rowCount && tileIndex < stack.Count; row++)
-            {
-                int tilesInRow = Mathf.Min(2, stack.Count - tileIndex);
-                float rowOffsetX = row % 2 == 0 ? brickHalf : 0f;
-                float baseCenterX = originX + rowOffsetX + cardWidth * 0.5f;
-                float y = topY - row * rowStep;
-
-                for (int col = 0; col < tilesInRow; col++)
-                {
-                    RectTransform rect = stack[tileIndex];
-                    ApplyTileSize(rect, cardWidth, cardHeight, ignoreLayout: true);
-                    rect.anchoredPosition = new Vector2(baseCenterX + col * colStep, y);
-                    tileIndex++;
-                }
-            }
-        }
-
-        private static int RowCountFor(int tileCount)
-        {
-            if (tileCount <= 0)
-            {
-                return 0;
-            }
-
-            return (tileCount + 1) / 2;
-        }
-
-        private static float MaxRowWidth(int tileCount, float cardWidth, float colStep, float brickHalf)
-        {
-            int rowCount = RowCountFor(tileCount);
-            float maxWidth = 0f;
-            int tileIndex = 0;
-            for (int row = 0; row < rowCount && tileIndex < tileCount; row++)
-            {
-                int tilesInRow = Mathf.Min(2, tileCount - tileIndex);
-                float rowOffsetX = row % 2 == 0 ? brickHalf : 0f;
-                float rowWidth = cardWidth + (tilesInRow - 1) * colStep + rowOffsetX;
-                maxWidth = Mathf.Max(maxWidth, rowWidth);
-                tileIndex += tilesInRow;
-            }
-
-            return maxWidth;
+            float colPitch = cardWidth + TileGap;
+            float rowPitch = cardHeight + TileGap;
+            float gridWidth = (maxCol + 1) * colPitch - TileGap;
+            float gridHeight = 3f * rowPitch - TileGap;
+            float availableWidth = Mathf.Max(cardWidth, panelWidth - HorizontalPadding);
+            float availableHeight = Mathf.Max(cardHeight, panelHeight - VerticalPadding);
+            float widthScale = gridWidth > availableWidth ? availableWidth / gridWidth : 1f;
+            float heightScale = gridHeight > availableHeight ? availableHeight / gridHeight : 1f;
+            float scale = Mathf.Min(widthScale, heightScale, 1f);
+            return Mathf.Max(scale, MinCardWidth / DefaultCardWidth);
         }
 
         private static void ApplyTileSize(RectTransform rect, float cardWidth, float cardHeight, bool ignoreLayout)
@@ -243,6 +213,18 @@ namespace DragonBoxAlgebra.UI
             }
 
             return items;
+        }
+
+        private readonly struct GridCell
+        {
+            public readonly int Row;
+            public readonly int Col;
+
+            public GridCell(int row, int col)
+            {
+                Row = row;
+                Col = col;
+            }
         }
 
         private struct LayoutItem
