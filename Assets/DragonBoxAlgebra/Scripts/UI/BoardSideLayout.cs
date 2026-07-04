@@ -28,9 +28,17 @@ namespace DragonBoxAlgebra.UI
         private static readonly GridCell[] BoxSideSlotsTwo = { new GridCell(1, 2), new GridCell(2, 2) };
         private static readonly GridCell[] BoxSideSlotsThree = { new GridCell(0, 2), new GridCell(1, 2), new GridCell(2, 2) };
 
-        // Other side (no box): vertical column, no stacking
-        private static readonly GridCell[] OtherSideSlotsOne = { new GridCell(1, 0) };
-        private static readonly GridCell[] OtherSideSlotsTwo = { new GridCell(0, 0), new GridCell(2, 0) };
+        // Other side (no box): single column, scales to fit up to 7 tiles
+        private static GridCell[] SlotsForOtherSide(int count)
+        {
+            var slots = new GridCell[count];
+            for (int i = 0; i < count; i++)
+            {
+                slots[i] = new GridCell(i, 0);
+            }
+
+            return slots;
+        }
 
         public static void FitPanelToShowAllTiles(RectTransform panel)
         {
@@ -93,7 +101,7 @@ namespace DragonBoxAlgebra.UI
                 : SlotsForOtherSide(creatures.Count);
 
             int maxCol = box != null ? 2 : 0;
-            int rowCount = box != null ? RowCountForBoxSide(creatures.Count) : 3;
+            int rowCount = box != null ? RowCountForBoxSide(creatures.Count) : Mathf.Max(creatures.Count, 1);
 
             float cardWidth = DefaultCardWidth;
             float cardHeight = DefaultCardHeight;
@@ -105,7 +113,9 @@ namespace DragonBoxAlgebra.UI
             float rowPitch = cardHeight + TileGap;
             float gridHeight = rowCount * rowPitch - TileGap;
             float leftEdge = -panelWidth * 0.5f + HorizontalPadding;
-            float topY = gridHeight * 0.5f - cardHeight * 0.5f;
+            float topY = box != null
+                ? gridHeight * 0.5f - cardHeight * 0.5f
+                : (panelHeight - gridHeight) * 0.5f + gridHeight - cardHeight * 0.5f;
 
             if (box != null)
             {
@@ -134,16 +144,6 @@ namespace DragonBoxAlgebra.UI
             }
 
             return BoxSideSlotsThree;
-        }
-
-        private static GridCell[] SlotsForOtherSide(int count)
-        {
-            if (count <= 1)
-            {
-                return OtherSideSlotsOne;
-            }
-
-            return OtherSideSlotsTwo;
         }
 
         private static int RowCountForBoxSide(int count)

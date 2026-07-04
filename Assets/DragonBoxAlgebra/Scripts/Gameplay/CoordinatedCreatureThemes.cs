@@ -6,6 +6,7 @@ namespace DragonBoxAlgebra.Gameplay
     /// <summary>
     /// Red-side obstacles and hand solvers share the same distinct theme list:
     /// hand slot i is the light/dark partner for red-side obstacle i.
+    /// Other-side extras append more distinct themes and matching hand solvers.
     /// </summary>
     public static class CoordinatedCreatureThemes
     {
@@ -17,8 +18,20 @@ namespace DragonBoxAlgebra.Gameplay
 
         public static void ApplyRedSideAndHand(LevelDefinition level, IReadOnlyList<int> redThemes)
         {
+            ApplyHandThemes(level, redThemes, otherThemes: null);
+        }
+
+        public static void ApplyRedSideAndOtherHand(LevelDefinition level, IReadOnlyList<int> redThemes,
+            IReadOnlyList<int> otherThemes)
+        {
+            ApplyHandThemes(level, redThemes, otherThemes);
+        }
+
+        private static void ApplyHandThemes(LevelDefinition level, IReadOnlyList<int> redThemes,
+            IReadOnlyList<int> otherThemes)
+        {
             level.HandVisualThemes.Clear();
-            int redIndex = 0;
+            int creatureIndex = 0;
 
             for (int i = 0; i < level.HandCards.Count; i++)
             {
@@ -29,10 +42,38 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
-                int theme = redIndex < redThemes.Count ? redThemes[redIndex] : level.CreatureTheme;
+                int theme;
+                if (creatureIndex < redThemes.Count)
+                {
+                    theme = redThemes[creatureIndex];
+                }
+                else if (otherThemes != null)
+                {
+                    int otherIndex = creatureIndex - redThemes.Count;
+                    theme = otherIndex < otherThemes.Count ? otherThemes[otherIndex] : level.CreatureTheme;
+                }
+                else
+                {
+                    theme = level.CreatureTheme;
+                }
+
                 level.HandVisualThemes.Add(theme);
-                redIndex++;
+                creatureIndex++;
             }
+        }
+
+        public static CardKind OppositeCreature(CardKind kind) =>
+            kind == CardKind.NightCreature ? CardKind.DayCreature : CardKind.NightCreature;
+
+        public static List<CardKind> BuildAlternatingCreatureKinds(int count)
+        {
+            var kinds = new List<CardKind>(count);
+            for (int i = 0; i < count; i++)
+            {
+                kinds.Add(i % 2 == 0 ? CardKind.DayCreature : CardKind.NightCreature);
+            }
+
+            return kinds;
         }
     }
 }

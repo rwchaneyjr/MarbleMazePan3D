@@ -59,8 +59,9 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         public static string MultiCardHandHint =>
-            "Hand tiles stay in your hand. Use the tile that matches the creature beside the red box " +
-            "(same animal pair — e.g. turtle for fish). Drag to one side; a ? appears on the other. " +
+            "Hand tiles stay in your hand. Match each creature by animal pair — use the tile beside the red box " +
+            "for the left side, and the matching pair for extras on the other side (light or dark). " +
+            "Click a hand tile to flip light/dark. Drag to one side; a ? appears on the other. " +
             "Drag the same tile to the ? to balance.";
     }
 }
