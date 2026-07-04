@@ -118,9 +118,9 @@ namespace DragonBoxAlgebra.Core
                 return false;
             }
 
-            if (a.VisualTheme >= 0 && b.VisualTheme >= 0)
+            if (a.VisualTheme >= 0 || b.VisualTheme >= 0)
             {
-                return a.VisualTheme == b.VisualTheme;
+                return a.VisualTheme >= 0 && b.VisualTheme >= 0 && a.VisualTheme == b.VisualTheme;
             }
 
             return true;
