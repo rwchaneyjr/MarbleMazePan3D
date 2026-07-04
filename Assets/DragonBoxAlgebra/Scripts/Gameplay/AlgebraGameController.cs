@@ -92,6 +92,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
+            HandVisualRules.AssignDistinctVisuals(_hand, level.CreatureTheme);
             HandRules.DedupeFlipFamilies(_hand);
             Moves.Reset();
             _undoStack.Clear();
@@ -212,8 +213,15 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            BoardCard flipped = CardFlipRules.Flip(card);
+            if (HandVisualRules.WouldDuplicateVisual(_hand, handIndex, flipped))
+            {
+                MessageChanged?.Invoke("That side looks like your other hand tile — try the other side.");
+                return false;
+            }
+
             PushUndo();
-            _hand[handIndex] = CardFlipRules.Flip(card);
+            _hand[handIndex] = flipped;
             HandChanged?.Invoke();
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
                 ? "Flipped to yellow (light). Click again for dark."
