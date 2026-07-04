@@ -126,11 +126,11 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (count == 2)
             {
-                return "Two tiles in hand — play each one: drag to a side, then drag the same tile to the ?. " +
+                return HandCompositionRules.MultiCardHandHint + " Play each tile: drag to a side, then drag the same tile to the ?. " +
                        "Finish one tile before starting the next.";
             }
 
-            return "Three tiles in hand — play each one: drag to a side, then drag the same tile to the ?. " +
+            return HandCompositionRules.MultiCardHandHint + " Play each tile: drag to a side, then drag the same tile to the ?. " +
                    "Light + dark on the same side become one *.";
         }
 

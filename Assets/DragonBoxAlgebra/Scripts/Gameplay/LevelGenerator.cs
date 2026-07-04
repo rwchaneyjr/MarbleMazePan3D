@@ -192,7 +192,8 @@ namespace DragonBoxAlgebra.Gameplay
                     level.HandValues.Add(value);
                 }
 
-                AddHandVisualThemes(level);
+                HandCompositionRules.EnsureIncludesBoxSideCards(level, handCount, diceLevel, primaryHand, value);
+                HandVisualRules.AssignLevelHandVisualThemes(level);
                 return;
             }
 
@@ -204,31 +205,8 @@ namespace DragonBoxAlgebra.Gameplay
                 ? primaryHand
                 : CardKind.NegativeConstant);
             level.HandValues.Add(value);
-            AddHandVisualThemes(level);
-        }
-
-        private static void AddHandVisualThemes(LevelDefinition level)
-        {
-            int boardTheme = level.CreatureTheme;
-            var usedThemes = new HashSet<int> { boardTheme };
-            int creatureSlot = 0;
-
-            foreach (CardKind kind in level.HandCards)
-            {
-                if (kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
-                {
-                    level.HandVisualThemes.Add(-1);
-                    continue;
-                }
-
-                if (kind is CardKind.DayCreature or CardKind.NightCreature)
-                {
-                    int theme = HandVisualRules.PickHandTheme(boardTheme, creatureSlot, usedThemes);
-                    usedThemes.Add(theme);
-                    creatureSlot++;
-                    level.HandVisualThemes.Add(theme);
-                }
-            }
+            HandCompositionRules.EnsureIncludesBoxSideCards(level, handCount, diceLevel, primaryHand, value);
+            HandVisualRules.AssignLevelHandVisualThemes(level);
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)
