@@ -170,17 +170,22 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 level.HandCards.Add(primaryHand);
                 level.HandValues.Add(handValue);
-                HandVisualRules.AssignThemesForHand(level);
+                level.HandVisualThemes.Add(diceLevel ? -1 : level.CreatureTheme);
                 return;
             }
 
+            int altTheme = (level.CreatureTheme + 5) % 10;
+
             if (diceLevel && handCount == 2)
             {
+                // Dice puzzle: dice + creature — different images, both usable
                 level.HandCards.Add(primaryHand);
                 level.HandValues.Add(value);
+                level.HandVisualThemes.Add(-1);
+
                 level.HandCards.Add(CardKind.DayCreature);
                 level.HandValues.Add(value);
-                HandVisualRules.AssignThemesForHand(level);
+                level.HandVisualThemes.Add(altTheme);
                 return;
             }
 
@@ -190,7 +195,7 @@ namespace DragonBoxAlgebra.Gameplay
                 level.HandValues.Add(value);
                 level.HandCards.Add(CardKind.DayCreature);
                 level.HandValues.Add(value);
-                HandVisualRules.AssignThemesForHand(level);
+                AssignDistinctHandVisualThemes(level);
                 return;
             }
 
@@ -198,11 +203,15 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 level.HandCards.Add(CardKind.DayCreature);
                 level.HandValues.Add(value);
+                level.HandVisualThemes.Add(altTheme);
+
                 level.HandCards.Add(primaryHand);
                 level.HandValues.Add(value);
+                level.HandVisualThemes.Add(-1);
+
                 level.HandCards.Add(CardKind.NightCreature);
                 level.HandValues.Add(value);
-                HandVisualRules.AssignThemesForHand(level);
+                level.HandVisualThemes.Add(level.CreatureTheme);
                 return;
             }
 
@@ -214,7 +223,33 @@ namespace DragonBoxAlgebra.Gameplay
                 ? primaryHand
                 : CardKind.NegativeConstant);
             level.HandValues.Add(value);
-            HandVisualRules.AssignThemesForHand(level);
+            AssignDistinctHandVisualThemes(level);
+        }
+
+        private static void AssignDistinctHandVisualThemes(LevelDefinition level)
+        {
+            int levelTheme = level.CreatureTheme;
+            int altTheme = (levelTheme + 5) % 10;
+
+            foreach (CardKind kind in level.HandCards)
+            {
+                if (kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+                {
+                    level.HandVisualThemes.Add(-1);
+                }
+                else if (kind == CardKind.NightCreature)
+                {
+                    level.HandVisualThemes.Add(levelTheme);
+                }
+                else if (kind == CardKind.DayCreature)
+                {
+                    level.HandVisualThemes.Add(altTheme);
+                }
+                else
+                {
+                    level.HandVisualThemes.Add(levelTheme);
+                }
+            }
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)
