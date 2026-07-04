@@ -25,73 +25,94 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            var allowed = CancellableKindsForHand(level);
-
-            for (int i = 0; i < count; i++)
+            if (UsesCreatureObstacles(level))
             {
-                CardKind kind = allowed[rng.Next(allowed.Count)];
-                level.LeftCards.Add(kind);
-                level.LeftValues.Add(ValueForKind(kind, value));
+                AddBalancedCreatureExtras(level, count, value);
+                return;
             }
+
+            AddBalancedDiceExtras(level, count, value);
         }
 
-        private static List<CardKind> CancellableKindsForHand(LevelDefinition level)
+        private static bool UsesCreatureObstacles(LevelDefinition level)
         {
-            bool hasNight = false;
-            bool hasDay = false;
-            bool hasPositive = false;
-            bool hasNegative = false;
-
-            foreach (CardKind kind in level.HandCards)
+            foreach (CardKind kind in level.LeftCards)
             {
-                switch (kind)
+                if (kind is CardKind.DayCreature or CardKind.NightCreature)
                 {
-                    case CardKind.NightCreature:
-                        hasNight = true;
-                        break;
-                    case CardKind.DayCreature:
-                        hasDay = true;
-                        break;
-                    case CardKind.PositiveConstant:
-                        hasPositive = true;
-                        break;
-                    case CardKind.NegativeConstant:
-                        hasNegative = true;
-                        break;
+                    return true;
                 }
             }
 
-            var allowed = new List<CardKind>();
-            if (hasNight || hasDay)
-            {
-                allowed.Add(CardKind.DayCreature);
-                allowed.Add(CardKind.NightCreature);
-            }
-
-            if (hasNegative)
-            {
-                allowed.Add(CardKind.PositiveConstant);
-            }
-
-            if (hasPositive)
-            {
-                allowed.Add(CardKind.NegativeConstant);
-            }
-
-            if (allowed.Count == 0)
-            {
-                allowed.Add(CardKind.DayCreature);
-                allowed.Add(CardKind.NightCreature);
-            }
-
-            return allowed;
+            return false;
         }
 
-        private static int ValueForKind(CardKind kind, int value) => kind switch
+        private static void AddBalancedCreatureExtras(LevelDefinition level, int count, int value)
         {
-            CardKind.DayCreature or CardKind.NightCreature => value,
-            CardKind.PositiveConstant or CardKind.NegativeConstant => value,
-            _ => 1
-        };
+            int dayCount = 0;
+            int nightCount = 0;
+            foreach (CardKind kind in level.LeftCards)
+            {
+                if (kind == CardKind.DayCreature)
+                {
+                    dayCount++;
+                }
+                else if (kind == CardKind.NightCreature)
+                {
+                    nightCount++;
+                }
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                bool addDay = dayCount <= nightCount;
+                if (addDay)
+                {
+                    level.LeftCards.Add(CardKind.DayCreature);
+                    level.LeftValues.Add(value);
+                    dayCount++;
+                }
+                else
+                {
+                    level.LeftCards.Add(CardKind.NightCreature);
+                    level.LeftValues.Add(value);
+                    nightCount++;
+                }
+            }
+        }
+
+        private static void AddBalancedDiceExtras(LevelDefinition level, int count, int value)
+        {
+            int positiveCount = 0;
+            int negativeCount = 0;
+            foreach (CardKind kind in level.LeftCards)
+            {
+                if (kind == CardKind.PositiveConstant)
+                {
+                    positiveCount++;
+                }
+                else if (kind == CardKind.NegativeConstant)
+                {
+                    negativeCount++;
+                }
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                bool addPositive = positiveCount <= negativeCount;
+                if (addPositive)
+                {
+                    level.LeftCards.Add(CardKind.PositiveConstant);
+                    level.LeftValues.Add(value);
+                    positiveCount++;
+                }
+                else
+                {
+                    level.LeftCards.Add(CardKind.NegativeConstant);
+                    level.LeftValues.Add(value);
+                    negativeCount++;
+                }
+            }
+        }
     }
 }
