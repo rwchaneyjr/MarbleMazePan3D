@@ -27,7 +27,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (extraTileCount == 0)
             {
-                ConfigureStandardSolvableLevel(level, diceLevel, value);
+                ConfigureStandardSolvableLevel(level, handCount, diceLevel, value);
                 return;
             }
 
@@ -55,10 +55,10 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            ApplyCreatureBoard(level, leftBesideBox, rightCount, value);
+            ApplyCreatureBoard(level, leftBesideBox, rightCount, value, handCount);
         }
 
-        public static void ConfigureDualSideChallenge(LevelDefinition level, bool diceLevel, int value)
+        public static void ConfigureDualSideChallenge(LevelDefinition level, int handCount, bool diceLevel, int value)
         {
             if (diceLevel)
             {
@@ -66,23 +66,27 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            ApplyCreatureBoard(level, leftBesideBox: 2, rightCount: 2, value);
+            List<int> themePool = CoordinatedCreatureThemes.DistinctThemeSet(
+                System.Math.Max(handCount, 3), level.CreatureTheme);
+            var leftThemes = new List<int> { themePool[0], themePool[1] };
+            var rightThemes = new List<int>
+            {
+                themePool[2 % themePool.Count],
+                themePool[0]
+            };
+
+            ApplyCreatureBoard(level, leftBesideBox: 2, rightCount: 2, value, handCount, leftThemes, rightThemes);
         }
 
-        /// <summary>
-        /// Proven solvable layout: one creature beside the box (level theme), empty right side.
-        /// Hand keeps all tiles and reuses them after each balance.
-        /// </summary>
-        public static void ConfigureStandardSolvableLevel(LevelDefinition level, bool diceLevel, int value)
+        public static void ConfigureStandardSolvableLevel(LevelDefinition level, int handCount, bool diceLevel, int value)
         {
             level.RightCards.Clear();
             level.RightValues.Clear();
             level.RightVisualThemes.Clear();
 
-            CardKind solverKind = level.HandCards[0];
-
             if (diceLevel)
             {
+                CardKind solverKind = level.HandCards[0];
                 CardKind diceObstacle = solverKind == CardKind.NegativeConstant
                     ? CardKind.PositiveConstant
                     : CardKind.NegativeConstant;
@@ -93,21 +97,28 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            CardKind creatureObstacle = solverKind == CardKind.NightCreature
-                ? CardKind.DayCreature
-                : CardKind.NightCreature;
-
-            level.LeftCards = new List<CardKind> { CardKind.Box, creatureObstacle };
-            level.LeftValues = new List<int> { 1, value };
-            level.LeftVisualThemes = new List<int> { -1, level.CreatureTheme };
+            List<int> leftThemes = CoordinatedCreatureThemes.DistinctThemeSet(handCount, level.CreatureTheme);
+            ApplyCreatureBoard(level, handCount, rightCount: 0, value, handCount, leftThemes,
+                new List<int>());
         }
 
-        private static void ApplyCreatureBoard(LevelDefinition level, int leftBesideBox, int rightCount, int value)
+        private static void ApplyCreatureBoard(LevelDefinition level, int leftBesideBox, int rightCount, int value,
+            int handCount, List<int> leftThemes = null, List<int> rightThemes = null)
         {
             CardKind solverKind = level.HandCards[0];
             CardKind obstacleKind = solverKind == CardKind.NightCreature
                 ? CardKind.DayCreature
                 : CardKind.NightCreature;
+
+            leftThemes ??= CoordinatedCreatureThemes.DistinctThemeSet(leftBesideBox, level.CreatureTheme);
+            rightThemes ??= new List<int>();
+            if (rightCount > 0 && rightThemes.Count == 0)
+            {
+                for (int i = 0; i < rightCount; i++)
+                {
+                    rightThemes.Add(leftThemes[i % leftThemes.Count]);
+                }
+            }
 
             var leftCards = new List<CardKind> { CardKind.Box };
             var leftValues = new List<int> { 1 };
@@ -117,7 +128,7 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 leftCards.Add(obstacleKind);
                 leftValues.Add(value);
-                leftVisualThemes.Add(level.CreatureTheme);
+                leftVisualThemes.Add(leftThemes[i]);
             }
 
             var rightCards = new List<CardKind>();
@@ -128,7 +139,7 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 rightCards.Add(obstacleKind);
                 rightValues.Add(value);
-                rightVisualThemes.Add(level.CreatureTheme);
+                rightVisualThemes.Add(rightThemes[i]);
             }
 
             level.LeftCards = leftCards;
@@ -137,6 +148,8 @@ namespace DragonBoxAlgebra.Gameplay
             level.RightCards = rightCards;
             level.RightValues = rightValues;
             level.RightVisualThemes = rightVisualThemes;
+
+            CoordinatedCreatureThemes.ApplyHandThemes(level, leftThemes, rightThemes);
         }
 
         private static void ApplyDiceBoard(LevelDefinition level, int leftBesideBox, int rightCount, int value)

@@ -117,7 +117,7 @@ namespace DragonBoxAlgebra.Gameplay
                     bool diceLevel = pattern == 4;
                     if (LevelSolvabilityRules.IsDualSideChallenge(levelIndex))
                     {
-                        LevelSolvabilityRules.ConfigureDualSideChallenge(level, diceLevel, value);
+                        LevelSolvabilityRules.ConfigureDualSideChallenge(level, handCount, diceLevel, value);
                     }
                     else if (LevelSolvabilityRules.IsExtraPuzzleLevel(levelIndex))
                     {
@@ -129,7 +129,7 @@ namespace DragonBoxAlgebra.Gameplay
                     }
                     else
                     {
-                        LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, diceLevel, value);
+                        LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel, value);
                     }
 
                     level.ParMoves = handCount + 1;
@@ -164,7 +164,7 @@ namespace DragonBoxAlgebra.Gameplay
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: false);
             if (handCount >= 2)
             {
-                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, diceLevel: false, value);
+                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: false, value);
             }
             else
             {
@@ -191,7 +191,7 @@ namespace DragonBoxAlgebra.Gameplay
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: true);
             if (handCount >= 2)
             {
-                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, diceLevel: true, value);
+                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: true, value);
             }
             else
             {
@@ -209,12 +209,8 @@ namespace DragonBoxAlgebra.Gameplay
             level.HandVisualThemes.Clear();
 
             CardKind solver = HandCompositionRules.PrimarySolverCard(level, diceLevel, primaryHand);
-            CardKind companion = HandCompositionRules.CompanionCreature(
-                solver is CardKind.DayCreature or CardKind.NightCreature
-                    ? solver
-                    : CardKind.NightCreature);
 
-            if (handCount <= 1)
+            if (handCount <= 1))
             {
                 level.HandCards.Add(solver);
                 level.HandValues.Add(diceLevel && solver is CardKind.PositiveConstant or CardKind.NegativeConstant
@@ -224,47 +220,13 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (handCount == 2)
-            {
-                if (diceLevel)
-                {
-                    level.HandCards.Add(solver);
-                    level.HandValues.Add(value);
-                    level.HandCards.Add(companion);
-                    level.HandValues.Add(value);
-                }
-                else
-                {
-                    level.HandCards.Add(solver);
-                    level.HandValues.Add(value);
-                    level.HandCards.Add(companion);
-                    level.HandValues.Add(value);
-                }
-
-                HandVisualRules.AssignLevelHandVisualThemes(level);
-                return;
-            }
-
-            if (diceLevel)
+            for (int i = 0; i < handCount; i++)
             {
                 level.HandCards.Add(solver);
-                level.HandValues.Add(value);
-                level.HandCards.Add(companion);
-                level.HandValues.Add(value);
-                level.HandCards.Add(CardKind.NightCreature);
-                level.HandValues.Add(value);
+                level.HandValues.Add(diceLevel && solver is CardKind.PositiveConstant or CardKind.NegativeConstant
+                    ? value
+                    : value);
             }
-            else
-            {
-                level.HandCards.Add(solver);
-                level.HandValues.Add(value);
-                level.HandCards.Add(companion);
-                level.HandValues.Add(value);
-                level.HandCards.Add(companion);
-                level.HandValues.Add(value);
-            }
-
-            HandVisualRules.AssignLevelHandVisualThemes(level);
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)
