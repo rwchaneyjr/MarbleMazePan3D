@@ -32,6 +32,7 @@ namespace DragonBoxAlgebra.Gameplay
         public BalancePending PendingBalance => _pendingBalance;
 
         private readonly List<BoardCard> _hand = new();
+        private readonly List<BoardCard> _handTemplates = new();
         private readonly List<PendingCancelMarker> _pendingCancels = new();
         private readonly Stack<GameSnapshot> _undoStack = new();
         private GameSnapshot _initialSnapshot;
@@ -94,6 +95,7 @@ namespace DragonBoxAlgebra.Gameplay
             _hand.AddRange(level.BuildHand());
             HandVisualRules.EnsureDistinctHandVisuals(_hand, level.CreatureTheme);
             HandRules.DedupeFlipFamilies(_hand);
+            CaptureHandTemplates();
             Moves.Reset();
             _undoStack.Clear();
             _levelComplete = false;
@@ -121,17 +123,10 @@ namespace DragonBoxAlgebra.Gameplay
             if (count <= 1)
             {
                 return "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                       "Light + dark on the same side become one *. Pairs never cross the middle.";
+                       "Your hand tile stays — you can use it again. Light + dark on the same side become one *.";
             }
 
-            if (count == 2)
-            {
-                return HandCompositionRules.MultiCardHandHint + " Play each tile: drag to a side, then drag the same tile to the ?. " +
-                       "Finish one tile before starting the next.";
-            }
-
-            return HandCompositionRules.MultiCardHandHint + " Play each tile: drag to a side, then drag the same tile to the ?. " +
-                   "Light + dark on the same side become one *.";
+            return HandCompositionRules.MultiCardHandHint;
         }
 
         public void LoadNextLevel()
@@ -391,37 +386,26 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            PushUndo();
-            _pendingBalance = null;
-            if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
+            return TryPlayFromHand(handIndex, sideName);
+        }
+
+        private void CaptureHandTemplates()
+        {
+            _handTemplates.Clear();
+            foreach (BoardCard card in _hand)
             {
-                side.Cards.Add(handCard.CloneForPlacement());
-                BoardCard placed = side.Cards[side.Cards.Count - 1];
-                TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
-                _hand.RemoveAt(handIndex);
-                HandChanged?.Invoke();
-                Moves.RegisterBalancedPlay();
-                MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
+                _handTemplates.Add(card.Clone());
             }
-            else
+        }
+
+        private void RestoreHandSlot(int handIndex)
+        {
+            if (handIndex < 0 || handIndex >= _handTemplates.Count)
             {
-                CombineRules.RemoveCardById(side, targetCard.Id);
-                _hand.RemoveAt(handIndex);
-                HandChanged?.Invoke();
-                Moves.RegisterCombine();
-                CombineOccurred?.Invoke(new CombineEvent
-                {
-                    SideName = sideName,
-                    Action = CombineActionType.OppositeCancel,
-                    IndexA = targetBoardIndex,
-                    IndexB = -1
-                });
-                MessageChanged?.Invoke("Dice canceled.");
+                return;
             }
 
-            BoardChanged?.Invoke();
-            CheckWin();
-            return true;
+            _hand[handIndex] = _handTemplates[handIndex].Clone();
         }
 
         private bool TryStartBalance(int handIndex, string targetSide, BoardCard template)
@@ -479,8 +463,8 @@ namespace DragonBoxAlgebra.Gameplay
             int holePlacedIndex = insertIndex;
             string placedSide = _pendingBalance.PlacedSide;
             int placedBoardIndex = _pendingBalance.PlacedIndex;
-            _hand.RemoveAt(handIndex);
             _pendingBalance = null;
+            RestoreHandSlot(handIndex);
             HandChanged?.Invoke();
 
             ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);

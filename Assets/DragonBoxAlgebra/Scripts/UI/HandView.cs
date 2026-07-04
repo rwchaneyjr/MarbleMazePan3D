@@ -76,25 +76,9 @@ namespace DragonBoxAlgebra.UI
             return count;
         }
 
-        private int VisibleHandCount()
-        {
-            if (_controller.HasPendingBalance && _controller.Hand.Count > 0)
-            {
-                return 1;
-            }
+        private int VisibleHandCount() => _controller.Hand.Count;
 
-            return _controller.Hand.Count;
-        }
-
-        private bool ShouldShowHandIndex(int index)
-        {
-            if (!_controller.HasPendingBalance)
-            {
-                return true;
-            }
-
-            return index == _controller.PendingBalance.HandIndex;
-        }
+        private bool ShouldShowHandIndex(int index) => true;
 
         private void RefreshHandInPlace()
         {

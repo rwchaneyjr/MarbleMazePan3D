@@ -88,7 +88,6 @@ namespace DragonBoxAlgebra.Gameplay
                 string handLabel = handCount == 1 ? string.Empty : handCount == 2 ? " (2 tiles)" : " (3 tiles)";
                 string title = $"{place} Puzzle {i + 1}{handLabel}";
 
-                // Box always starts on the left so it can end alone on one side.
                 LevelDefinition level = pattern switch
                 {
                     0 => CreatureLevel(title, theme, value, handCount,
@@ -167,11 +166,19 @@ namespace DragonBoxAlgebra.Gameplay
             level.HandValues.Clear();
             level.HandVisualThemes.Clear();
 
+            CardKind solver = HandCompositionRules.PrimarySolverCard(level, diceLevel, primaryHand);
+            CardKind companion = HandCompositionRules.CompanionCreature(
+                solver is CardKind.DayCreature or CardKind.NightCreature
+                    ? solver
+                    : CardKind.NightCreature);
+
             if (handCount <= 1)
             {
-                level.HandCards.Add(primaryHand);
-                level.HandValues.Add(handValue);
-                level.HandVisualThemes.Add(diceLevel ? -1 : level.CreatureTheme);
+                level.HandCards.Add(solver);
+                level.HandValues.Add(diceLevel && solver is CardKind.PositiveConstant or CardKind.NegativeConstant
+                    ? value
+                    : handValue);
+                HandVisualRules.AssignLevelHandVisualThemes(level);
                 return;
             }
 
@@ -179,33 +186,42 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 if (diceLevel)
                 {
-                    level.HandCards.Add(primaryHand);
+                    level.HandCards.Add(solver);
                     level.HandValues.Add(value);
-                    level.HandCards.Add(CardKind.DayCreature);
+                    level.HandCards.Add(companion);
                     level.HandValues.Add(value);
                 }
                 else
                 {
-                    level.HandCards.Add(CardKind.NightCreature);
+                    level.HandCards.Add(solver);
                     level.HandValues.Add(value);
-                    level.HandCards.Add(CardKind.DayCreature);
+                    level.HandCards.Add(companion);
                     level.HandValues.Add(value);
                 }
 
-                HandCompositionRules.EnsureIncludesBoxSideCards(level, handCount, diceLevel, primaryHand, value);
                 HandVisualRules.AssignLevelHandVisualThemes(level);
                 return;
             }
 
-            level.HandCards.Add(CardKind.NightCreature);
-            level.HandValues.Add(value);
-            level.HandCards.Add(CardKind.DayCreature);
-            level.HandValues.Add(value);
-            level.HandCards.Add(diceLevel
-                ? primaryHand
-                : CardKind.NegativeConstant);
-            level.HandValues.Add(value);
-            HandCompositionRules.EnsureIncludesBoxSideCards(level, handCount, diceLevel, primaryHand, value);
+            if (diceLevel)
+            {
+                level.HandCards.Add(solver);
+                level.HandValues.Add(value);
+                level.HandCards.Add(companion);
+                level.HandValues.Add(value);
+                level.HandCards.Add(CardKind.NightCreature);
+                level.HandValues.Add(value);
+            }
+            else
+            {
+                level.HandCards.Add(solver);
+                level.HandValues.Add(value);
+                level.HandCards.Add(companion);
+                level.HandValues.Add(value);
+                level.HandCards.Add(CardKind.NegativeConstant);
+                level.HandValues.Add(value);
+            }
+
             HandVisualRules.AssignLevelHandVisualThemes(level);
         }
 
