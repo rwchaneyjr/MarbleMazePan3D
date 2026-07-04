@@ -435,14 +435,17 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 Card = template.Clone(),
                 PlacedSide = targetSide,
-                PlacedIndex = placedIndex,
                 HandIndex = handIndex,
                 HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
             };
 
-            MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
+            ActivateOppositePairOrCancelDice(targetSide, placedIndex);
+
+            MessageChanged?.Invoke(_pendingCancels.Count > 0
+                ? "? on the other side — drag the same tile to fill the hole. Light met dark: spinning * appeared!"
+                : "? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
-            HandChanged?.Invoke();
+            ResolveCombines();
             return true;
         }
 
@@ -476,13 +479,11 @@ namespace DragonBoxAlgebra.Gameplay
 
             balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
             int placedIndex = insertIndex;
-            string placedSide = _pendingBalance.PlacedSide;
-            int placedBoardIndex = _pendingBalance.PlacedIndex;
             _hand.RemoveAt(handIndex);
             _pendingBalance = null;
             HandChanged?.Invoke();
 
-            ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
+            // Only the hole side gets a new pair check — placed side was handled on first drag.
             ActivateOppositePairOrCancelDice(targetSide, placedIndex);
 
             Moves.RegisterBalancedPlay();

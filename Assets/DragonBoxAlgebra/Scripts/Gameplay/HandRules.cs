@@ -17,16 +17,12 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        private static int FlipFamilyKey(BoardCard card)
+        private static int FlipFamilyKey(BoardCard card) => card.Kind switch
         {
-            int themePart = card.VisualTheme >= 0 ? card.VisualTheme : 0;
-            return card.Kind switch
-            {
-                CardKind.DayCreature => 100 + card.Value * 20 + themePart,
-                CardKind.NightCreature => 200 + card.Value * 20 + themePart,
-                CardKind.PositiveConstant or CardKind.NegativeConstant => 300 + card.Value,
-                _ => 1000 + (int)card.Kind
-            };
-        }
+            CardKind.DayCreature => 100 + card.Value,
+            CardKind.NightCreature => 200 + card.Value,
+            CardKind.PositiveConstant or CardKind.NegativeConstant => 300 + card.Value,
+            _ => 1000 + (int)card.Kind
+        };
     }
 }

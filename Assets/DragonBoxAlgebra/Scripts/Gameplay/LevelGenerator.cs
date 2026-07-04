@@ -137,7 +137,7 @@ namespace DragonBoxAlgebra.Gameplay
                 ParMoves = parMoves,
                 ParCards = parCards
             };
-            FillHand(level, handCount, primaryHand, handValue, value, theme);
+            FillHand(level, handCount, primaryHand, handValue, value);
             return level;
         }
 
@@ -155,12 +155,11 @@ namespace DragonBoxAlgebra.Gameplay
                 ParMoves = parMoves,
                 ParCards = parCards
             };
-            FillHand(level, handCount, primaryHand, handValue, value, theme);
+            FillHand(level, handCount, primaryHand, handValue, value);
             return level;
         }
 
-        private static void FillHand(LevelDefinition level, int handCount, CardKind primaryHand, int handValue, int value,
-            int levelTheme)
+        private static void FillHand(LevelDefinition level, int handCount, CardKind primaryHand, int handValue, int value)
         {
             level.HandCards.Clear();
             level.HandValues.Clear();
@@ -170,42 +169,55 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 level.HandCards.Add(primaryHand);
                 level.HandValues.Add(handValue);
-                level.HandVisualThemes.Add(levelTheme);
+                level.HandVisualThemes.Add(level.CreatureTheme);
                 return;
             }
-
-            int companionTheme = (levelTheme + 3) % 10;
-            int altTheme = (levelTheme + 5) % 10;
 
             if (handCount == 2)
             {
-                // Distinct from each other and from board creatures (which use levelTheme).
-                // e.g. board sun + hand turtle + crab
                 level.HandCards.Add(CardKind.NightCreature);
                 level.HandValues.Add(value);
-                level.HandVisualThemes.Add(companionTheme);
-
                 level.HandCards.Add(CardKind.DayCreature);
                 level.HandValues.Add(value);
-                level.HandVisualThemes.Add(altTheme);
+                AssignDistinctHandVisualThemes(level);
                 return;
             }
 
-            // 3 tiles: e.g. crab + dice + fish — all different from board and each other
+            level.HandCards.Add(CardKind.NightCreature);
+            level.HandValues.Add(value);
             level.HandCards.Add(CardKind.DayCreature);
             level.HandValues.Add(value);
-            level.HandVisualThemes.Add(altTheme);
-
-            CardKind diceKind = primaryHand is CardKind.PositiveConstant or CardKind.NegativeConstant
+            level.HandCards.Add(primaryHand is CardKind.PositiveConstant or CardKind.NegativeConstant
                 ? primaryHand
-                : CardKind.NegativeConstant;
-            level.HandCards.Add(diceKind);
+                : CardKind.NegativeConstant);
             level.HandValues.Add(value);
-            level.HandVisualThemes.Add(-1);
+            AssignDistinctHandVisualThemes(level);
+        }
 
-            level.HandCards.Add(CardKind.DayCreature);
-            level.HandValues.Add(value);
-            level.HandVisualThemes.Add(companionTheme);
+        private static void AssignDistinctHandVisualThemes(LevelDefinition level)
+        {
+            int levelTheme = level.CreatureTheme;
+            int altTheme = (levelTheme + 5) % 10;
+
+            foreach (CardKind kind in level.HandCards)
+            {
+                if (kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+                {
+                    level.HandVisualThemes.Add(-1);
+                }
+                else if (kind == CardKind.NightCreature)
+                {
+                    level.HandVisualThemes.Add(levelTheme);
+                }
+                else if (kind == CardKind.DayCreature)
+                {
+                    level.HandVisualThemes.Add(altTheme);
+                }
+                else
+                {
+                    level.HandVisualThemes.Add(levelTheme);
+                }
+            }
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)
