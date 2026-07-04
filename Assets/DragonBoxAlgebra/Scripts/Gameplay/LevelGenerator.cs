@@ -112,6 +112,13 @@ namespace DragonBoxAlgebra.Gameplay
                         CardKind.NegativeConstant, value, handCount * 2, handCount)
                 };
 
+                if (LevelSolvabilityRules.ShouldAddExtraBoxSideTiles(levelIndex))
+                {
+                    int extraCount = LevelSolvabilityRules.ExtraTileCountForHand(handCount);
+                    LevelSolvabilityRules.AddRandomBoxSideTiles(level, extraCount, value, rng);
+                    level.ParMoves += extraCount;
+                }
+
                 levels.Add(level);
 
                 if (rng.NextDouble() < 0.15)
