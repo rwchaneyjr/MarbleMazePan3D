@@ -92,6 +92,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
+            HandVisualRules.EnsureDistinctHandVisuals(_hand, level.CreatureTheme);
             HandRules.DedupeFlipFamilies(_hand);
             Moves.Reset();
             _undoStack.Clear();
