@@ -94,7 +94,13 @@ namespace DragonBoxAlgebra.Gameplay
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
             HandVisualRules.EnsureDistinctHandVisuals(_hand, level.CreatureTheme);
-            HandRules.DedupeFlipFamilies(_hand);
+            if (_hand.Count != level.HandCards.Count)
+            {
+                _hand.Clear();
+                _hand.AddRange(level.BuildHand());
+                HandVisualRules.EnsureDistinctHandVisuals(_hand, level.CreatureTheme);
+            }
+
             CaptureHandTemplates();
             Moves.Reset();
             _undoStack.Clear();
@@ -186,6 +192,11 @@ namespace DragonBoxAlgebra.Gameplay
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             MessageChanged?.Invoke("Undid the last move.");
+        }
+
+        public void RefreshHandPresentation()
+        {
+            HandChanged?.Invoke();
         }
 
         public bool TryFlipHandCard(int handIndex)
@@ -398,6 +409,15 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
+        private void SyncHandFromTemplates()
+        {
+            _hand.Clear();
+            foreach (BoardCard template in _handTemplates)
+            {
+                _hand.Add(template.Clone());
+            }
+        }
+
         private void RestoreHandSlot(int handIndex)
         {
             if (handIndex < 0 || handIndex >= _handTemplates.Count)
@@ -427,7 +447,6 @@ namespace DragonBoxAlgebra.Gameplay
 
             MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
-            HandChanged?.Invoke();
             return true;
         }
 
@@ -464,7 +483,7 @@ namespace DragonBoxAlgebra.Gameplay
             string placedSide = _pendingBalance.PlacedSide;
             int placedBoardIndex = _pendingBalance.PlacedIndex;
             _pendingBalance = null;
-            RestoreHandSlot(handIndex);
+            SyncHandFromTemplates();
             HandChanged?.Invoke();
 
             ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);

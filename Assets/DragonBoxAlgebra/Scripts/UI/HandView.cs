@@ -21,8 +21,7 @@ namespace DragonBoxAlgebra.UI
             _panel = panel;
             _canvas = canvas;
             _dragRoot = dragRoot;
-            _controller.HandChanged += RefreshHandInPlace;
-            _controller.BoardChanged += OnBoardChanged;
+            _controller.HandChanged += OnHandChanged;
             Refresh();
         }
 
@@ -30,97 +29,56 @@ namespace DragonBoxAlgebra.UI
         {
             if (_controller != null)
             {
-                _controller.HandChanged -= RefreshHandInPlace;
-                _controller.BoardChanged -= OnBoardChanged;
+                _controller.HandChanged -= OnHandChanged;
             }
         }
 
-        private void OnBoardChanged()
+        private void OnHandChanged()
         {
-            if (_controller.HasPendingBalance && _controller.Hand.Count > 0)
-            {
-                StartCoroutine(EnsureHandVisibleNextFrame());
-            }
+            StartCoroutine(RefreshNextFrame());
         }
 
-        private IEnumerator EnsureHandVisibleNextFrame()
+        private IEnumerator RefreshNextFrame()
         {
             yield return null;
-
-            if (_controller.Hand.Count == 0)
-            {
-                yield break;
-            }
-
-            if (CountHandWidgets() == VisibleHandCount())
-            {
-                RefreshHandInPlace();
-                yield break;
-            }
-
             Refresh();
         }
 
-        private int CountHandWidgets()
+        private void DestroyAllHandWidgets()
         {
-            int count = 0;
-            for (int i = 0; i < _panel.childCount; i++)
+            DestroyHandWidgetsUnder(_panel);
+            if (_dragRoot != null)
             {
-                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    count++;
-                }
+                DestroyHandWidgetsUnder(_dragRoot);
             }
-
-            return count;
         }
 
-        private int VisibleHandCount() => _controller.Hand.Count;
-
-        private bool ShouldShowHandIndex(int index) => true;
-
-        private void RefreshHandInPlace()
+        private static void DestroyHandWidgetsUnder(Transform root)
         {
-            var widgets = new List<CardWidget>();
-            for (int i = 0; i < _panel.childCount; i++)
+            if (root == null)
             {
-                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    widgets.Add(widget);
-                }
-            }
-
-            var visibleIndices = new List<int>();
-            for (int i = 0; i < _controller.Hand.Count; i++)
-            {
-                if (ShouldShowHandIndex(i))
-                {
-                    visibleIndices.Add(i);
-                }
-            }
-
-            if (widgets.Count == visibleIndices.Count)
-            {
-                for (int i = 0; i < widgets.Count; i++)
-                {
-                    int handIndex = visibleIndices[i];
-                    widgets[i].Bind(_controller.Hand[handIndex], handIndex, "Hand", _controller, _canvas, _dragRoot);
-                }
-
                 return;
             }
 
-            Refresh();
+            for (int i = root.childCount - 1; i >= 0; i--)
+            {
+                Transform child = root.GetChild(i);
+                CardWidget widget = child.GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand")
+                {
+                    Destroy(child.gameObject);
+                }
+            }
         }
 
         private void Refresh()
         {
+            DestroyAllHandWidgets();
+
             for (int i = _panel.childCount - 1; i >= 0; i--)
             {
                 Transform child = _panel.GetChild(i);
-                if (child.GetComponent<BoardDropZone>() == null)
+                if (child.GetComponent<BoardDropZone>() == null && child.GetComponent<CardWidget>() == null)
                 {
                     Destroy(child.gameObject);
                 }
@@ -140,11 +98,6 @@ namespace DragonBoxAlgebra.UI
 
             for (int i = 0; i < _controller.Hand.Count; i++)
             {
-                if (!ShouldShowHandIndex(i))
-                {
-                    continue;
-                }
-
                 BoardCard card = _controller.Hand[i];
                 CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
             }
