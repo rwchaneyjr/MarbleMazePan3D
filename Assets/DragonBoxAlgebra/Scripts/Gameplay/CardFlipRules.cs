@@ -12,10 +12,10 @@ namespace DragonBoxAlgebra.Gameplay
         {
             return card.Kind switch
             {
-                CardKind.DayCreature => new BoardCard(CardKind.NightCreature, card.Value),
-                CardKind.NightCreature => new BoardCard(CardKind.DayCreature, card.Value),
-                CardKind.PositiveConstant => new BoardCard(CardKind.NegativeConstant, card.Value),
-                CardKind.NegativeConstant => new BoardCard(CardKind.PositiveConstant, card.Value),
+                CardKind.DayCreature => new BoardCard(CardKind.NightCreature, card.Value, card.StackCount, card.VisualTheme),
+                CardKind.NightCreature => new BoardCard(CardKind.DayCreature, card.Value, card.StackCount, card.VisualTheme),
+                CardKind.PositiveConstant => new BoardCard(CardKind.NegativeConstant, card.Value, card.StackCount, card.VisualTheme),
+                CardKind.NegativeConstant => new BoardCard(CardKind.PositiveConstant, card.Value, card.StackCount, card.VisualTheme),
                 _ => card
             };
         }
