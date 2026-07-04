@@ -4,17 +4,21 @@ using DragonBoxAlgebra.Core;
 namespace DragonBoxAlgebra.Gameplay
 {
     /// <summary>
-    /// Pairs distinct visual themes between hand solvers and board obstacles so every
-    /// creature on the red side has its matching solution tile in hand.
+    /// Red-side obstacles and hand solvers share the same distinct theme list:
+    /// hand slot i is the light/dark partner for red-side obstacle i.
     /// </summary>
     public static class CoordinatedCreatureThemes
     {
-        public static void ApplyHandThemes(LevelDefinition level, IReadOnlyList<int> leftThemes,
-            IReadOnlyList<int> rightThemes)
+        public static List<int> BuildRedSideThemes(int count, int levelTheme) =>
+            ThemeAssignment.DistinctThemes(count, levelTheme);
+
+        public static List<int> BuildOtherSideThemes(int count, ISet<int> usedThemes, int levelTheme) =>
+            ThemeAssignment.DistinctThemesExcluding(count, usedThemes, levelTheme);
+
+        public static void ApplyRedSideAndHand(LevelDefinition level, IReadOnlyList<int> redThemes)
         {
             level.HandVisualThemes.Clear();
-            int leftIndex = 0;
-            int rightIndex = 0;
+            int redIndex = 0;
 
             for (int i = 0; i < level.HandCards.Count; i++)
             {
@@ -25,25 +29,10 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
-                if (leftIndex < leftThemes.Count)
-                {
-                    level.HandVisualThemes.Add(leftThemes[leftIndex]);
-                    leftIndex++;
-                    continue;
-                }
-
-                if (rightIndex < rightThemes.Count)
-                {
-                    level.HandVisualThemes.Add(rightThemes[rightIndex]);
-                    rightIndex++;
-                    continue;
-                }
-
-                level.HandVisualThemes.Add(level.CreatureTheme);
+                int theme = redIndex < redThemes.Count ? redThemes[redIndex] : level.CreatureTheme;
+                level.HandVisualThemes.Add(theme);
+                redIndex++;
             }
         }
-
-        public static List<int> DistinctThemeSet(int count, int levelTheme) =>
-            ThemeAssignment.DistinctThemes(count, levelTheme);
     }
 }

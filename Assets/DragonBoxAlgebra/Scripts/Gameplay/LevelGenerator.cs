@@ -115,11 +115,7 @@ namespace DragonBoxAlgebra.Gameplay
                 if (LevelSolvabilityRules.ShouldConfigureBoxSide(handCount))
                 {
                     bool diceLevel = pattern == 4;
-                    if (LevelSolvabilityRules.IsDualSideChallenge(levelIndex))
-                    {
-                        LevelSolvabilityRules.ConfigureDualSideChallenge(level, handCount, diceLevel, value);
-                    }
-                    else if (LevelSolvabilityRules.IsExtraPuzzleLevel(levelIndex))
+                    if (LevelSolvabilityRules.IsExtraPuzzleLevel(levelIndex))
                     {
                         int extraIndex = levelIndex - LevelSolvabilityRules.ExtraPuzzleFromIndex;
                         int extraCount = 1 + (extraIndex % 2);

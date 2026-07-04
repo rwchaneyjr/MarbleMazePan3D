@@ -93,14 +93,6 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
-            HandVisualRules.EnsureDistinctHandVisuals(_hand, level.CreatureTheme);
-            if (_hand.Count != level.HandCards.Count)
-            {
-                _hand.Clear();
-                _hand.AddRange(level.BuildHand());
-                HandVisualRules.EnsureDistinctHandVisuals(_hand, level.CreatureTheme);
-            }
-
             CaptureHandTemplates();
             Moves.Reset();
             _undoStack.Clear();
@@ -637,6 +629,9 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             BoardCard card = side.Cards[index];
+            int themedPartner = -1;
+            int fallbackPartner = -1;
+
             for (int j = 0; j < side.Cards.Count; j++)
             {
                 if (j == index || IsCardPendingCancelOnSide(side.Cards[j].Id, sideName))
@@ -644,13 +639,24 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
-                if (CombineRules.IsCreatureOppositePair(card, side.Cards[j]))
+                if (!CombineRules.IsCreatureOppositePair(card, side.Cards[j]))
                 {
-                    return j;
+                    continue;
+                }
+
+                if (card.VisualTheme >= 0 && card.VisualTheme == side.Cards[j].VisualTheme)
+                {
+                    themedPartner = j;
+                    break;
+                }
+
+                if (fallbackPartner < 0)
+                {
+                    fallbackPartner = j;
                 }
             }
 
-            return -1;
+            return themedPartner >= 0 ? themedPartner : fallbackPartner;
         }
 
         private bool SideAlreadyHasCancelMarker(string sideName)
