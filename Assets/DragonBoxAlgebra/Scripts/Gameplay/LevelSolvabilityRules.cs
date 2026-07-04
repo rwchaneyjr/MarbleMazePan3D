@@ -79,25 +79,25 @@ namespace DragonBoxAlgebra.Gameplay
             level.RightValues.Clear();
             level.RightVisualThemes.Clear();
 
+            CardKind solverKind = level.HandCards[0];
+
             if (diceLevel)
             {
-                CardKind solverKind = level.HandCards[0];
-                CardKind obstacleKind = solverKind == CardKind.NegativeConstant
+                CardKind diceObstacle = solverKind == CardKind.NegativeConstant
                     ? CardKind.PositiveConstant
                     : CardKind.NegativeConstant;
 
-                level.LeftCards = new List<CardKind> { CardKind.Box, obstacleKind };
+                level.LeftCards = new List<CardKind> { CardKind.Box, diceObstacle };
                 level.LeftValues = new List<int> { 1, value };
                 level.LeftVisualThemes = new List<int> { -1, -1 };
                 return;
             }
 
-            CardKind creatureSolver = level.HandCards[0];
-            CardKind obstacleKind = creatureSolver == CardKind.NightCreature
+            CardKind creatureObstacle = solverKind == CardKind.NightCreature
                 ? CardKind.DayCreature
                 : CardKind.NightCreature;
 
-            level.LeftCards = new List<CardKind> { CardKind.Box, obstacleKind };
+            level.LeftCards = new List<CardKind> { CardKind.Box, creatureObstacle };
             level.LeftValues = new List<int> { 1, value };
             level.LeftVisualThemes = new List<int> { -1, level.CreatureTheme };
         }
