@@ -286,12 +286,7 @@ namespace DragonBoxAlgebra.UI
             CardWidget targetCard = FindDropTarget(eventData);
             if (targetCard != null && targetCard != this && targetCard.SideName != "Hand")
             {
-                if (_controller.TryPlayFromHand(Index, targetCard.SideName))
-                {
-                    MarkHandPlayHandled();
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                }
-
+                TryPlayHandOnBoardTarget(targetCard);
                 return;
             }
 
@@ -330,11 +325,9 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
-                if (target.SideName != "Hand"
-                    && _controller.TryPlayFromHand(Index, target.SideName))
+                if (target.SideName != "Hand")
                 {
-                    MarkHandPlayHandled();
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    TryPlayHandOnBoardTarget(target);
                 }
 
                 return;
@@ -448,6 +441,16 @@ namespace DragonBoxAlgebra.UI
             }
 
             return Card.IsDraggableFromBoard;
+        }
+
+        private void TryPlayHandOnBoardTarget(CardWidget target)
+        {
+            if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index)
+                || _controller.TryPlayFromHand(Index, target.SideName))
+            {
+                MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+            }
         }
 
         public static CardWidget Create(Transform parent, BoardCard card, int index, string sideName,

@@ -5,7 +5,44 @@ namespace DragonBoxAlgebra.Gameplay
 {
     public static class HandVisualRules
     {
-        private static readonly int[] ThemeOffsets = { 3, 7, 5, 2, 4, 6, 8, 1, 9 };
+        // Offsets chosen so hand creatures look clearly different (winged vs weather vs fish, etc.).
+        private static readonly int[] ThemeOffsets = { 1, 7, 4, 6, 8, 3, 0, 9, 2, 5 };
+
+        public static int PickHandTheme(int boardTheme, int slot, ISet<int> used = null)
+        {
+            for (int i = 0; i < ThemeOffsets.Length; i++)
+            {
+                int candidate = (boardTheme + ThemeOffsets[(slot + i) % ThemeOffsets.Length]) % 10;
+                if (candidate == boardTheme)
+                {
+                    continue;
+                }
+
+                if (used != null && used.Contains(candidate))
+                {
+                    continue;
+                }
+
+                return candidate;
+            }
+
+            for (int candidate = 0; candidate < 10; candidate++)
+            {
+                if (candidate == boardTheme)
+                {
+                    continue;
+                }
+
+                if (used != null && used.Contains(candidate))
+                {
+                    continue;
+                }
+
+                return candidate;
+            }
+
+            return (boardTheme + 1) % 10;
+        }
 
         public static void EnsureDistinctHandVisuals(List<BoardCard> hand, int boardTheme)
         {
@@ -28,7 +65,7 @@ namespace DragonBoxAlgebra.Gameplay
                 int theme = card.VisualTheme;
                 if (theme < 0 || theme == boardTheme || usedThemes.Contains(theme))
                 {
-                    theme = PickUnusedTheme(usedThemes, boardTheme, creatureSlot);
+                    theme = PickHandTheme(boardTheme, creatureSlot, usedThemes);
                 }
 
                 usedThemes.Add(theme);
@@ -36,28 +73,6 @@ namespace DragonBoxAlgebra.Gameplay
                 card.VisualTheme = theme;
                 hand[i] = card;
             }
-        }
-
-        private static int PickUnusedTheme(HashSet<int> used, int boardTheme, int slot)
-        {
-            for (int i = 0; i < ThemeOffsets.Length; i++)
-            {
-                int candidate = (boardTheme + ThemeOffsets[(slot + i) % ThemeOffsets.Length]) % 10;
-                if (candidate != boardTheme && !used.Contains(candidate))
-                {
-                    return candidate;
-                }
-            }
-
-            for (int candidate = 0; candidate < 10; candidate++)
-            {
-                if (candidate != boardTheme && !used.Contains(candidate))
-                {
-                    return candidate;
-                }
-            }
-
-            return (boardTheme + 1) % 10;
         }
     }
 }

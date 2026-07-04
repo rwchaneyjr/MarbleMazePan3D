@@ -210,14 +210,9 @@ namespace DragonBoxAlgebra.Gameplay
         private static void AddHandVisualThemes(LevelDefinition level)
         {
             int boardTheme = level.CreatureTheme;
-            int themeA = NextHandTheme(boardTheme, 3);
-            int themeB = NextHandTheme(boardTheme, 7);
-            if (themeB == themeA)
-            {
-                themeB = NextHandTheme(boardTheme, 5);
-            }
-
+            var usedThemes = new HashSet<int> { boardTheme };
             int creatureSlot = 0;
+
             foreach (CardKind kind in level.HandCards)
             {
                 if (kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
@@ -228,16 +223,12 @@ namespace DragonBoxAlgebra.Gameplay
 
                 if (kind is CardKind.DayCreature or CardKind.NightCreature)
                 {
-                    level.HandVisualThemes.Add(creatureSlot == 0 ? themeA : themeB);
+                    int theme = HandVisualRules.PickHandTheme(boardTheme, creatureSlot, usedThemes);
+                    usedThemes.Add(theme);
                     creatureSlot++;
+                    level.HandVisualThemes.Add(theme);
                 }
             }
-        }
-
-        private static int NextHandTheme(int boardTheme, int offset)
-        {
-            int theme = (boardTheme + offset) % 10;
-            return theme == boardTheme ? (boardTheme + 5) % 10 : theme;
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)
