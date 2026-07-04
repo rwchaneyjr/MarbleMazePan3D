@@ -7,8 +7,8 @@ namespace DragonBoxAlgebra.Gameplay
     public static class LevelGenerator
     {
         private const int GeneratedCount = 24;
-        private const int TwoCardFromIndex = 12;
-        private const int ThreeCardFromIndex = 18;
+        private const int TwoCardFromIndex = 8;
+        private const int ThreeCardFromIndex = 12;
 
         public static IReadOnlyList<LevelDefinition> GenerateAll(int seed = 20260703)
         {
@@ -88,6 +88,7 @@ namespace DragonBoxAlgebra.Gameplay
                 string handLabel = handCount == 1 ? string.Empty : handCount == 2 ? " (2 tiles)" : " (3 tiles)";
                 string title = $"{place} Puzzle {i + 1}{handLabel}";
 
+                // Box always starts on the left so it can end alone on one side.
                 LevelDefinition level = pattern switch
                 {
                     0 => CreatureLevel(title, theme, value, handCount,
@@ -174,52 +175,35 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            int altTheme = (level.CreatureTheme + 5) % 10;
-
-            if (diceLevel && handCount == 2)
-            {
-                // Dice puzzle: dice + creature — different images, both usable
-                level.HandCards.Add(primaryHand);
-                level.HandValues.Add(value);
-                level.HandVisualThemes.Add(-1);
-
-                level.HandCards.Add(CardKind.DayCreature);
-                level.HandValues.Add(value);
-                level.HandVisualThemes.Add(altTheme);
-                return;
-            }
-
             if (handCount == 2)
             {
-                level.HandCards.Add(CardKind.NightCreature);
-                level.HandValues.Add(value);
-                level.HandCards.Add(CardKind.DayCreature);
-                level.HandValues.Add(value);
+                if (diceLevel)
+                {
+                    // Dice + creature — both flip (+/- and day/night), different images
+                    level.HandCards.Add(primaryHand);
+                    level.HandValues.Add(value);
+                    level.HandCards.Add(CardKind.DayCreature);
+                    level.HandValues.Add(value);
+                }
+                else
+                {
+                    // Night + day — both flip, different creature families (e.g. owl + fish)
+                    level.HandCards.Add(CardKind.NightCreature);
+                    level.HandValues.Add(value);
+                    level.HandCards.Add(CardKind.DayCreature);
+                    level.HandValues.Add(value);
+                }
+
                 AssignDistinctHandVisualThemes(level);
                 return;
             }
 
-            if (diceLevel)
-            {
-                level.HandCards.Add(CardKind.DayCreature);
-                level.HandValues.Add(value);
-                level.HandVisualThemes.Add(altTheme);
-
-                level.HandCards.Add(primaryHand);
-                level.HandValues.Add(value);
-                level.HandVisualThemes.Add(-1);
-
-                level.HandCards.Add(CardKind.NightCreature);
-                level.HandValues.Add(value);
-                level.HandVisualThemes.Add(level.CreatureTheme);
-                return;
-            }
-
+            // 3 tiles — night + day + dice (e.g. turtle, sun, die). All flip light/dark or +/-
             level.HandCards.Add(CardKind.NightCreature);
             level.HandValues.Add(value);
             level.HandCards.Add(CardKind.DayCreature);
             level.HandValues.Add(value);
-            level.HandCards.Add(primaryHand is CardKind.PositiveConstant or CardKind.NegativeConstant
+            level.HandCards.Add(diceLevel
                 ? primaryHand
                 : CardKind.NegativeConstant);
             level.HandValues.Add(value);
@@ -228,26 +212,37 @@ namespace DragonBoxAlgebra.Gameplay
 
         private static void AssignDistinctHandVisualThemes(LevelDefinition level)
         {
-            int levelTheme = level.CreatureTheme;
-            int altTheme = (levelTheme + 5) % 10;
+            int boardTheme = level.CreatureTheme;
+            int alt1 = (boardTheme + 3) % 10;
+            int alt2 = (boardTheme + 7) % 10;
+            if (alt2 == alt1)
+            {
+                alt2 = (alt2 + 1) % 10;
+            }
 
+            if (alt1 == boardTheme)
+            {
+                alt1 = (boardTheme + 5) % 10;
+            }
+
+            if (alt2 == boardTheme)
+            {
+                alt2 = (boardTheme + 7) % 10;
+            }
+
+            int creatureIndex = 0;
             foreach (CardKind kind in level.HandCards)
             {
                 if (kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
                 {
                     level.HandVisualThemes.Add(-1);
+                    continue;
                 }
-                else if (kind == CardKind.NightCreature)
+
+                if (kind is CardKind.DayCreature or CardKind.NightCreature)
                 {
-                    level.HandVisualThemes.Add(levelTheme);
-                }
-                else if (kind == CardKind.DayCreature)
-                {
-                    level.HandVisualThemes.Add(altTheme);
-                }
-                else
-                {
-                    level.HandVisualThemes.Add(levelTheme);
+                    level.HandVisualThemes.Add(creatureIndex == 0 ? alt1 : alt2);
+                    creatureIndex++;
                 }
             }
         }
