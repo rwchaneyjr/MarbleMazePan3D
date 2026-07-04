@@ -6,16 +6,15 @@ namespace DragonBoxAlgebra.Gameplay
 {
     public static class LevelSolvabilityRules
     {
-        public const int ExtraBoxSideFromLevel = 13;
-        public const int ExtraBoxSideToLevel = 30;
+        public const int ExtraTilesForTwoCardHand = 5;
+        public const int ExtraTilesForThreeCardHand = 5;
 
-        public static bool ShouldAddExtraBoxSideTiles(int levelIndex) =>
-            levelIndex + 1 >= ExtraBoxSideFromLevel && levelIndex + 1 <= ExtraBoxSideToLevel;
+        public static bool ShouldAddExtraBoxSideTiles(int handCount) => handCount >= 2;
 
         public static int ExtraTileCountForHand(int handCount) => handCount switch
         {
-            >= 3 => 3,
-            2 => 2,
+            >= 3 => ExtraTilesForThreeCardHand,
+            2 => ExtraTilesForTwoCardHand,
             _ => 0
         };
 
