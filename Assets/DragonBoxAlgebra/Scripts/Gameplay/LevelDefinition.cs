@@ -16,16 +16,19 @@ namespace DragonBoxAlgebra.Gameplay
         public List<CardKind> HandCards = new();
         public List<int> HandValues = new();
         public List<int> HandVisualThemes = new();
+        public List<int> LeftVisualThemes = new();
+        public List<int> RightVisualThemes = new();
         public int ParMoves = 6;
         public int ParCards = 2;
 
-        public BoardSide BuildSide(List<CardKind> kinds, List<int> values)
+        public BoardSide BuildSide(List<CardKind> kinds, List<int> values, List<int> visualThemes = null)
         {
             var side = new BoardSide();
             for (int i = 0; i < kinds.Count; i++)
             {
                 int value = values != null && i < values.Count ? values[i] : 1;
-                side.Cards.Add(new BoardCard(kinds[i], value));
+                int visualTheme = visualThemes != null && i < visualThemes.Count ? visualThemes[i] : -1;
+                side.Cards.Add(new BoardCard(kinds[i], value, 1, visualTheme));
             }
 
             return side;

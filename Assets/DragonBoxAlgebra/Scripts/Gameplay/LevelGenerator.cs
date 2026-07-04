@@ -119,6 +119,7 @@ namespace DragonBoxAlgebra.Gameplay
                     level.ParMoves += extraCount;
                 }
 
+                BoardVisualRules.AssignDistinctSideThemes(level);
                 levels.Add(level);
 
                 if (rng.NextDouble() < 0.15)
@@ -145,6 +146,7 @@ namespace DragonBoxAlgebra.Gameplay
                 ParCards = parCards
             };
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: false);
+            BoardVisualRules.AssignDistinctSideThemes(level);
             return level;
         }
 
@@ -163,6 +165,7 @@ namespace DragonBoxAlgebra.Gameplay
                 ParCards = parCards
             };
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: true);
+            BoardVisualRules.AssignDistinctSideThemes(level);
             return level;
         }
 

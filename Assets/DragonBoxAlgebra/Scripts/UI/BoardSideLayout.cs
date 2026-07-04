@@ -9,10 +9,10 @@ namespace DragonBoxAlgebra.UI
     {
         private const float DefaultCardWidth = 110f;
         private const float DefaultCardHeight = 120f;
-        private const float MinCardWidth = 48f;
-        private const float HorizontalPadding = 32f;
-        private const float VerticalPadding = 32f;
-        private const float TileGap = 10f;
+        private const float MinCardWidth = 56f;
+        private const float HorizontalPadding = 20f;
+        private const float VerticalPadding = 20f;
+        private const float TileGap = 12f;
 
         // Creature slots for the pattern:
         //   + +
@@ -70,6 +70,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(panel);
             float panelWidth = panel.rect.width;
             float panelHeight = panel.rect.height;
             if (panelWidth <= 0f || panelHeight <= 0f)
@@ -78,7 +79,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             RectTransform box = null;
-            var creatures = new List<RectTransform>();
+            var creatures = new List<LayoutItem>();
             foreach (LayoutItem item in items)
             {
                 if (item.IsBox)
@@ -87,9 +88,11 @@ namespace DragonBoxAlgebra.UI
                 }
                 else
                 {
-                    creatures.Add(item.Rect);
+                    creatures.Add(item);
                 }
             }
+
+            creatures.Sort((a, b) => a.BoardIndex.CompareTo(b.BoardIndex));
 
             float cardWidth = DefaultCardWidth;
             float cardHeight = DefaultCardHeight;
@@ -104,31 +107,33 @@ namespace DragonBoxAlgebra.UI
             cardWidth *= scale;
             cardHeight *= scale;
 
-            float colPitch = cardWidth + TileGap * scale;
-            float rowPitch = cardHeight + TileGap * scale;
-            int rowCount = 3;
-            float gridWidth = (maxCol + 1) * colPitch - TileGap * scale;
-            float gridHeight = rowCount * rowPitch - TileGap * scale;
-            float originX = -gridWidth * 0.5f + cardWidth * 0.5f;
-            float originY = gridHeight * 0.5f - cardHeight * 0.5f;
+            float colPitch = cardWidth + TileGap;
+            float rowPitch = cardHeight + TileGap;
+            float gridHeight = 3f * rowPitch - TileGap;
+            float leftEdge = -panelWidth * 0.5f + HorizontalPadding;
+            float originX = leftEdge;
+            float topY = gridHeight * 0.5f - cardHeight * 0.5f;
 
             if (box != null)
             {
                 ApplyTileSize(box, cardWidth, cardHeight, ignoreLayout: true);
-                box.anchoredPosition = CellCenter(BoxSlot, originX, originY, colPitch, rowPitch);
+                box.anchoredPosition = CellCenter(BoxSlot, originX, topY, colPitch, rowPitch, cardWidth);
             }
 
             for (int i = 0; i < creatures.Count; i++)
             {
                 GridCell slot = i < slots.Length ? slots[i] : ExtraSlot(i, slots.Length, box != null);
-                ApplyTileSize(creatures[i], cardWidth, cardHeight, ignoreLayout: true);
-                creatures[i].anchoredPosition = CellCenter(slot, originX, originY, colPitch, rowPitch);
+                ApplyTileSize(creatures[i].Rect, cardWidth, cardHeight, ignoreLayout: true);
+                creatures[i].Rect.anchoredPosition = CellCenter(slot, originX, topY, colPitch, rowPitch, cardWidth);
             }
         }
 
-        private static Vector2 CellCenter(GridCell cell, float originX, float originY, float colPitch, float rowPitch)
+        private static Vector2 CellCenter(GridCell cell, float originX, float topY, float colPitch, float rowPitch,
+            float cardWidth)
         {
-            return new Vector2(originX + cell.Col * colPitch, originY - cell.Row * rowPitch);
+            float x = originX + cell.Col * colPitch + cardWidth * 0.5f;
+            float y = topY - cell.Row * rowPitch;
+            return new Vector2(x, y);
         }
 
         private static GridCell ExtraSlot(int index, int baseSlotCount, bool hasBox)
@@ -146,8 +151,8 @@ namespace DragonBoxAlgebra.UI
             float rowPitch = cardHeight + TileGap;
             float gridWidth = (maxCol + 1) * colPitch - TileGap;
             float gridHeight = 3f * rowPitch - TileGap;
-            float availableWidth = Mathf.Max(cardWidth, panelWidth - HorizontalPadding);
-            float availableHeight = Mathf.Max(cardHeight, panelHeight - VerticalPadding);
+            float availableWidth = Mathf.Max(cardWidth, panelWidth - HorizontalPadding * 2f);
+            float availableHeight = Mathf.Max(cardHeight, panelHeight - VerticalPadding * 2f);
             float widthScale = gridWidth > availableWidth ? availableWidth / gridWidth : 1f;
             float heightScale = gridHeight > availableHeight ? availableHeight / gridHeight : 1f;
             float scale = Mathf.Min(widthScale, heightScale, 1f);
@@ -165,6 +170,7 @@ namespace DragonBoxAlgebra.UI
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(cardWidth, cardHeight);
+            rect.localScale = Vector3.one;
 
             LayoutElement layoutElement = rect.GetComponent<LayoutElement>();
             if (layoutElement == null)
@@ -197,7 +203,8 @@ namespace DragonBoxAlgebra.UI
                     items.Add(new LayoutItem
                     {
                         Rect = child as RectTransform,
-                        IsBox = cardWidget.Card.Kind == CardKind.Box
+                        IsBox = cardWidget.Card.Kind == CardKind.Box,
+                        BoardIndex = cardWidget.Index
                     });
                     continue;
                 }
@@ -207,7 +214,8 @@ namespace DragonBoxAlgebra.UI
                     items.Add(new LayoutItem
                     {
                         Rect = child as RectTransform,
-                        IsBox = false
+                        IsBox = false,
+                        BoardIndex = i
                     });
                 }
             }
@@ -231,6 +239,7 @@ namespace DragonBoxAlgebra.UI
         {
             public RectTransform Rect;
             public bool IsBox;
+            public int BoardIndex;
         }
     }
 }

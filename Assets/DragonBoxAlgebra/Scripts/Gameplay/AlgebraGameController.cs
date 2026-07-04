@@ -88,8 +88,8 @@ namespace DragonBoxAlgebra.Gameplay
             LevelDefinition level = CurrentLevel;
             CreatureArt.SetTheme(level.CreatureTheme);
 
-            Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues),
-                level.BuildSide(level.RightCards, level.RightValues));
+            Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues, level.LeftVisualThemes),
+                level.BuildSide(level.RightCards, level.RightValues, level.RightVisualThemes));
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
