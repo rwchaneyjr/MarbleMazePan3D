@@ -129,13 +129,10 @@ namespace DragonBoxAlgebra.Gameplay
                     }
                     else
                     {
-                        int extraCount = levelIndex % 4 == 0 ? 1 : levelIndex % 4 == 1 ? 2 : 0;
-                        bool onOtherSide = levelIndex % 2 == 0;
-                        LevelSolvabilityRules.ConfigureSolvableLevel(level, handCount, diceLevel, value, extraCount,
-                            onOtherSide);
+                        LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, diceLevel, value);
                     }
 
-                    level.ParMoves = handCount + 2;
+                    level.ParMoves = handCount + 1;
                     level.ParCards = handCount;
                 }
 
@@ -167,7 +164,7 @@ namespace DragonBoxAlgebra.Gameplay
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: false);
             if (handCount >= 2)
             {
-                LevelSolvabilityRules.ConfigureSolvableLevel(level, handCount, diceLevel: false, value);
+                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, diceLevel: false, value);
             }
             else
             {
@@ -194,7 +191,7 @@ namespace DragonBoxAlgebra.Gameplay
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: true);
             if (handCount >= 2)
             {
-                LevelSolvabilityRules.ConfigureSolvableLevel(level, handCount, diceLevel: true, value);
+                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, diceLevel: true, value);
             }
             else
             {

@@ -25,6 +25,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
+            if (extraTileCount == 0)
+            {
+                ConfigureStandardSolvableLevel(level, diceLevel, value);
+                return;
+            }
+
             int leftBesideBox = handCount;
             int rightCount = 0;
             if (extraTileCount > 0)
@@ -61,6 +67,39 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             ApplyCreatureBoard(level, leftBesideBox: 2, rightCount: 2, value);
+        }
+
+        /// <summary>
+        /// Proven solvable layout: one creature beside the box (level theme), empty right side.
+        /// Hand keeps all tiles and reuses them after each balance.
+        /// </summary>
+        public static void ConfigureStandardSolvableLevel(LevelDefinition level, bool diceLevel, int value)
+        {
+            level.RightCards.Clear();
+            level.RightValues.Clear();
+            level.RightVisualThemes.Clear();
+
+            if (diceLevel)
+            {
+                CardKind solverKind = level.HandCards[0];
+                CardKind obstacleKind = solverKind == CardKind.NegativeConstant
+                    ? CardKind.PositiveConstant
+                    : CardKind.NegativeConstant;
+
+                level.LeftCards = new List<CardKind> { CardKind.Box, obstacleKind };
+                level.LeftValues = new List<int> { 1, value };
+                level.LeftVisualThemes = new List<int> { -1, -1 };
+                return;
+            }
+
+            CardKind creatureSolver = level.HandCards[0];
+            CardKind obstacleKind = creatureSolver == CardKind.NightCreature
+                ? CardKind.DayCreature
+                : CardKind.NightCreature;
+
+            level.LeftCards = new List<CardKind> { CardKind.Box, obstacleKind };
+            level.LeftValues = new List<int> { 1, value };
+            level.LeftVisualThemes = new List<int> { -1, level.CreatureTheme };
         }
 
         private static void ApplyCreatureBoard(LevelDefinition level, int leftBesideBox, int rightCount, int value)
