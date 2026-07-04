@@ -175,24 +175,26 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             int companionTheme = (levelTheme + 3) % 10;
+            int altTheme = (levelTheme + 5) % 10;
 
             if (handCount == 2)
             {
-                // e.g. sun (level theme) + turtle (companion theme dark side)
-                level.HandCards.Add(CardKind.DayCreature);
-                level.HandValues.Add(value);
-                level.HandVisualThemes.Add(levelTheme);
-
+                // Distinct from each other and from board creatures (which use levelTheme).
+                // e.g. board sun + hand turtle + crab
                 level.HandCards.Add(CardKind.NightCreature);
                 level.HandValues.Add(value);
                 level.HandVisualThemes.Add(companionTheme);
+
+                level.HandCards.Add(CardKind.DayCreature);
+                level.HandValues.Add(value);
+                level.HandVisualThemes.Add(altTheme);
                 return;
             }
 
-            // 3 tiles: e.g. sun + dice + fish — three distinct images
+            // 3 tiles: e.g. crab + dice + fish — all different from board and each other
             level.HandCards.Add(CardKind.DayCreature);
             level.HandValues.Add(value);
-            level.HandVisualThemes.Add(levelTheme);
+            level.HandVisualThemes.Add(altTheme);
 
             CardKind diceKind = primaryHand is CardKind.PositiveConstant or CardKind.NegativeConstant
                 ? primaryHand
