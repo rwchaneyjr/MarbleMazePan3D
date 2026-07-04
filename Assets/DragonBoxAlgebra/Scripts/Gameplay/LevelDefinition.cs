@@ -15,6 +15,7 @@ namespace DragonBoxAlgebra.Gameplay
         public List<int> RightValues = new();
         public List<CardKind> HandCards = new();
         public List<int> HandValues = new();
+        public List<int> HandVisualThemes = new();
         public int ParMoves = 6;
         public int ParCards = 2;
 
@@ -36,7 +37,10 @@ namespace DragonBoxAlgebra.Gameplay
             for (int i = 0; i < HandCards.Count; i++)
             {
                 int value = HandValues != null && i < HandValues.Count ? HandValues[i] : 1;
-                hand.Add(new BoardCard(HandCards[i], value));
+                int visualTheme = HandVisualThemes != null && i < HandVisualThemes.Count
+                    ? HandVisualThemes[i]
+                    : -1;
+                hand.Add(new BoardCard(HandCards[i], value, 1, visualTheme));
             }
 
             return hand;

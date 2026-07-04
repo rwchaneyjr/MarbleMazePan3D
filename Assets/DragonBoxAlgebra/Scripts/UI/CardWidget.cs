@@ -226,6 +226,14 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
+                // HandView rebuilds all hand widgets after play; drop the drag copy.
+                if (_handPlayHandled)
+                {
+                    Destroy(gameObject);
+                    _controller.RefreshHandPresentation();
+                    return;
+                }
+
                 transform.SetParent(_originalParent, false);
                 transform.SetSiblingIndex(_originalSiblingIndex);
                 Bind(_controller.Hand[Index], Index, "Hand", _controller, _canvas, _dragRoot);
