@@ -418,16 +418,6 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        private void RestoreHandSlot(int handIndex)
-        {
-            if (handIndex < 0 || handIndex >= _handTemplates.Count)
-            {
-                return;
-            }
-
-            _hand[handIndex] = _handTemplates[handIndex].Clone();
-        }
-
         private bool TryStartBalance(int handIndex, string targetSide, BoardCard template)
         {
             PushUndo();
