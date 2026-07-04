@@ -52,16 +52,48 @@ namespace DragonBoxAlgebra.UI
                 yield break;
             }
 
+            if (CountHandWidgets() == VisibleHandCount())
+            {
+                RefreshHandInPlace();
+                yield break;
+            }
+
+            Refresh();
+        }
+
+        private int CountHandWidgets()
+        {
+            int count = 0;
             for (int i = 0; i < _panel.childCount; i++)
             {
                 CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
                 if (widget != null && widget.SideName == "Hand")
                 {
-                    yield break;
+                    count++;
                 }
             }
 
-            Refresh();
+            return count;
+        }
+
+        private int VisibleHandCount()
+        {
+            if (_controller.HasPendingBalance && _controller.Hand.Count > 0)
+            {
+                return 1;
+            }
+
+            return _controller.Hand.Count;
+        }
+
+        private bool ShouldShowHandIndex(int index)
+        {
+            if (!_controller.HasPendingBalance)
+            {
+                return true;
+            }
+
+            return index == _controller.PendingBalance.HandIndex;
         }
 
         private void RefreshHandInPlace()
@@ -76,11 +108,21 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
-            if (widgets.Count == _controller.Hand.Count)
+            var visibleIndices = new List<int>();
+            for (int i = 0; i < _controller.Hand.Count; i++)
+            {
+                if (ShouldShowHandIndex(i))
+                {
+                    visibleIndices.Add(i);
+                }
+            }
+
+            if (widgets.Count == visibleIndices.Count)
             {
                 for (int i = 0; i < widgets.Count; i++)
                 {
-                    widgets[i].Bind(_controller.Hand[i], i, "Hand", _controller, _canvas, _dragRoot);
+                    int handIndex = visibleIndices[i];
+                    widgets[i].Bind(_controller.Hand[handIndex], handIndex, "Hand", _controller, _canvas, _dragRoot);
                 }
 
                 return;
@@ -114,6 +156,11 @@ namespace DragonBoxAlgebra.UI
 
             for (int i = 0; i < _controller.Hand.Count; i++)
             {
+                if (!ShouldShowHandIndex(i))
+                {
+                    continue;
+                }
+
                 BoardCard card = _controller.Hand[i];
                 CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
             }
