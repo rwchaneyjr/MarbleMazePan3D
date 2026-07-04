@@ -25,94 +25,38 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (UsesCreatureObstacles(level))
+            CardKind? obstacleKind = PrimaryBoxSideObstacleKind(level);
+            if (obstacleKind == null)
             {
-                AddBalancedCreatureExtras(level, count, value);
                 return;
             }
 
-            AddBalancedDiceExtras(level, count, value);
-        }
-
-        private static bool UsesCreatureObstacles(LevelDefinition level)
-        {
-            foreach (CardKind kind in level.LeftCards)
-            {
-                if (kind is CardKind.DayCreature or CardKind.NightCreature)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static void AddBalancedCreatureExtras(LevelDefinition level, int count, int value)
-        {
-            int dayCount = 0;
-            int nightCount = 0;
-            foreach (CardKind kind in level.LeftCards)
-            {
-                if (kind == CardKind.DayCreature)
-                {
-                    dayCount++;
-                }
-                else if (kind == CardKind.NightCreature)
-                {
-                    nightCount++;
-                }
-            }
-
             for (int i = 0; i < count; i++)
             {
-                bool addDay = dayCount <= nightCount;
-                if (addDay)
-                {
-                    level.LeftCards.Add(CardKind.DayCreature);
-                    level.LeftValues.Add(value);
-                    dayCount++;
-                }
-                else
-                {
-                    level.LeftCards.Add(CardKind.NightCreature);
-                    level.LeftValues.Add(value);
-                    nightCount++;
-                }
+                level.LeftCards.Add(obstacleKind.Value);
+                level.LeftValues.Add(ValueForKind(obstacleKind.Value, value));
             }
         }
 
-        private static void AddBalancedDiceExtras(LevelDefinition level, int count, int value)
+        private static CardKind? PrimaryBoxSideObstacleKind(LevelDefinition level)
         {
-            int positiveCount = 0;
-            int negativeCount = 0;
             foreach (CardKind kind in level.LeftCards)
             {
-                if (kind == CardKind.PositiveConstant)
+                if (kind is CardKind.DayCreature or CardKind.NightCreature
+                    or CardKind.PositiveConstant or CardKind.NegativeConstant)
                 {
-                    positiveCount++;
-                }
-                else if (kind == CardKind.NegativeConstant)
-                {
-                    negativeCount++;
+                    return kind;
                 }
             }
 
-            for (int i = 0; i < count; i++)
-            {
-                bool addPositive = positiveCount <= negativeCount;
-                if (addPositive)
-                {
-                    level.LeftCards.Add(CardKind.PositiveConstant);
-                    level.LeftValues.Add(value);
-                    positiveCount++;
-                }
-                else
-                {
-                    level.LeftCards.Add(CardKind.NegativeConstant);
-                    level.LeftValues.Add(value);
-                    negativeCount++;
-                }
-            }
+            return null;
         }
+
+        private static int ValueForKind(CardKind kind, int value) => kind switch
+        {
+            CardKind.DayCreature or CardKind.NightCreature => value,
+            CardKind.PositiveConstant or CardKind.NegativeConstant => value,
+            _ => 1
+        };
     }
 }
