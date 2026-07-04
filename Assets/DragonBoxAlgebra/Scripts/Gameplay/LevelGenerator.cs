@@ -210,7 +210,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             CardKind solver = HandCompositionRules.PrimarySolverCard(level, diceLevel, primaryHand);
 
-            if (handCount <= 1))
+            if (handCount <= 1)
             {
                 level.HandCards.Add(solver);
                 level.HandValues.Add(diceLevel && solver is CardKind.PositiveConstant or CardKind.NegativeConstant
