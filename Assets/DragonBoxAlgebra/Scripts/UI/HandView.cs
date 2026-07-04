@@ -101,11 +101,6 @@ namespace DragonBoxAlgebra.UI
                 BoardCard card = _controller.Hand[i];
                 CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
             }
-
-            if (_controller.Hand.Count >= 2)
-            {
-                BoardSideLayout.FitPanelToShowAllTiles(_panel);
-            }
         }
     }
 }
