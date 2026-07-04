@@ -184,6 +184,9 @@ namespace DragonBoxAlgebra.UI
 
             BuildCancelMarkers(_leftPanel, "Left");
             BuildCancelMarkers(_rightPanel, "Right");
+
+            BoardSideLayout.FitPanelToShowAllTiles(_leftPanel);
+            BoardSideLayout.FitPanelToShowAllTiles(_rightPanel);
         }
 
         private void BuildCancelMarkers(RectTransform panel, string sideName)
