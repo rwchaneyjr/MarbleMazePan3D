@@ -13,25 +13,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            int creatureCount = 0;
-            foreach (CardKind kind in level.HandCards)
-            {
-                if (kind is CardKind.DayCreature or CardKind.NightCreature)
-                {
-                    creatureCount++;
-                }
-            }
-
-            List<int> themes = ThemeAssignment.DistinctThemes(creatureCount, level.CreatureTheme);
-            int creatureIndex = 0;
-
             for (int i = 0; i < level.HandCards.Count; i++)
             {
                 CardKind kind = level.HandCards[i];
                 if (kind is CardKind.DayCreature or CardKind.NightCreature)
                 {
-                    level.HandVisualThemes.Add(themes[creatureIndex]);
-                    creatureIndex++;
+                    level.HandVisualThemes.Add(level.CreatureTheme);
                     continue;
                 }
 

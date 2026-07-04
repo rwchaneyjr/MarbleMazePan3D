@@ -109,17 +109,6 @@ namespace DragonBoxAlgebra.Gameplay
                 ? CardKind.DayCreature
                 : CardKind.NightCreature;
 
-            var usedThemes = HandVisualRules.CollectHandCreatureThemes(level);
-            List<int> leftThemes = ThemeAssignment.DistinctThemesExcluding(
-                leftBesideBox, usedThemes, level.CreatureTheme);
-            foreach (int theme in leftThemes)
-            {
-                usedThemes.Add(theme);
-            }
-
-            List<int> rightThemes = ThemeAssignment.DistinctThemesExcluding(
-                rightCount, usedThemes, level.CreatureTheme);
-
             var leftCards = new List<CardKind> { CardKind.Box };
             var leftValues = new List<int> { 1 };
             var leftVisualThemes = new List<int> { -1 };
@@ -128,7 +117,7 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 leftCards.Add(obstacleKind);
                 leftValues.Add(value);
-                leftVisualThemes.Add(leftThemes[i]);
+                leftVisualThemes.Add(level.CreatureTheme);
             }
 
             var rightCards = new List<CardKind>();
@@ -139,7 +128,7 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 rightCards.Add(obstacleKind);
                 rightValues.Add(value);
-                rightVisualThemes.Add(rightThemes[i]);
+                rightVisualThemes.Add(level.CreatureTheme);
             }
 
             level.LeftCards = leftCards;
