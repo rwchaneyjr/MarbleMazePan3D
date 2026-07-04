@@ -292,11 +292,80 @@ namespace DragonBoxAlgebra.UI
             return CreateStripedCreature(body, accent);
         }
 
-        private static Sprite CreateWeatherSprite(bool light)
+        private static Sprite CreateWeatherSprite(bool light) =>
+            light ? CreateSunSprite() : CreateStormSprite();
+
+        private static Sprite CreateSunSprite()
         {
-            var body = light ? new Color(1f, 0.82f, 0.2f) : new Color(0.45f, 0.55f, 0.72f);
-            var accent = light ? new Color(1f, 0.55f, 0.05f) : new Color(0.75f, 0.82f, 0.95f);
-            return CreateRoundCreature(body, accent, light ? 1.15f : 0.85f);
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+
+            var ray = new Color(1f, 0.78f, 0.12f);
+            var core = new Color(1f, 0.9f, 0.22f);
+            var center = new Color(1f, 0.62f, 0.05f);
+
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = i * Mathf.PI / 4f;
+                int tipX = 48 + (int)(Mathf.Cos(angle) * 34f);
+                int tipY = 52 + (int)(Mathf.Sin(angle) * 34f);
+                int baseX = 48 + (int)(Mathf.Cos(angle) * 18f);
+                int baseY = 52 + (int)(Mathf.Sin(angle) * 18f);
+                DrawLine(texture, baseX, baseY, tipX, tipY, 4, ray);
+            }
+
+            FillEllipse(texture, 48, 52, 20, 20, core);
+            FillEllipse(texture, 48, 52, 12, 12, center);
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static Sprite CreateStormSprite()
+        {
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+
+            var cloud = new Color(0.78f, 0.84f, 0.94f);
+            var cloudShadow = new Color(0.42f, 0.5f, 0.68f);
+            var rain = new Color(0.28f, 0.52f, 0.92f);
+
+            FillEllipse(texture, 48, 58, 30, 16, cloud);
+            FillEllipse(texture, 28, 56, 14, 12, cloud);
+            FillEllipse(texture, 68, 56, 14, 12, cloud);
+            FillEllipse(texture, 48, 50, 20, 14, cloudShadow);
+
+            for (int i = 0; i < 5; i++)
+            {
+                int x = 30 + i * 9;
+                DrawLine(texture, x, 42, x - 2, 24, 2, rain);
+            }
+
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static void DrawLine(Texture2D texture, int x0, int y0, int x1, int y1, int thickness, Color color)
+        {
+            int dx = Mathf.Abs(x1 - x0);
+            int dy = Mathf.Abs(y1 - y0);
+            int steps = Mathf.Max(dx, dy);
+            if (steps == 0)
+            {
+                FillEllipse(texture, x0, y0, thickness, thickness, color);
+                return;
+            }
+
+            for (int step = 0; step <= steps; step++)
+            {
+                float t = step / (float)steps;
+                int x = Mathf.RoundToInt(Mathf.Lerp(x0, x1, t));
+                int y = Mathf.RoundToInt(Mathf.Lerp(y0, y1, t));
+                FillEllipse(texture, x, y, thickness, thickness, color);
+            }
         }
 
         private static Sprite CreateDragonSprite(bool light)
