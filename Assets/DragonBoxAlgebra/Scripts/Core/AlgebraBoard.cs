@@ -45,8 +45,8 @@ namespace DragonBoxAlgebra.Core
 
         public bool TryAddBalanced(BoardCard card)
         {
-            Left.Cards.Add(card.Clone());
-            Right.Cards.Add(new BoardCard(card.Kind, card.Value));
+            Left.Cards.Add(card.CloneForPlacement());
+            Right.Cards.Add(card.CloneForPlacement());
             return true;
         }
 

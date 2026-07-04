@@ -137,7 +137,7 @@ namespace DragonBoxAlgebra.Gameplay
                 ParMoves = parMoves,
                 ParCards = parCards
             };
-            FillHand(level, handCount, primaryHand, handValue, value);
+            FillHand(level, handCount, primaryHand, handValue, value, theme);
             return level;
         }
 
@@ -155,39 +155,55 @@ namespace DragonBoxAlgebra.Gameplay
                 ParMoves = parMoves,
                 ParCards = parCards
             };
-            FillHand(level, handCount, primaryHand, handValue, value);
+            FillHand(level, handCount, primaryHand, handValue, value, theme);
             return level;
         }
 
-        private static void FillHand(LevelDefinition level, int handCount, CardKind primaryHand, int handValue, int value)
+        private static void FillHand(LevelDefinition level, int handCount, CardKind primaryHand, int handValue, int value,
+            int levelTheme)
         {
             level.HandCards.Clear();
             level.HandValues.Clear();
+            level.HandVisualThemes.Clear();
 
             if (handCount <= 1)
             {
                 level.HandCards.Add(primaryHand);
                 level.HandValues.Add(handValue);
+                level.HandVisualThemes.Add(levelTheme);
                 return;
             }
+
+            int companionTheme = (levelTheme + 3) % 10;
 
             if (handCount == 2)
             {
-                level.HandCards.Add(CardKind.NightCreature);
-                level.HandValues.Add(value);
+                // e.g. sun (level theme) + turtle (companion theme dark side)
                 level.HandCards.Add(CardKind.DayCreature);
                 level.HandValues.Add(value);
+                level.HandVisualThemes.Add(levelTheme);
+
+                level.HandCards.Add(CardKind.NightCreature);
+                level.HandValues.Add(value);
+                level.HandVisualThemes.Add(companionTheme);
                 return;
             }
 
-            level.HandCards.Add(CardKind.NightCreature);
-            level.HandValues.Add(value);
+            // 3 tiles: e.g. sun + dice + fish — three distinct images
             level.HandCards.Add(CardKind.DayCreature);
             level.HandValues.Add(value);
-            level.HandCards.Add(primaryHand is CardKind.PositiveConstant or CardKind.NegativeConstant
+            level.HandVisualThemes.Add(levelTheme);
+
+            CardKind diceKind = primaryHand is CardKind.PositiveConstant or CardKind.NegativeConstant
                 ? primaryHand
-                : CardKind.NegativeConstant);
+                : CardKind.NegativeConstant;
+            level.HandCards.Add(diceKind);
             level.HandValues.Add(value);
+            level.HandVisualThemes.Add(-1);
+
+            level.HandCards.Add(CardKind.DayCreature);
+            level.HandValues.Add(value);
+            level.HandVisualThemes.Add(companionTheme);
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)

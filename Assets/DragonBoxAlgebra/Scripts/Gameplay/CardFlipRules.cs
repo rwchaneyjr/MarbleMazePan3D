@@ -10,14 +10,16 @@ namespace DragonBoxAlgebra.Gameplay
 
         public static BoardCard Flip(BoardCard card)
         {
-            return card.Kind switch
+            BoardCard flipped = card.Clone();
+            flipped.Kind = card.Kind switch
             {
-                CardKind.DayCreature => new BoardCard(CardKind.NightCreature, card.Value),
-                CardKind.NightCreature => new BoardCard(CardKind.DayCreature, card.Value),
-                CardKind.PositiveConstant => new BoardCard(CardKind.NegativeConstant, card.Value),
-                CardKind.NegativeConstant => new BoardCard(CardKind.PositiveConstant, card.Value),
-                _ => card
+                CardKind.DayCreature => CardKind.NightCreature,
+                CardKind.NightCreature => CardKind.DayCreature,
+                CardKind.PositiveConstant => CardKind.NegativeConstant,
+                CardKind.NegativeConstant => CardKind.PositiveConstant,
+                _ => card.Kind
             };
+            return flipped;
         }
 
         public static bool IsLight(BoardCard card) =>
