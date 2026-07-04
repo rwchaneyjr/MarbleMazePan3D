@@ -1,0 +1,47 @@
+# Paste into Git Bash (Windows)
+
+## Your Unity folder: C:\Users\rober\SymbolAlgebra
+
+### Already a git clone of MarbleMazePan3D?
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+git pull origin main
+```
+
+Open Unity → `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity` → Play.
+
+---
+
+### Not a git repo yet? (fresh clone — backs up your old folder)
+
+```bash
+mv /c/Users/rober/SymbolAlgebra /c/Users/rober/SymbolAlgebra.bak
+git clone --branch main https://github.com/rwchaneyjr/MarbleMazePan3D.git /c/Users/rober/SymbolAlgebra
+```
+
+---
+
+### Pull using the helper script (after you have the repo once)
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+bash scripts/symbolalgebra-gitbash.sh pull
+bash scripts/symbolalgebra-gitbash.sh status
+```
+
+---
+
+### Push to AlgebraDragon
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+git remote add algebra-dragon https://github.com/rwchaneyjr/AlgebraDragon.git 2>/dev/null || true
+git push algebra-dragon main:main
+```
+
+Or:
+
+```bash
+bash scripts/symbolalgebra-gitbash.sh push
+```
