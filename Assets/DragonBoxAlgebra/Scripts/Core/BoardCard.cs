@@ -9,7 +9,7 @@ namespace DragonBoxAlgebra.Core
         public CardKind Kind;
         public int Value;
         public int StackCount;
-        public int VisualTheme = -1;
+        public int VisualTheme;
 
         public BoardCard(CardKind kind, int value = 1, int stackCount = 1, int visualTheme = -1)
         {
