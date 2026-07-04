@@ -15,22 +15,10 @@ namespace DragonBoxAlgebra.Gameplay
 
         private static void AssignSideThemes(List<CardKind> cards, List<int> themes, int boardTheme)
         {
-            var usedThemes = new HashSet<int>();
-            int creatureSlot = 0;
-
             for (int i = 0; i < cards.Count; i++)
             {
                 CardKind kind = cards[i];
-                if (kind is CardKind.DayCreature or CardKind.NightCreature)
-                {
-                    int theme = HandVisualRules.PickHandTheme(boardTheme, creatureSlot, usedThemes);
-                    themes.Add(theme);
-                    usedThemes.Add(theme);
-                    creatureSlot++;
-                    continue;
-                }
-
-                themes.Add(-1);
+                themes.Add(kind is CardKind.DayCreature or CardKind.NightCreature ? boardTheme : -1);
             }
         }
     }

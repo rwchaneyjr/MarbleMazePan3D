@@ -115,8 +115,8 @@ namespace DragonBoxAlgebra.Gameplay
                 if (LevelSolvabilityRules.ShouldConfigureBoxSide(handCount))
                 {
                     LevelSolvabilityRules.ConfigureSolvableLevel(level, handCount, diceLevel: pattern == 4, value);
-                    level.ParMoves = handCount;
-                    level.ParCards = handCount;
+                    level.ParMoves = 2;
+                    level.ParCards = 1;
                 }
 
                 levels.Add(level);
