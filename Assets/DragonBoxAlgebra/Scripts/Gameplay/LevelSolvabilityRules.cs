@@ -6,57 +6,77 @@ namespace DragonBoxAlgebra.Gameplay
 {
     public static class LevelSolvabilityRules
     {
-        public const int ExtraTilesForTwoCardHand = 5;
-        public const int ExtraTilesForThreeCardHand = 5;
+        public static bool ShouldConfigureBoxSide(int handCount) => handCount >= 2;
 
-        public static bool ShouldAddExtraBoxSideTiles(int handCount) => handCount >= 2;
-
-        public static int ExtraTileCountForHand(int handCount) => handCount switch
+        public static void ConfigureSolvableLevel(LevelDefinition level, int handCount, bool diceLevel, int value)
         {
-            >= 3 => ExtraTilesForThreeCardHand,
-            2 => ExtraTilesForTwoCardHand,
-            _ => 0
-        };
-
-        public static void AddRandomBoxSideTiles(LevelDefinition level, int count, int value, Random rng)
-        {
-            if (count <= 0)
+            if (handCount < 2)
             {
                 return;
             }
 
-            CardKind? obstacleKind = PrimaryBoxSideObstacleKind(level);
-            if (obstacleKind == null)
+            if (diceLevel)
             {
+                ConfigureDiceBoxSide(level, handCount, value);
                 return;
             }
 
-            for (int i = 0; i < count; i++)
-            {
-                level.LeftCards.Add(obstacleKind.Value);
-                level.LeftValues.Add(ValueForKind(obstacleKind.Value, value));
-            }
+            ConfigureCreatureBoxSide(level, handCount, value);
         }
 
-        private static CardKind? PrimaryBoxSideObstacleKind(LevelDefinition level)
+        private static void ConfigureCreatureBoxSide(LevelDefinition level, int handCount, int value)
         {
-            foreach (CardKind kind in level.LeftCards)
+            level.RightCards.Clear();
+            level.RightValues.Clear();
+            level.RightVisualThemes.Clear();
+
+            CardKind solverKind = level.HandCards[0];
+            CardKind boxSideKind = solverKind == CardKind.NightCreature
+                ? CardKind.DayCreature
+                : CardKind.NightCreature;
+
+            var leftCards = new List<CardKind> { CardKind.Box };
+            var leftValues = new List<int> { 1 };
+            var leftThemes = new List<int> { -1 };
+
+            for (int i = 0; i < handCount; i++)
             {
-                if (kind is CardKind.DayCreature or CardKind.NightCreature
-                    or CardKind.PositiveConstant or CardKind.NegativeConstant)
-                {
-                    return kind;
-                }
+                leftCards.Add(boxSideKind);
+                leftValues.Add(value);
+                int theme = i < level.HandVisualThemes.Count ? level.HandVisualThemes[i] : -1;
+                leftThemes.Add(theme);
             }
 
-            return null;
+            level.LeftCards = leftCards;
+            level.LeftValues = leftValues;
+            level.LeftVisualThemes = leftThemes;
         }
 
-        private static int ValueForKind(CardKind kind, int value) => kind switch
+        private static void ConfigureDiceBoxSide(LevelDefinition level, int handCount, int value)
         {
-            CardKind.DayCreature or CardKind.NightCreature => value,
-            CardKind.PositiveConstant or CardKind.NegativeConstant => value,
-            _ => 1
-        };
+            level.RightCards.Clear();
+            level.RightValues.Clear();
+            level.RightVisualThemes.Clear();
+
+            CardKind solverKind = level.HandCards[0];
+            CardKind boxSideKind = solverKind == CardKind.NegativeConstant
+                ? CardKind.PositiveConstant
+                : CardKind.NegativeConstant;
+
+            var leftCards = new List<CardKind> { CardKind.Box };
+            var leftValues = new List<int> { 1 };
+            var leftThemes = new List<int> { -1 };
+
+            for (int i = 0; i < handCount; i++)
+            {
+                leftCards.Add(boxSideKind);
+                leftValues.Add(value);
+                leftThemes.Add(-1);
+            }
+
+            level.LeftCards = leftCards;
+            level.LeftValues = leftValues;
+            level.LeftVisualThemes = leftThemes;
+        }
     }
 }

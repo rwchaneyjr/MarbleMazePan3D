@@ -112,14 +112,13 @@ namespace DragonBoxAlgebra.Gameplay
                         CardKind.NegativeConstant, value, handCount * 2, handCount)
                 };
 
-                if (LevelSolvabilityRules.ShouldAddExtraBoxSideTiles(handCount))
+                if (LevelSolvabilityRules.ShouldConfigureBoxSide(handCount))
                 {
-                    int extraCount = LevelSolvabilityRules.ExtraTileCountForHand(handCount);
-                    LevelSolvabilityRules.AddRandomBoxSideTiles(level, extraCount, value, rng);
-                    level.ParMoves += extraCount;
+                    LevelSolvabilityRules.ConfigureSolvableLevel(level, handCount, diceLevel: pattern == 4, value);
+                    level.ParMoves = handCount;
+                    level.ParCards = handCount;
                 }
 
-                BoardVisualRules.AssignDistinctSideThemes(level);
                 levels.Add(level);
 
                 if (rng.NextDouble() < 0.15)
@@ -146,7 +145,15 @@ namespace DragonBoxAlgebra.Gameplay
                 ParCards = parCards
             };
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: false);
-            BoardVisualRules.AssignDistinctSideThemes(level);
+            if (handCount >= 2)
+            {
+                LevelSolvabilityRules.ConfigureSolvableLevel(level, handCount, diceLevel: false, value);
+            }
+            else
+            {
+                BoardVisualRules.AssignDistinctSideThemes(level);
+            }
+
             return level;
         }
 
@@ -165,7 +172,15 @@ namespace DragonBoxAlgebra.Gameplay
                 ParCards = parCards
             };
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: true);
-            BoardVisualRules.AssignDistinctSideThemes(level);
+            if (handCount >= 2)
+            {
+                LevelSolvabilityRules.ConfigureSolvableLevel(level, handCount, diceLevel: true, value);
+            }
+            else
+            {
+                BoardVisualRules.AssignDistinctSideThemes(level);
+            }
+
             return level;
         }
 
@@ -228,7 +243,7 @@ namespace DragonBoxAlgebra.Gameplay
                 level.HandValues.Add(value);
                 level.HandCards.Add(companion);
                 level.HandValues.Add(value);
-                level.HandCards.Add(CardKind.NegativeConstant);
+                level.HandCards.Add(companion);
                 level.HandValues.Add(value);
             }
 
