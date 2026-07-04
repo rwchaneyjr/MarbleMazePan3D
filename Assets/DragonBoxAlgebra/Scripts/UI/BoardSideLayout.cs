@@ -9,34 +9,28 @@ namespace DragonBoxAlgebra.UI
     {
         private const float DefaultCardWidth = 110f;
         private const float DefaultCardHeight = 120f;
-        private const float MinCardWidth = 56f;
+        private const float MinCardWidth = 64f;
         private const float HorizontalPadding = 20f;
         private const float VerticalPadding = 20f;
-        private const float TileGap = 12f;
+        private const float TileGap = 14f;
 
-        // Creature slots for the pattern:
-        //   + +
-        // x   + +
-        //     + +
-        private static readonly GridCell[] BoxSideCreatureSlots =
-        {
-            new GridCell(0, 1), new GridCell(0, 2),
-            new GridCell(1, 2), new GridCell(1, 3),
-            new GridCell(2, 1), new GridCell(2, 2)
-        };
+        //   +       (3 beside box)
+        // x +
+        //   +
+        //
+        // X +       (2 beside box)
+        //   +
+        //
+        // X +       (1 beside box)
+        private static readonly GridCell BoxSlot = new GridCell(1, 1);
 
-        // Same stagger without the box column:
-        // + +
-        //   + +
-        // + +
-        private static readonly GridCell[] CreatureOnlySlots =
-        {
-            new GridCell(0, 0), new GridCell(0, 1),
-            new GridCell(1, 1), new GridCell(1, 2),
-            new GridCell(2, 0), new GridCell(2, 1)
-        };
+        private static readonly GridCell[] BoxSideSlotsOne = { new GridCell(1, 2) };
+        private static readonly GridCell[] BoxSideSlotsTwo = { new GridCell(1, 2), new GridCell(2, 2) };
+        private static readonly GridCell[] BoxSideSlotsThree = { new GridCell(0, 2), new GridCell(1, 2), new GridCell(2, 2) };
 
-        private static readonly GridCell BoxSlot = new GridCell(1, 0);
+        // Other side (no box): vertical column, no stacking
+        private static readonly GridCell[] OtherSideSlotsOne = { new GridCell(1, 0) };
+        private static readonly GridCell[] OtherSideSlotsTwo = { new GridCell(0, 0), new GridCell(2, 0) };
 
         public static void FitPanelToShowAllTiles(RectTransform panel)
         {
@@ -94,38 +88,72 @@ namespace DragonBoxAlgebra.UI
 
             creatures.Sort((a, b) => a.BoardIndex.CompareTo(b.BoardIndex));
 
+            GridCell[] slots = box != null
+                ? SlotsForBoxSide(creatures.Count)
+                : SlotsForOtherSide(creatures.Count);
+
+            int maxCol = box != null ? 2 : 0;
+            int rowCount = box != null ? RowCountForBoxSide(creatures.Count) : 3;
+
             float cardWidth = DefaultCardWidth;
             float cardHeight = DefaultCardHeight;
-            GridCell[] slots = box != null ? BoxSideCreatureSlots : CreatureOnlySlots;
-            int maxCol = box != null ? BoxSlot.Col : 0;
-            foreach (GridCell slot in slots)
-            {
-                maxCol = Mathf.Max(maxCol, slot.Col);
-            }
-
-            float scale = ComputeFitScale(panelWidth, panelHeight, maxCol, cardWidth, cardHeight);
+            float scale = ComputeFitScale(panelWidth, panelHeight, maxCol, rowCount, cardWidth, cardHeight);
             cardWidth *= scale;
             cardHeight *= scale;
 
             float colPitch = cardWidth + TileGap;
             float rowPitch = cardHeight + TileGap;
-            float gridHeight = 3f * rowPitch - TileGap;
+            float gridHeight = rowCount * rowPitch - TileGap;
             float leftEdge = -panelWidth * 0.5f + HorizontalPadding;
-            float originX = leftEdge;
             float topY = gridHeight * 0.5f - cardHeight * 0.5f;
 
             if (box != null)
             {
                 ApplyTileSize(box, cardWidth, cardHeight, ignoreLayout: true);
-                box.anchoredPosition = CellCenter(BoxSlot, originX, topY, colPitch, rowPitch, cardWidth);
+                box.anchoredPosition = CellCenter(BoxSlot, leftEdge, topY, colPitch, rowPitch, cardWidth);
             }
 
-            for (int i = 0; i < creatures.Count; i++)
+            for (int i = 0; i < creatures.Count && i < slots.Length; i++)
             {
-                GridCell slot = i < slots.Length ? slots[i] : ExtraSlot(i, slots.Length, box != null);
                 ApplyTileSize(creatures[i].Rect, cardWidth, cardHeight, ignoreLayout: true);
-                creatures[i].Rect.anchoredPosition = CellCenter(slot, originX, topY, colPitch, rowPitch, cardWidth);
+                creatures[i].Rect.anchoredPosition = CellCenter(slots[i], leftEdge, topY, colPitch, rowPitch,
+                    cardWidth);
             }
+        }
+
+        private static GridCell[] SlotsForBoxSide(int count)
+        {
+            if (count <= 1)
+            {
+                return BoxSideSlotsOne;
+            }
+
+            if (count == 2)
+            {
+                return BoxSideSlotsTwo;
+            }
+
+            return BoxSideSlotsThree;
+        }
+
+        private static GridCell[] SlotsForOtherSide(int count)
+        {
+            if (count <= 1)
+            {
+                return OtherSideSlotsOne;
+            }
+
+            return OtherSideSlotsTwo;
+        }
+
+        private static int RowCountForBoxSide(int count)
+        {
+            if (count <= 1)
+            {
+                return 2;
+            }
+
+            return 3;
         }
 
         private static Vector2 CellCenter(GridCell cell, float originX, float topY, float colPitch, float rowPitch,
@@ -136,21 +164,13 @@ namespace DragonBoxAlgebra.UI
             return new Vector2(x, y);
         }
 
-        private static GridCell ExtraSlot(int index, int baseSlotCount, bool hasBox)
-        {
-            int overflow = index - baseSlotCount;
-            int row = overflow / 2;
-            int col = (overflow % 2) + (hasBox ? 4 : 3);
-            return new GridCell(row % 3, col);
-        }
-
-        private static float ComputeFitScale(float panelWidth, float panelHeight, int maxCol, float cardWidth,
-            float cardHeight)
+        private static float ComputeFitScale(float panelWidth, float panelHeight, int maxCol, int rowCount,
+            float cardWidth, float cardHeight)
         {
             float colPitch = cardWidth + TileGap;
             float rowPitch = cardHeight + TileGap;
             float gridWidth = (maxCol + 1) * colPitch - TileGap;
-            float gridHeight = 3f * rowPitch - TileGap;
+            float gridHeight = rowCount * rowPitch - TileGap;
             float availableWidth = Mathf.Max(cardWidth, panelWidth - HorizontalPadding * 2f);
             float availableHeight = Mathf.Max(cardHeight, panelHeight - VerticalPadding * 2f);
             float widthScale = gridWidth > availableWidth ? availableWidth / gridWidth : 1f;
