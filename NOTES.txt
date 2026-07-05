@@ -1,0 +1,6 @@
+SymbolAlgebra — save copy notes (2026-07-05)
+============================================
+
+no right matches and problem 11, 16, 21, 26
+
+See docs/SAVE-COPY-NOTES.md for details and how to restore this snapshot.

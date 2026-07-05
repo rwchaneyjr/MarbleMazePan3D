@@ -1,6 +1,22 @@
 # SymbolAlgebra — copy these files into your Unity project
 
-## Git Bash (fastest)
+## Git Bash (recommended — avoids compile errors)
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+git fetch origin
+git pull origin main
+```
+
+If you already ran `sync-dropins import` and have errors:
+
+```bash
+bash scripts/restore-scripts.sh
+```
+
+---
+
+## Drop-in import (40 files — only if not using git pull)
 
 ```bash
 cd /c/Users/rober/SymbolAlgebra
