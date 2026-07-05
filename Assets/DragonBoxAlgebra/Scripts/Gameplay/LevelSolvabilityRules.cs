@@ -244,7 +244,9 @@ namespace DragonBoxAlgebra.Gameplay
             level.RightValues = rightValues;
             level.RightVisualThemes = rightVisualThemes;
 
-            int handTileCount = leftBesideBox;
+            int handTileCount = rightCount > 0
+                ? DistinctAnimalsForExtraLevel
+                : leftBesideBox;
             level.HandCards.Clear();
             level.HandValues.Clear();
             level.HandVisualThemes.Clear();

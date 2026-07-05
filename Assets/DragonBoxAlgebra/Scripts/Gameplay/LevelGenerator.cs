@@ -156,11 +156,7 @@ namespace DragonBoxAlgebra.Gameplay
                 ParCards = parCards
             };
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: false);
-            if (handCount >= 2)
-            {
-                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: false, value);
-            }
-            else
+            if (handCount < 2)
             {
                 BoardVisualRules.AssignDistinctSideThemes(level);
             }
@@ -183,11 +179,7 @@ namespace DragonBoxAlgebra.Gameplay
                 ParCards = parCards
             };
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: true);
-            if (handCount >= 2)
-            {
-                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: true, value);
-            }
-            else
+            if (handCount < 2)
             {
                 BoardVisualRules.AssignDistinctSideThemes(level);
             }
