@@ -37,7 +37,7 @@ namespace DragonBoxAlgebra.UI
             3 => "🦋",
             4 => "⭐",
             5 => "🐰",
-            6 => "🐸",
+            6 => "🐝",
             7 => "☀️",
             8 => "🐉",
             _ => "🐱"
@@ -72,7 +72,7 @@ namespace DragonBoxAlgebra.UI
             3 => "Butterfly & Bat",
             4 => "Star & Moon",
             5 => "Rabbit & Fox",
-            6 => "Frog & Snake",
+            6 => "Bee & Snake",
             7 => "Sun & Storm",
             8 => "Dragon & Flame",
             _ => "Cat & Dog"
