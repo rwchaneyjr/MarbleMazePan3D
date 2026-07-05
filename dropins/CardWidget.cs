@@ -62,25 +62,20 @@ namespace DragonBoxAlgebra.UI
         {
             if (_background != null)
             {
-                _background.color = SideName == "Hand"
-                    ? CardVisuals.HandFaceBackground(Card)
-                    : CardVisuals.Background(Card.Kind);
+                _background.color = CardVisuals.FaceBackground(Card, SideName);
             }
 
             if (_border != null)
             {
-                _border.color = SideName == "Hand"
-                    ? CardVisuals.HandFaceBorder(Card)
-                    : CardVisuals.Border(Card.Kind);
+                _border.color = CardVisuals.FaceBorder(Card, SideName);
             }
 
             ApplyCreatureVisual();
             if (_labelText != null)
             {
-                bool showCreatureArt = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box
-                    && _creatureImage != null && _creatureImage.enabled;
+                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled;
 
-                if (showCreatureArt)
+                if (showIconOnly)
                 {
                     _labelText.text = string.Empty;
                 }
@@ -98,7 +93,7 @@ namespace DragonBoxAlgebra.UI
         private void ApplyCreatureVisual()
         {
             Sprite icon = CardVisuals.IconSprite(Card);
-            bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
+            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card);
 
             if (_creatureImage != null)
             {
@@ -107,7 +102,7 @@ namespace DragonBoxAlgebra.UI
                 _creatureImage.preserveAspect = true;
                 if (icon != null && _creatureImage.rectTransform != null)
                 {
-                    var inset = isCreature ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
+                    var inset = usesFullIcon ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
                     _creatureImage.rectTransform.offsetMin = inset;
                     _creatureImage.rectTransform.offsetMax = new Vector2(-inset.x, -inset.y);
                 }
@@ -126,9 +121,7 @@ namespace DragonBoxAlgebra.UI
         {
             if (_background != null)
             {
-                Color baseColor = SideName == "Hand"
-                    ? CardVisuals.HandFaceBackground(Card)
-                    : CardVisuals.Background(Card.Kind);
+                Color baseColor = CardVisuals.FaceBackground(Card, SideName);
                 _background.color = on
                     ? Color.Lerp(baseColor, Color.white, 0.35f)
                     : baseColor;

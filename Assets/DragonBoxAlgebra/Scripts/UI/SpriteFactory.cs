@@ -139,37 +139,35 @@ namespace DragonBoxAlgebra.UI
             return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
         }
 
-        public static Sprite CreatePositiveDiceSprite()
-        {
-            const int size = 96;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            texture.filterMode = FilterMode.Bilinear;
-            var face = new Color(0.82f, 0.96f, 0.62f);
-            var edge = new Color(0.35f, 0.62f, 0.22f);
-            var dot = new Color(0.12f, 0.28f, 0.08f);
-            ClearTexture(texture);
-            FillRoundedRect(texture, 10, 10, 76, 76, 14, face);
-            FillRoundedRect(texture, 12, 12, 72, 72, 12, edge);
-            FillRoundedRect(texture, 14, 14, 68, 68, 10, face);
-            FillEllipse(texture, 48, 48, 7, 7, dot);
-            texture.Apply();
-            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
-        }
+        public static Sprite CreatePositiveDiceSprite() => CreateSignedDiceSprite(
+            new Color(0.9f, 0.98f, 0.82f),
+            new Color(0.28f, 0.58f, 0.18f),
+            positive: true);
 
-        public static Sprite CreateNegativeDiceSprite()
+        public static Sprite CreateNegativeDiceSprite() => CreateSignedDiceSprite(
+            new Color(0.82f, 0.84f, 0.96f),
+            new Color(0.22f, 0.24f, 0.48f),
+            positive: false);
+
+        private static Sprite CreateSignedDiceSprite(Color face, Color ink, bool positive)
         {
             const int size = 96;
             var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
             texture.filterMode = FilterMode.Bilinear;
-            var face = new Color(0.72f, 0.74f, 0.92f);
-            var edge = new Color(0.32f, 0.34f, 0.58f);
-            var dot = new Color(0.15f, 0.12f, 0.28f);
             ClearTexture(texture);
-            FillRoundedRect(texture, 10, 10, 76, 76, 14, face);
-            FillRoundedRect(texture, 12, 12, 72, 72, 12, edge);
-            FillRoundedRect(texture, 14, 14, 68, 68, 10, face);
-            FillEllipse(texture, 34, 34, 5, 5, dot);
-            FillEllipse(texture, 62, 62, 5, 5, dot);
+            FillRoundedRect(texture, 14, 14, 68, 68, 12, face);
+            FillRoundedRect(texture, 18, 18, 60, 60, 10, Color.Lerp(face, ink, 0.12f));
+
+            if (positive)
+            {
+                FillEllipse(texture, 48, 48, 7, 7, ink);
+            }
+            else
+            {
+                FillEllipse(texture, 36, 48, 5, 5, ink);
+                FillEllipse(texture, 60, 48, 5, 5, ink);
+            }
+
             texture.Apply();
             return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
         }

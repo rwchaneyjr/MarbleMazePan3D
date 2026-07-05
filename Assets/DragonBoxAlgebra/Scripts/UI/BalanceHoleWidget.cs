@@ -10,6 +10,7 @@ namespace DragonBoxAlgebra.UI
     {
         private AlgebraGameController _controller;
         private string _sideName;
+        private BoardCard _card;
 
         public string SideName => _sideName;
 
@@ -17,6 +18,7 @@ namespace DragonBoxAlgebra.UI
         {
             _controller = controller;
             _sideName = sideName;
+            _card = card;
             Build();
         }
 
@@ -46,10 +48,18 @@ namespace DragonBoxAlgebra.UI
             layout.preferredWidth = 110f;
             layout.preferredHeight = 120f;
 
+            bool isDice = _card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant;
+            Color face = isDice
+                ? CardVisuals.Background(_card.Kind)
+                : new Color(0.98f, 0.84f, 0.14f, 1f);
+            Color border = isDice
+                ? CardVisuals.Border(_card.Kind)
+                : new Color(0.72f, 0.48f, 0.04f, 1f);
+
             var image = gameObject.AddComponent<Image>();
             image.sprite = SpriteFactory.RoundedCard;
             image.type = Image.Type.Sliced;
-            image.color = new Color(0.98f, 0.84f, 0.14f, 1f);
+            image.color = face;
             image.raycastTarget = true;
 
             var borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
@@ -63,7 +73,27 @@ namespace DragonBoxAlgebra.UI
             borderImage.sprite = SpriteFactory.RoundedCard;
             borderImage.type = Image.Type.Sliced;
             borderImage.raycastTarget = false;
-            borderImage.color = new Color(0.72f, 0.48f, 0.04f, 1f);
+            borderImage.color = border;
+
+            if (isDice)
+            {
+                Sprite icon = CardVisuals.IconSprite(_card);
+                if (icon != null)
+                {
+                    var iconGo = new GameObject("DiceHint", typeof(RectTransform), typeof(Image));
+                    iconGo.transform.SetParent(transform, false);
+                    var iconRect = iconGo.GetComponent<RectTransform>();
+                    iconRect.anchorMin = Vector2.zero;
+                    iconRect.anchorMax = Vector2.one;
+                    iconRect.offsetMin = new Vector2(10f, 10f);
+                    iconRect.offsetMax = new Vector2(-10f, -10f);
+                    var iconImage = iconGo.GetComponent<Image>();
+                    iconImage.sprite = icon;
+                    iconImage.preserveAspect = true;
+                    iconImage.color = new Color(1f, 1f, 1f, 0.45f);
+                    iconImage.raycastTarget = false;
+                }
+            }
 
             var questionGo = new GameObject("QuestionMark", typeof(RectTransform), typeof(Text));
             questionGo.transform.SetParent(transform, false);
@@ -76,9 +106,9 @@ namespace DragonBoxAlgebra.UI
             var questionText = questionGo.GetComponent<Text>();
             questionText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             questionText.alignment = TextAnchor.MiddleCenter;
-            questionText.fontSize = 88;
+            questionText.fontSize = isDice ? 64 : 88;
             questionText.fontStyle = FontStyle.Bold;
-            questionText.color = Color.black;
+            questionText.color = isDice ? new Color(0f, 0f, 0f, 0.75f) : Color.black;
             questionText.text = "?";
             questionText.raycastTarget = false;
         }
