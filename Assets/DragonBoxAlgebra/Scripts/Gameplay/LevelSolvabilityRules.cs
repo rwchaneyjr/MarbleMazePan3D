@@ -8,8 +8,8 @@ namespace DragonBoxAlgebra.Gameplay
         public const int ExtraPuzzleFromIndex = 12;
         public const int ExtraPuzzleToIndex = 22;
         public const int ExtraPuzzleCount = ExtraPuzzleToIndex - ExtraPuzzleFromIndex;
-        public const int MinOtherSideExtras = 5;
-        public const int MaxOtherSideExtras = 6;
+        public const int MinOtherSideExtras = 10;
+        public const int MaxOtherSideExtras = 10;
 
         public static bool ShouldConfigureBoxSide(int handCount) => handCount >= 2;
 
