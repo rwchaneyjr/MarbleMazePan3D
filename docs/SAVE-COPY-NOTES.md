@@ -13,9 +13,9 @@
 - Multi-card dice band (11, 16, 21): **creatures** beside box, matching creatures in hand (no stray dice)
 - 2-hand creature levels: two matching solvers with distinct themes (e.g. level 9)
 
-## Known issues (may remain)
+## Known issues
 
-- Right-side opposite pairs may still not cancel in some cases
+- **No right matches** — the main remaining bug; everything else is in pretty good shape
 - Level 26 not specifically tested in this save
 
 ## Restore this save

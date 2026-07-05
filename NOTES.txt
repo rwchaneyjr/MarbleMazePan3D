@@ -1,6 +1,8 @@
 SymbolAlgebra — save copy notes (2026-07-05)
 ============================================
 
+Just about everything works in this build — except matching on the right side.
+
 Frog + robin/owl art, level fixes 4/6/9/11/16/21, creatures on multi-card dice band.
 
 See docs/SAVE-COPY-NOTES.md for details and how to restore this snapshot.
