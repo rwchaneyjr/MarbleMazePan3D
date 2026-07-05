@@ -132,6 +132,9 @@ namespace DragonBoxAlgebra.Gameplay
             CardKind obstacleKind = solverKind == CardKind.NegativeConstant
                 ? CardKind.PositiveConstant
                 : CardKind.NegativeConstant;
+            CardKind oppositeObstacle = obstacleKind == CardKind.PositiveConstant
+                ? CardKind.NegativeConstant
+                : CardKind.PositiveConstant;
 
             var leftCards = new List<CardKind> { CardKind.Box };
             var leftValues = new List<int> { 1 };
@@ -148,11 +151,25 @@ namespace DragonBoxAlgebra.Gameplay
             var rightValues = new List<int>();
             var rightVisualThemes = new List<int>();
 
-            for (int i = 0; i < rightCount; i++)
+            if (rightCount >= 2)
             {
-                rightCards.Add(obstacleKind);
+                int pairTheme = level.CreatureTheme;
+                rightCards.Add(CardKind.DayCreature);
                 rightValues.Add(value);
-                rightVisualThemes.Add(-1);
+                rightVisualThemes.Add(pairTheme);
+                rightCards.Add(CardKind.NightCreature);
+                rightValues.Add(value);
+                rightVisualThemes.Add(pairTheme);
+            }
+            else
+            {
+                for (int i = 0; i < rightCount; i++)
+                {
+                    CardKind kind = i % 2 == 0 ? obstacleKind : oppositeObstacle;
+                    rightCards.Add(kind);
+                    rightValues.Add(value);
+                    rightVisualThemes.Add(-1);
+                }
             }
 
             level.LeftCards = leftCards;
