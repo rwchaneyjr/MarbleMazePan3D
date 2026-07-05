@@ -8,8 +8,8 @@ namespace DragonBoxAlgebra.Gameplay
         public const int ExtraPuzzleFromIndex = 12;
         public const int ExtraPuzzleToIndex = 22;
         public const int ExtraPuzzleCount = ExtraPuzzleToIndex - ExtraPuzzleFromIndex;
-        public const int MinOtherSideExtras = 4;
-        public const int MaxOtherSideExtras = 7;
+        public const int MinOtherSideExtras = 5;
+        public const int MaxOtherSideExtras = 6;
 
         public static bool ShouldConfigureBoxSide(int handCount) => handCount >= 2;
 
@@ -30,7 +30,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (diceLevel)
             {
-                ApplyDiceBoardWithOtherSide(level, handCount, otherSideCount, value);
+                ApplyDiceBoard(level, handCount, otherSideCount, value);
                 return;
             }
 
@@ -45,14 +45,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (diceLevel)
             {
-                CardKind solverKind = level.HandCards[0];
-                CardKind diceObstacle = solverKind == CardKind.NegativeConstant
-                    ? CardKind.PositiveConstant
-                    : CardKind.NegativeConstant;
-
-                level.LeftCards = new List<CardKind> { CardKind.Box, diceObstacle };
-                level.LeftValues = new List<int> { 1, value };
-                level.LeftVisualThemes = new List<int> { -1, -1 };
+                ApplyDiceBoard(level, handCount, rightCount: 0, value);
                 return;
             }
 
@@ -166,24 +159,21 @@ namespace DragonBoxAlgebra.Gameplay
             CoordinatedCreatureThemes.ApplyRedSideAndOtherHand(level, redThemes, otherThemes);
         }
 
-        private static void ApplyDiceBoardWithOtherSide(LevelDefinition level, int handCount, int otherSideCount,
-            int value)
+        private static void ApplyDiceBoard(LevelDefinition level, int leftBesideBox, int rightCount, int baseValue)
         {
-            CardKind redSolverKind = level.HandCards[0];
-            CardKind redObstacleKind = redSolverKind == CardKind.NegativeConstant
+            CardKind solverKind = level.HandCards[0];
+            CardKind obstacleKind = solverKind == CardKind.NegativeConstant
                 ? CardKind.PositiveConstant
                 : CardKind.NegativeConstant;
-            CardKind otherObstacleKind = redObstacleKind;
-            CardKind otherSolverKind = redSolverKind;
 
             var leftCards = new List<CardKind> { CardKind.Box };
             var leftValues = new List<int> { 1 };
             var leftVisualThemes = new List<int> { -1 };
 
-            for (int i = 0; i < handCount; i++)
+            for (int i = 0; i < leftBesideBox; i++)
             {
-                leftCards.Add(redObstacleKind);
-                leftValues.Add(value);
+                leftCards.Add(obstacleKind);
+                leftValues.Add(baseValue + i);
                 leftVisualThemes.Add(-1);
             }
 
@@ -191,10 +181,10 @@ namespace DragonBoxAlgebra.Gameplay
             var rightValues = new List<int>();
             var rightVisualThemes = new List<int>();
 
-            for (int i = 0; i < otherSideCount; i++)
+            for (int i = 0; i < rightCount; i++)
             {
-                rightCards.Add(otherObstacleKind);
-                rightValues.Add(value);
+                rightCards.Add(obstacleKind);
+                rightValues.Add(baseValue + leftBesideBox + i);
                 rightVisualThemes.Add(-1);
             }
 
@@ -205,17 +195,15 @@ namespace DragonBoxAlgebra.Gameplay
             level.RightValues = rightValues;
             level.RightVisualThemes = rightVisualThemes;
 
+            int handCount = leftBesideBox + rightCount;
             level.HandCards.Clear();
             level.HandValues.Clear();
-            for (int i = 0; i < handCount + otherSideCount; i++)
-            {
-                level.HandCards.Add(otherSolverKind);
-                level.HandValues.Add(value);
-            }
-
             level.HandVisualThemes.Clear();
-            for (int i = 0; i < handCount + otherSideCount; i++)
+
+            for (int i = 0; i < handCount; i++)
             {
+                level.HandCards.Add(solverKind);
+                level.HandValues.Add(baseValue + i);
                 level.HandVisualThemes.Add(-1);
             }
         }

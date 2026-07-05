@@ -246,7 +246,7 @@ namespace DragonBoxAlgebra.Gameplay
                 _pendingBalance = null;
                 BoardCard cardA = side.Cards[indexA];
                 BoardCard cardB = side.Cards[indexB];
-                if (CombineRules.UsesAsteriskCancel(cardA, cardB))
+                if (CombineRules.UsesAsteriskCancel(cardA, cardB) && sideName != "Right")
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
                     MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
@@ -262,7 +262,9 @@ namespace DragonBoxAlgebra.Gameplay
                         IndexA = indexA,
                         IndexB = indexB
                     });
-                    MessageChanged?.Invoke("Dice canceled.");
+                    MessageChanged?.Invoke(CombineRules.UsesAsteriskCancel(cardA, cardB)
+                        ? "Matched — tiles removed."
+                        : "Dice canceled.");
                 }
 
                 BoardChanged?.Invoke();
@@ -529,7 +531,51 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
+            if (sideName == "Right" && TryInstantCreatureCancelForCard(sideName, cardIndex))
+            {
+                return;
+            }
+
             ActivateOppositePairForCard(sideName, cardIndex);
+        }
+
+        private bool TryInstantCreatureCancelForCard(string sideName, int cardIndex)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            if (cardIndex < 0 || cardIndex >= side.Cards.Count)
+            {
+                return false;
+            }
+
+            BoardCard placed = side.Cards[cardIndex];
+            for (int j = 0; j < side.Cards.Count; j++)
+            {
+                if (j == cardIndex)
+                {
+                    continue;
+                }
+
+                if (!CombineRules.IsCreatureOppositePair(placed, side.Cards[j]))
+                {
+                    continue;
+                }
+
+                string partnerId = side.Cards[j].Id;
+                string placedId = placed.Id;
+                CombineRules.RemovePairById(side, placedId, partnerId);
+                Moves.RegisterCombine();
+                CombineOccurred?.Invoke(new CombineEvent
+                {
+                    SideName = sideName,
+                    Action = CombineActionType.OppositeCancel,
+                    IndexA = cardIndex,
+                    IndexB = j
+                });
+                MessageChanged?.Invoke("Matched — tiles removed.");
+                return true;
+            }
+
+            return false;
         }
 
         private bool TryInstantDiceCancelForCard(string sideName, int cardIndex)
@@ -573,6 +619,11 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void ActivateOppositePairForCard(string sideName, int cardIndex)
         {
+            if (sideName == "Right")
+            {
+                return;
+            }
+
             if (SideAlreadyHasCancelMarker(sideName))
             {
                 return;
@@ -599,6 +650,11 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void ActivateAllOppositePairsOnSide(string sideName)
         {
+            if (sideName == "Right")
+            {
+                return;
+            }
+
             if (SideAlreadyHasCancelMarker(sideName))
             {
                 return;
