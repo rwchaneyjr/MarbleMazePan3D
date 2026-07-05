@@ -13,12 +13,11 @@ namespace DragonBoxAlgebra.UI
 
         public string SideName => _sideName;
 
-        public void Initialize(AlgebraGameController controller, string sideName, BoardCard card,
-            float tileWidth = 110f, float tileHeight = 120f)
+        public void Initialize(AlgebraGameController controller, string sideName, BoardCard card)
         {
             _controller = controller;
             _sideName = sideName;
-            Build(tileWidth, tileHeight);
+            Build();
         }
 
         public void OnDrop(PointerEventData eventData)
@@ -36,16 +35,16 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private void Build(float tileWidth, float tileHeight)
+        private void Build()
         {
             var rect = gameObject.GetComponent<RectTransform>() ?? gameObject.AddComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(tileWidth, tileHeight);
+            rect.sizeDelta = new Vector2(110f, 120f);
 
             var layout = gameObject.AddComponent<LayoutElement>();
-            layout.minWidth = tileWidth;
-            layout.minHeight = tileHeight;
-            layout.preferredWidth = tileWidth;
-            layout.preferredHeight = tileHeight;
+            layout.minWidth = 110f;
+            layout.minHeight = 120f;
+            layout.preferredWidth = 110f;
+            layout.preferredHeight = 120f;
 
             var image = gameObject.AddComponent<Image>();
             image.sprite = SpriteFactory.RoundedCard;
@@ -85,12 +84,12 @@ namespace DragonBoxAlgebra.UI
         }
 
         public static BalanceHoleWidget Create(Transform parent, AlgebraGameController controller, string sideName,
-            BoardCard card, float tileWidth = 110f, float tileHeight = 120f)
+            BoardCard card)
         {
             var go = new GameObject($"BalanceHole_{sideName}", typeof(RectTransform));
             go.transform.SetParent(parent, false);
             var hole = go.AddComponent<BalanceHoleWidget>();
-            hole.Initialize(controller, sideName, card, tileWidth, tileHeight);
+            hole.Initialize(controller, sideName, card);
             return hole;
         }
     }

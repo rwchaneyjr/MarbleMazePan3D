@@ -12,6 +12,9 @@ namespace DragonBoxAlgebra.Gameplay
 
         public string HoleSide => PlacedSide == "Left" ? "Right" : "Left";
 
-        public bool Matches(BoardCard other) => Card.Kind == other.Kind && Card.Value == other.Value;
+        public bool Matches(BoardCard other) =>
+            Card.Kind == other.Kind
+            && Card.Value == other.Value
+            && Card.VisualTheme == other.VisualTheme;
     }
 }

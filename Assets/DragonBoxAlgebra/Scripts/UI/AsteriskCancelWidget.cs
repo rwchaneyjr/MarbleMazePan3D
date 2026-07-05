@@ -12,12 +12,11 @@ namespace DragonBoxAlgebra.UI
         private int _markerIndex;
         private RectTransform _symbolRect;
 
-        public void Initialize(AlgebraGameController controller, int markerIndex,
-            float tileWidth = 110f, float tileHeight = 120f)
+        public void Initialize(AlgebraGameController controller, int markerIndex)
         {
             _controller = controller;
             _markerIndex = markerIndex;
-            Build(tileWidth, tileHeight);
+            Build();
         }
 
         public void OnPointerClick(PointerEventData eventData)
@@ -28,16 +27,16 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private void Build(float tileWidth, float tileHeight)
+        private void Build()
         {
             var rect = gameObject.GetComponent<RectTransform>() ?? gameObject.AddComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(tileWidth, tileHeight);
+            rect.sizeDelta = new Vector2(110f, 120f);
 
             var layout = gameObject.AddComponent<LayoutElement>();
-            layout.minWidth = tileWidth;
-            layout.minHeight = tileHeight;
-            layout.preferredWidth = tileWidth;
-            layout.preferredHeight = tileHeight;
+            layout.minWidth = 110f;
+            layout.minHeight = 120f;
+            layout.preferredWidth = 110f;
+            layout.preferredHeight = 120f;
 
             var image = gameObject.AddComponent<Image>();
             image.sprite = SpriteFactory.RoundedCard;
@@ -87,13 +86,12 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        public static AsteriskCancelWidget Create(Transform parent, AlgebraGameController controller, int markerIndex,
-            float tileWidth = 110f, float tileHeight = 120f)
+        public static AsteriskCancelWidget Create(Transform parent, AlgebraGameController controller, int markerIndex)
         {
             var go = new GameObject($"CancelMarker_{markerIndex}", typeof(RectTransform));
             go.transform.SetParent(parent, false);
             var widget = go.AddComponent<AsteriskCancelWidget>();
-            widget.Initialize(controller, markerIndex, tileWidth, tileHeight);
+            widget.Initialize(controller, markerIndex);
             return widget;
         }
     }

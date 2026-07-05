@@ -12,13 +12,6 @@ namespace DragonBoxAlgebra.UI
         private const float WinPreDelay = 0.4f;
         private const float WinSlideDuration = 1.15f;
         private const float WinPostDelay = 0.35f;
-        private const float DefaultTileWidth = 110f;
-        private const float DefaultTileHeight = 120f;
-        private const float DefaultTileSpacing = 16f;
-        private const float MinTileWidth = 52f;
-        private const float MinTileSpacing = 4f;
-        private const int CompactPadding = 12;
-        private const int DefaultPadding = 24;
 
         private RectTransform _leftPanel;
         private RectTransform _rightPanel;
@@ -33,6 +26,7 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _rightAnchorMaxDefault;
         private bool _playingWinSequence;
         private Coroutine _winSequenceCoroutine;
+        private Coroutine _layoutCoroutine;
 
         public void Initialize(AlgebraGameController controller, RectTransform left, RectTransform right,
             Canvas canvas, RectTransform dragRoot)
@@ -176,121 +170,59 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            Canvas.ForceUpdateCanvases();
-
             _widgets.Clear();
-            TileLayout leftLayout = ComputeTileLayout(_leftPanel, CountSlotsForSide("Left", _controller.Board.Left));
-            TileLayout rightLayout = ComputeTileLayout(_rightPanel, CountSlotsForSide("Right", _controller.Board.Right));
-            RebuildSide(_leftPanel, _controller.Board.Left, "Left", leftLayout);
-            RebuildSide(_rightPanel, _controller.Board.Right, "Right", rightLayout);
+            RebuildSide(_leftPanel, _controller.Board.Left, "Left");
+            RebuildSide(_rightPanel, _controller.Board.Right, "Right");
 
             if (_controller.HasPendingBalance)
             {
                 BalancePending pending = _controller.PendingBalance;
                 RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
-                TileLayout holeLayout = pending.HoleSide == "Left" ? leftLayout : rightLayout;
-                BalanceHoleWidget hole = BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card,
-                    holeLayout.Width, holeLayout.Height);
+                BalanceHoleWidget hole = BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card);
                 int holeSlot = Mathf.Clamp(pending.HoleInsertIndex, 0, holePanel.childCount - 1);
                 hole.transform.SetSiblingIndex(holeSlot);
             }
 
-            BuildCancelMarkers(_leftPanel, "Left", leftLayout);
-            BuildCancelMarkers(_rightPanel, "Right", rightLayout);
+            BuildCancelMarkers(_leftPanel, "Left");
+            BuildCancelMarkers(_rightPanel, "Right");
+
+            ScheduleLayout();
         }
 
-        private int CountSlotsForSide(string sideName, BoardSide side)
+        private void ScheduleLayout()
         {
-            int count = 0;
-            for (int i = 0; i < side.Cards.Count; i++)
+            if (_layoutCoroutine != null)
             {
-                if (!_controller.IsCardPendingCancelOnSide(side.Cards[i].Id, sideName))
-                {
-                    count++;
-                }
+                StopCoroutine(_layoutCoroutine);
             }
 
-            if (_controller.HasPendingBalance && _controller.PendingBalance.HoleSide == sideName)
-            {
-                count++;
-            }
-
-            IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
-            for (int i = 0; i < markers.Count; i++)
-            {
-                if (markers[i].SideName == sideName)
-                {
-                    count++;
-                }
-            }
-
-            return count;
+            BoardSideLayout.FitPanelToShowAllTiles(_leftPanel);
+            BoardSideLayout.FitPanelToShowAllTiles(_rightPanel);
+            _layoutCoroutine = StartCoroutine(LayoutAfterCanvasUpdate());
         }
 
-        private TileLayout ComputeTileLayout(RectTransform panel, int slotCount)
+        private IEnumerator LayoutAfterCanvasUpdate()
         {
-            int padding = slotCount >= 5 ? CompactPadding : DefaultPadding;
-            float available = Mathf.Max(0f, panel.rect.width - padding * 2f);
-
-            if (slotCount <= 0 || available <= 0f)
-            {
-                return new TileLayout(DefaultTileWidth, DefaultTileHeight, DefaultTileSpacing, DefaultPadding);
-            }
-
-            float spacing = slotCount >= 5 ? 8f : DefaultTileSpacing;
-            float needed = slotCount * DefaultTileWidth + (slotCount - 1) * spacing;
-
-            if (needed <= available)
-            {
-                return new TileLayout(DefaultTileWidth, DefaultTileHeight, DefaultTileSpacing, padding);
-            }
-
-            float width = (available - (slotCount - 1) * MinTileSpacing) / slotCount;
-            width = Mathf.Clamp(width, MinTileWidth, DefaultTileWidth);
-            spacing = slotCount > 1
-                ? Mathf.Max(MinTileSpacing, (available - slotCount * width) / (slotCount - 1))
-                : 0f;
-
-            float total = slotCount * width + (slotCount - 1) * spacing;
-            if (total > available)
-            {
-                width = (available - (slotCount - 1) * MinTileSpacing) / slotCount;
-                spacing = MinTileSpacing;
-            }
-
-            float height = width * (DefaultTileHeight / DefaultTileWidth);
-            return new TileLayout(width, height, spacing, padding);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            BoardSideLayout.FitPanelToShowAllTiles(_leftPanel);
+            BoardSideLayout.FitPanelToShowAllTiles(_rightPanel);
+            _layoutCoroutine = null;
         }
 
-        private readonly struct TileLayout
-        {
-            public readonly float Width;
-            public readonly float Height;
-            public readonly float Spacing;
-            public readonly int Padding;
-
-            public TileLayout(float width, float height, float spacing, int padding)
-            {
-                Width = width;
-                Height = height;
-                Spacing = spacing;
-                Padding = padding;
-            }
-        }
-
-        private void BuildCancelMarkers(RectTransform panel, string sideName, TileLayout layout)
+        private void BuildCancelMarkers(RectTransform panel, string sideName)
         {
             IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
             for (int i = 0; i < markers.Count; i++)
             {
                 if (markers[i].SideName == sideName)
                 {
-                    AsteriskCancelWidget.Create(panel, _controller, i, layout.Width, layout.Height);
+                    AsteriskCancelWidget.Create(panel, _controller, i);
                 }
             }
         }
 
-        private void RebuildSide(RectTransform panel, BoardSide side, string sideName, TileLayout layout)
+        private void RebuildSide(RectTransform panel, BoardSide side, string sideName)
         {
             for (int i = panel.childCount - 1; i >= 0; i--)
             {
@@ -301,20 +233,18 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
-            var horizontalLayout = panel.GetComponent<HorizontalLayoutGroup>();
-            if (horizontalLayout == null)
+            var layout = panel.GetComponent<HorizontalLayoutGroup>();
+            if (layout == null)
             {
-                horizontalLayout = panel.gameObject.AddComponent<HorizontalLayoutGroup>();
-                horizontalLayout.childAlignment = TextAnchor.MiddleCenter;
-                horizontalLayout.childControlWidth = false;
-                horizontalLayout.childControlHeight = false;
-                horizontalLayout.childForceExpandWidth = false;
-                horizontalLayout.childForceExpandHeight = false;
-                horizontalLayout.padding = new RectOffset(24, 24, 24, 24);
+                layout = panel.gameObject.AddComponent<HorizontalLayoutGroup>();
+                layout.spacing = 16f;
+                layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.childControlWidth = false;
+                layout.childControlHeight = false;
+                layout.childForceExpandWidth = false;
+                layout.childForceExpandHeight = false;
+                layout.padding = new RectOffset(24, 24, 24, 24);
             }
-
-            horizontalLayout.spacing = layout.Spacing;
-            horizontalLayout.padding = new RectOffset(layout.Padding, layout.Padding, layout.Padding, layout.Padding);
 
             for (int i = 0; i < side.Cards.Count; i++)
             {
@@ -324,8 +254,7 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot,
-                    layout.Width, layout.Height);
+                CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot);
                 widget.gameObject.AddComponent<CardDropZone>();
                 _widgets.Add(widget);
             }

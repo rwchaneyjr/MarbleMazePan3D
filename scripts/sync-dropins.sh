@@ -91,8 +91,14 @@ import_dropins() {
       AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs)
         dest_subdir="Core" ;;
       AlgebraGameController.cs|BalancePending.cs|CardFlipRules.cs|GameSnapshot.cs|HandRules.cs|\
-      LevelDefinition.cs|LevelGenerator.cs|LevelLibrary.cs|MoveTracker.cs|PendingCancelMarker.cs)
+      BoardVisualRules.cs|CoordinatedCreatureThemes.cs|HandCompositionRules.cs|HandVisualRules.cs|\
+      LevelDefinition.cs|LevelGenerator.cs|LevelLibrary.cs|LevelSolvabilityRules.cs|MoveTracker.cs|\
+      PendingCancelMarker.cs|ThemeAssignment.cs)
         dest_subdir="Gameplay" ;;
+      BoardSideLayout.cs|BoardView.cs|AlgebraUI.cs|AsteriskCancelWidget.cs|BalanceHoleWidget.cs|\
+      BoardDropZone.cs|CardSpriteLoader.cs|CardVisuals.cs|CardWidget.cs|CreatureArt.cs|\
+      CreatureReaction.cs|EmojiFont.cs|HandView.cs|LevelCompleteView.cs|SpriteFactory.cs|VortexEffect.cs)
+        dest_subdir="UI" ;;
       *) dest_subdir="UI" ;;
     esac
 

@@ -16,13 +16,20 @@ namespace DragonBoxAlgebra.UI
             _themeIndex = ((themeIndex % ThemeCount) + ThemeCount) % ThemeCount;
         }
 
+        public static int ResolveTheme(BoardCard card) =>
+            card.VisualTheme >= 0 ? card.VisualTheme : _themeIndex;
+
         public static Sprite LightSprite(BoardCard card) =>
-            SpriteFactory.LightCreature(_themeIndex, card.Value);
+            SpriteFactory.LightCreature(ResolveTheme(card), card.Value);
 
         public static Sprite DarkSprite(BoardCard card) =>
-            SpriteFactory.DarkCreature(_themeIndex, card.Value);
+            SpriteFactory.DarkCreature(ResolveTheme(card), card.Value);
 
-        public static string LightEmoji => _themeIndex switch
+        public static string LightEmojiFor(BoardCard card) => LightEmojiForTheme(ResolveTheme(card));
+
+        public static string DarkEmojiFor(BoardCard card) => DarkEmojiForTheme(ResolveTheme(card));
+
+        public static string LightEmojiForTheme(int theme) => NormalizeTheme(theme) switch
         {
             0 => "🐠",
             1 => "🐦",
@@ -36,7 +43,7 @@ namespace DragonBoxAlgebra.UI
             _ => "🐱"
         };
 
-        public static string DarkEmoji => _themeIndex switch
+        public static string DarkEmojiForTheme(int theme) => NormalizeTheme(theme) switch
         {
             0 => "🐢",
             1 => "🦉",
@@ -49,6 +56,13 @@ namespace DragonBoxAlgebra.UI
             8 => "🔥",
             _ => "🐶"
         };
+
+        private static int NormalizeTheme(int theme) =>
+            ((theme % ThemeCount) + ThemeCount) % ThemeCount;
+
+        public static string LightEmoji => LightEmojiForTheme(_themeIndex);
+
+        public static string DarkEmoji => DarkEmojiForTheme(_themeIndex);
 
         public static string ThemeName => _themeIndex switch
         {

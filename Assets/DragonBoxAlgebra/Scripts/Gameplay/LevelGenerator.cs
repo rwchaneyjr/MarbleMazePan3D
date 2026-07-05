@@ -7,8 +7,8 @@ namespace DragonBoxAlgebra.Gameplay
     public static class LevelGenerator
     {
         private const int GeneratedCount = 24;
-        private const int TwoCardFromIndex = 12;
-        private const int ThreeCardFromIndex = 18;
+        private const int TwoCardFromIndex = 8;
+        private const int ThreeCardFromIndex = 12;
 
         public static IReadOnlyList<LevelDefinition> GenerateAll(int seed = 20260703)
         {
@@ -112,6 +112,26 @@ namespace DragonBoxAlgebra.Gameplay
                         CardKind.NegativeConstant, value, handCount * 2, handCount)
                 };
 
+                if (LevelSolvabilityRules.ShouldConfigureBoxSide(handCount))
+                {
+                    bool diceLevel = pattern == 4;
+                    if (LevelSolvabilityRules.IsExtraPuzzleLevel(levelIndex))
+                    {
+                        int extraIndex = levelIndex - LevelSolvabilityRules.ExtraPuzzleFromIndex;
+                        int extraCount = 1 + (extraIndex % 2);
+                        bool onOtherSide = extraIndex % 2 == 0;
+                        LevelSolvabilityRules.ConfigureSolvableLevel(level, handCount, diceLevel, value, extraCount,
+                            onOtherSide);
+                    }
+                    else
+                    {
+                        LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel, value);
+                    }
+
+                    level.ParMoves = handCount + 1;
+                    level.ParCards = handCount;
+                }
+
                 levels.Add(level);
 
                 if (rng.NextDouble() < 0.15)
@@ -137,7 +157,16 @@ namespace DragonBoxAlgebra.Gameplay
                 ParMoves = parMoves,
                 ParCards = parCards
             };
-            FillHand(level, handCount, primaryHand, handValue, value);
+            FillHand(level, handCount, primaryHand, handValue, value, diceLevel: false);
+            if (handCount >= 2)
+            {
+                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: false, value);
+            }
+            else
+            {
+                BoardVisualRules.AssignDistinctSideThemes(level);
+            }
+
             return level;
         }
 
@@ -155,39 +184,45 @@ namespace DragonBoxAlgebra.Gameplay
                 ParMoves = parMoves,
                 ParCards = parCards
             };
-            FillHand(level, handCount, primaryHand, handValue, value);
+            FillHand(level, handCount, primaryHand, handValue, value, diceLevel: true);
+            if (handCount >= 2)
+            {
+                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: true, value);
+            }
+            else
+            {
+                BoardVisualRules.AssignDistinctSideThemes(level);
+            }
+
             return level;
         }
 
-        private static void FillHand(LevelDefinition level, int handCount, CardKind primaryHand, int handValue, int value)
+        private static void FillHand(LevelDefinition level, int handCount, CardKind primaryHand, int handValue, int value,
+            bool diceLevel)
         {
             level.HandCards.Clear();
             level.HandValues.Clear();
+            level.HandVisualThemes.Clear();
+
+            CardKind solver = HandCompositionRules.PrimarySolverCard(level, diceLevel, primaryHand);
 
             if (handCount <= 1)
             {
-                level.HandCards.Add(primaryHand);
-                level.HandValues.Add(handValue);
+                level.HandCards.Add(solver);
+                level.HandValues.Add(diceLevel && solver is CardKind.PositiveConstant or CardKind.NegativeConstant
+                    ? value
+                    : handValue);
+                HandVisualRules.AssignLevelHandVisualThemes(level);
                 return;
             }
 
-            if (handCount == 2)
+            for (int i = 0; i < handCount; i++)
             {
-                level.HandCards.Add(CardKind.NightCreature);
-                level.HandValues.Add(value);
-                level.HandCards.Add(CardKind.DayCreature);
-                level.HandValues.Add(value);
-                return;
+                level.HandCards.Add(solver);
+                level.HandValues.Add(diceLevel && solver is CardKind.PositiveConstant or CardKind.NegativeConstant
+                    ? value
+                    : value);
             }
-
-            level.HandCards.Add(CardKind.NightCreature);
-            level.HandValues.Add(value);
-            level.HandCards.Add(CardKind.DayCreature);
-            level.HandValues.Add(value);
-            level.HandCards.Add(primaryHand is CardKind.PositiveConstant or CardKind.NegativeConstant
-                ? primaryHand
-                : CardKind.NegativeConstant);
-            level.HandValues.Add(value);
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)

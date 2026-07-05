@@ -103,12 +103,12 @@ namespace DragonBoxAlgebra.UI
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -52f), 20, TextAnchor.MiddleCenter);
 
             var boardRow = CreatePanel(background.transform, "BoardRow", new Color(0f, 0f, 0f, 0.15f),
-                new Vector2(0.02f, 0.28f), new Vector2(0.98f, 0.82f), Vector2.zero, Vector2.zero);
+                new Vector2(0.05f, 0.28f), new Vector2(0.95f, 0.82f), Vector2.zero, Vector2.zero);
 
             var leftPanel = CreateTexturedPanel(boardRow.transform, "LeftPanel",
-                new Vector2(0f, 0f), new Vector2(0.495f, 1f));
+                new Vector2(0f, 0f), new Vector2(0.49f, 1f));
             var rightPanel = CreateTexturedPanel(boardRow.transform, "RightPanel",
-                new Vector2(0.505f, 0f), new Vector2(1f, 1f));
+                new Vector2(0.51f, 0f), new Vector2(1f, 1f));
 
             var boardView = gameObject.AddComponent<BoardView>();
             boardView.Initialize(Controller, leftPanel, rightPanel, _canvas, _dragRoot);
