@@ -286,12 +286,7 @@ namespace DragonBoxAlgebra.UI
             CardWidget targetCard = FindDropTarget(eventData);
             if (targetCard != null && targetCard != this && targetCard.SideName != "Hand")
             {
-                if (_controller.TryPlayFromHand(Index, targetCard.SideName))
-                {
-                    MarkHandPlayHandled();
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                }
-
+                TryPlayHandOnBoardTarget(targetCard);
                 return;
             }
 
@@ -330,11 +325,9 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
-                if (target.SideName != "Hand"
-                    && _controller.TryPlayFromHand(Index, target.SideName))
+                if (target.SideName != "Hand")
                 {
-                    MarkHandPlayHandled();
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    TryPlayHandOnBoardTarget(target);
                 }
 
                 return;
@@ -450,14 +443,25 @@ namespace DragonBoxAlgebra.UI
             return Card.IsDraggableFromBoard;
         }
 
+        private void TryPlayHandOnBoardTarget(CardWidget target)
+        {
+            if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index)
+                || _controller.TryPlayFromHand(Index, target.SideName))
+            {
+                MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+            }
+        }
+
         public static CardWidget Create(Transform parent, BoardCard card, int index, string sideName,
-            AlgebraGameController controller, Canvas canvas, RectTransform dragRoot)
+            AlgebraGameController controller, Canvas canvas, RectTransform dragRoot,
+            float tileWidth = 110f, float tileHeight = 120f)
         {
             var root = new GameObject($"Card_{sideName}_{index}", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
             root.transform.SetParent(parent, false);
 
             var rect = root.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(110f, 120f);
+            rect.sizeDelta = new Vector2(tileWidth, tileHeight);
 
             var borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
             borderGo.transform.SetParent(root.transform, false);
@@ -533,10 +537,10 @@ namespace DragonBoxAlgebra.UI
             widget._labelText = labelText;
 
             var layoutElement = root.AddComponent<LayoutElement>();
-            layoutElement.minWidth = 110f;
-            layoutElement.minHeight = 120f;
-            layoutElement.preferredWidth = 110f;
-            layoutElement.preferredHeight = 120f;
+            layoutElement.minWidth = tileWidth;
+            layoutElement.minHeight = tileHeight;
+            layoutElement.preferredWidth = tileWidth;
+            layoutElement.preferredHeight = tileHeight;
 
             widget.Bind(card, index, sideName, controller, canvas, dragRoot);
 
