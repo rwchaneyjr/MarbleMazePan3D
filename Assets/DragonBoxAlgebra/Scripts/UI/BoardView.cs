@@ -26,6 +26,7 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _rightAnchorMaxDefault;
         private bool _playingWinSequence;
         private Coroutine _winSequenceCoroutine;
+        private Coroutine _layoutCoroutine;
 
         public void Initialize(AlgebraGameController controller, RectTransform left, RectTransform right,
             Canvas canvas, RectTransform dragRoot)
@@ -184,6 +185,29 @@ namespace DragonBoxAlgebra.UI
 
             BuildCancelMarkers(_leftPanel, "Left");
             BuildCancelMarkers(_rightPanel, "Right");
+
+            ScheduleLayout();
+        }
+
+        private void ScheduleLayout()
+        {
+            if (_layoutCoroutine != null)
+            {
+                StopCoroutine(_layoutCoroutine);
+            }
+
+            BoardSideLayout.FitPanelToShowAllTiles(_leftPanel);
+            BoardSideLayout.FitPanelToShowAllTiles(_rightPanel);
+            _layoutCoroutine = StartCoroutine(LayoutAfterCanvasUpdate());
+        }
+
+        private IEnumerator LayoutAfterCanvasUpdate()
+        {
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            BoardSideLayout.FitPanelToShowAllTiles(_leftPanel);
+            BoardSideLayout.FitPanelToShowAllTiles(_rightPanel);
+            _layoutCoroutine = null;
         }
 
         private void BuildCancelMarkers(RectTransform panel, string sideName)

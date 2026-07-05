@@ -54,7 +54,7 @@ namespace DragonBoxAlgebra.UI
             bool goodCards = _controller.Moves.CardsPlayed <= _controller.CurrentLevel.ParCards;
 
             _starsText.text =
-                $"The box is alone! {(goodMoves ? "✓" : "✗")}\n" +
+                "The box is alone! ✓\n" +
                 $"Right number of moves {(goodMoves ? "✓" : "✗")}\n" +
                 $"Right number of cards {(goodCards ? "✓" : "✗")}\n\n" +
                 $"{new string('★', stars)}{new string('☆', 3 - stars)}\n" +

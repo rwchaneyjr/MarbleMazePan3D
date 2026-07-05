@@ -9,6 +9,12 @@ namespace DragonBoxAlgebra.UI
 {
     public class HandView : MonoBehaviour
     {
+        private const float DefaultCardWidth = 90f;
+        private const float DefaultCardHeight = 100f;
+        private const float MinCardWidth = 44f;
+        private const float TileGap = 10f;
+        private const float HorizontalPadding = 12f;
+
         private RectTransform _panel;
         private Canvas _canvas;
         private RectTransform _dragRoot;
@@ -21,8 +27,7 @@ namespace DragonBoxAlgebra.UI
             _panel = panel;
             _canvas = canvas;
             _dragRoot = dragRoot;
-            _controller.HandChanged += RefreshHandInPlace;
-            _controller.BoardChanged += OnBoardChanged;
+            _controller.HandChanged += OnHandChanged;
             Refresh();
         }
 
@@ -30,81 +35,69 @@ namespace DragonBoxAlgebra.UI
         {
             if (_controller != null)
             {
-                _controller.HandChanged -= RefreshHandInPlace;
-                _controller.BoardChanged -= OnBoardChanged;
+                _controller.HandChanged -= OnHandChanged;
             }
         }
 
-        private void OnBoardChanged()
+        private void OnHandChanged()
         {
-            if (_controller.HasPendingBalance && _controller.Hand.Count > 0)
-            {
-                StartCoroutine(EnsureHandVisibleNextFrame());
-            }
+            StartCoroutine(RefreshNextFrame());
         }
 
-        private IEnumerator EnsureHandVisibleNextFrame()
+        private IEnumerator RefreshNextFrame()
         {
             yield return null;
-
-            if (_controller.Hand.Count == 0)
-            {
-                yield break;
-            }
-
-            for (int i = 0; i < _panel.childCount; i++)
-            {
-                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    yield break;
-                }
-            }
-
             Refresh();
         }
 
-        private void RefreshHandInPlace()
+        private void DestroyAllHandWidgets()
         {
-            var widgets = new List<CardWidget>();
-            for (int i = 0; i < _panel.childCount; i++)
+            DestroyHandWidgetsUnder(_panel);
+            if (_dragRoot != null)
             {
-                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    widgets.Add(widget);
-                }
+                DestroyHandWidgetsUnder(_dragRoot);
             }
+        }
 
-            if (widgets.Count == _controller.Hand.Count)
+        private static void DestroyHandWidgetsUnder(Transform root)
+        {
+            if (root == null)
             {
-                for (int i = 0; i < widgets.Count; i++)
-                {
-                    widgets[i].Bind(_controller.Hand[i], i, "Hand", _controller, _canvas, _dragRoot);
-                }
-
                 return;
             }
 
-            Refresh();
+            for (int i = root.childCount - 1; i >= 0; i--)
+            {
+                Transform child = root.GetChild(i);
+                CardWidget widget = child.GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand")
+                {
+                    Destroy(child.gameObject);
+                }
+            }
         }
 
         private void Refresh()
         {
+            DestroyAllHandWidgets();
+
             for (int i = _panel.childCount - 1; i >= 0; i--)
             {
                 Transform child = _panel.GetChild(i);
-                if (child.GetComponent<BoardDropZone>() == null)
+                if (child.GetComponent<BoardDropZone>() == null && child.GetComponent<CardWidget>() == null)
                 {
                     Destroy(child.gameObject);
                 }
             }
 
             var layout = _panel.GetComponent<HorizontalLayoutGroup>();
+            int handCount = _controller.Hand.Count;
+            bool useManualLayout = handCount > 4;
+
             if (layout == null)
             {
                 layout = _panel.gameObject.AddComponent<HorizontalLayoutGroup>();
-                layout.spacing = 12f;
+                layout.spacing = TileGap;
                 layout.childAlignment = TextAnchor.MiddleCenter;
                 layout.childControlWidth = false;
                 layout.childControlHeight = false;
@@ -112,10 +105,83 @@ namespace DragonBoxAlgebra.UI
                 layout.childForceExpandHeight = false;
             }
 
-            for (int i = 0; i < _controller.Hand.Count; i++)
+            layout.enabled = !useManualLayout;
+            layout.spacing = TileGap;
+
+            for (int i = 0; i < handCount; i++)
             {
                 BoardCard card = _controller.Hand[i];
                 CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
+            }
+
+            if (useManualLayout)
+            {
+                FitHandToPanel();
+            }
+        }
+
+        private void FitHandToPanel()
+        {
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_panel);
+
+            float panelWidth = _panel.rect.width;
+            if (panelWidth <= 0f)
+            {
+                return;
+            }
+
+            int count = _controller.Hand.Count;
+            if (count == 0)
+            {
+                return;
+            }
+
+            float cardWidth = DefaultCardWidth;
+            float cardHeight = DefaultCardHeight;
+            float totalWidth = count * cardWidth + (count - 1) * TileGap;
+            float availableWidth = panelWidth - HorizontalPadding * 2f;
+            if (totalWidth > availableWidth)
+            {
+                float scale = availableWidth / totalWidth;
+                cardWidth = Mathf.Max(MinCardWidth, cardWidth * scale);
+                cardHeight = cardHeight * (cardWidth / DefaultCardWidth);
+            }
+
+            float pitch = cardWidth + TileGap;
+            float rowWidth = count * pitch - TileGap;
+            float startX = -rowWidth * 0.5f + cardWidth * 0.5f;
+
+            int widgetIndex = 0;
+            for (int i = 0; i < _panel.childCount; i++)
+            {
+                Transform child = _panel.GetChild(i);
+                CardWidget widget = child.GetComponent<CardWidget>();
+                if (widget == null || widget.SideName != "Hand")
+                {
+                    continue;
+                }
+
+                var rect = child as RectTransform;
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.sizeDelta = new Vector2(cardWidth, cardHeight);
+                rect.anchoredPosition = new Vector2(startX + widgetIndex * pitch, 0f);
+                rect.localScale = Vector3.one;
+
+                LayoutElement layoutElement = rect.GetComponent<LayoutElement>();
+                if (layoutElement == null)
+                {
+                    layoutElement = rect.gameObject.AddComponent<LayoutElement>();
+                }
+
+                layoutElement.ignoreLayout = true;
+                layoutElement.minWidth = cardWidth;
+                layoutElement.preferredWidth = cardWidth;
+                layoutElement.minHeight = cardHeight;
+                layoutElement.preferredHeight = cardHeight;
+                widgetIndex++;
             }
         }
     }
