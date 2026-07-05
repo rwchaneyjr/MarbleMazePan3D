@@ -122,7 +122,7 @@ namespace DragonBoxAlgebra.Gameplay
                         LevelSolvabilityRules.ConfigureExtraPuzzleLevel(level, handCount, diceLevel, value,
                             otherSideCount);
                         level.ParMoves = handCount + otherSideCount + 1;
-                        level.ParCards = handCount + otherSideCount;
+                        level.ParCards = handCount;
                     }
                     else
                     {

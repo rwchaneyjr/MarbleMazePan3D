@@ -8,8 +8,8 @@ namespace DragonBoxAlgebra.Gameplay
         public const int ExtraPuzzleFromIndex = 12;
         public const int ExtraPuzzleToIndex = 22;
         public const int ExtraPuzzleCount = ExtraPuzzleToIndex - ExtraPuzzleFromIndex;
-        public const int MinOtherSideExtras = 10;
-        public const int MaxOtherSideExtras = 10;
+        public const int MinOtherSideExtras = 4;
+        public const int MaxOtherSideExtras = 4;
 
         public static bool ShouldConfigureBoxSide(int handCount) => handCount >= 2;
 
@@ -107,9 +107,12 @@ namespace DragonBoxAlgebra.Gameplay
             CardKind redObstacleKind = CoordinatedCreatureThemes.OppositeCreature(redSolverKind);
 
             List<int> redThemes = CoordinatedCreatureThemes.BuildRedSideThemes(handCount, level.CreatureTheme);
-            var usedThemes = new HashSet<int>(redThemes);
-            List<int> otherThemes =
-                CoordinatedCreatureThemes.BuildOtherSideThemes(otherSideCount, usedThemes, level.CreatureTheme);
+            List<int> otherThemes = new List<int>(otherSideCount);
+            for (int i = 0; i < otherSideCount; i++)
+            {
+                otherThemes.Add(redThemes[i % handCount]);
+            }
+
             List<CardKind> otherObstacleKinds =
                 CoordinatedCreatureThemes.BuildAlternatingCreatureKinds(otherSideCount);
 
@@ -150,13 +153,7 @@ namespace DragonBoxAlgebra.Gameplay
                 level.HandValues.Add(value);
             }
 
-            for (int i = 0; i < otherSideCount; i++)
-            {
-                level.HandCards.Add(CoordinatedCreatureThemes.OppositeCreature(otherObstacleKinds[i]));
-                level.HandValues.Add(value);
-            }
-
-            CoordinatedCreatureThemes.ApplyRedSideAndOtherHand(level, redThemes, otherThemes);
+            CoordinatedCreatureThemes.ApplyRedSideAndHand(level, redThemes);
         }
 
         private static void ApplyDiceBoard(LevelDefinition level, int leftBesideBox, int rightCount, int baseValue)
@@ -184,7 +181,7 @@ namespace DragonBoxAlgebra.Gameplay
             for (int i = 0; i < rightCount; i++)
             {
                 rightCards.Add(obstacleKind);
-                rightValues.Add(baseValue + leftBesideBox + i);
+                rightValues.Add(baseValue + (i % leftBesideBox));
                 rightVisualThemes.Add(-1);
             }
 
@@ -195,12 +192,12 @@ namespace DragonBoxAlgebra.Gameplay
             level.RightValues = rightValues;
             level.RightVisualThemes = rightVisualThemes;
 
-            int handCount = leftBesideBox + rightCount;
+            int handTileCount = leftBesideBox;
             level.HandCards.Clear();
             level.HandValues.Clear();
             level.HandVisualThemes.Clear();
 
-            for (int i = 0; i < handCount; i++)
+            for (int i = 0; i < handTileCount; i++)
             {
                 level.HandCards.Add(solverKind);
                 level.HandValues.Add(baseValue + i);
