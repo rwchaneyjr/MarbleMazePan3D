@@ -47,6 +47,12 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (diceLevel)
             {
+                if (handCount >= 2)
+                {
+                    ApplyCreatureBoard(level, leftBesideBox, rightCount, value, handCount);
+                    return;
+                }
+
                 ApplyDiceBoard(level, leftBesideBox, rightCount, value);
                 return;
             }
@@ -54,11 +60,20 @@ namespace DragonBoxAlgebra.Gameplay
             ApplyCreatureBoard(level, leftBesideBox, rightCount, value, handCount);
         }
 
-        public static void ConfigureStandardSolvableLevel(LevelDefinition level, int handCount, bool diceLevel, int value)
+        public static void ConfigureStandardSolvableLevel(LevelDefinition level, int handCount, bool diceLevel, int value,
+            int levelIndex = 0)
         {
             level.RightCards.Clear();
             level.RightValues.Clear();
             level.RightVisualThemes.Clear();
+
+            (int leftBesideBox, int rightCount) = SplitObstaclesBesideBox(handCount, levelIndex);
+
+            if (diceLevel && handCount >= 2)
+            {
+                ApplyCreatureBoard(level, leftBesideBox, rightCount, value, handCount);
+                return;
+            }
 
             if (diceLevel)
             {
@@ -73,7 +88,30 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            ApplyCreatureBoard(level, handCount, rightCount: 0, value, handCount);
+            ApplyCreatureBoard(level, leftBesideBox, rightCount, value, handCount);
+        }
+
+        /// <summary>
+        /// Splits hand-sized obstacles between left (beside box) and right starters.
+        /// </summary>
+        private static (int leftBesideBox, int rightCount) SplitObstaclesBesideBox(int handCount, int levelIndex)
+        {
+            if (handCount <= 2)
+            {
+                if (handCount == 2 && levelIndex % 3 == 1)
+                {
+                    return (1, 1);
+                }
+
+                return (handCount, 0);
+            }
+
+            return (levelIndex % 3) switch
+            {
+                1 => (2, 1),
+                2 => (1, 2),
+                _ => (3, 0)
+            };
         }
 
         private static void ApplyCreatureBoard(LevelDefinition level, int leftBesideBox, int rightCount, int value,
@@ -89,9 +127,9 @@ namespace DragonBoxAlgebra.Gameplay
                 ? handThemes
                 : CoordinatedCreatureThemes.BuildRedSideThemes(leftBesideBox, level.CreatureTheme);
 
-            var usedThemes = new HashSet<int>(leftThemes);
             List<int> rightThemes = rightCount > 0
-                ? CoordinatedCreatureThemes.BuildOtherSideThemes(rightCount, usedThemes, level.CreatureTheme)
+                ? CoordinatedCreatureThemes.BuildRightSideThemesMatchingHand(
+                    rightCount, handThemes, level.CreatureTheme, leftBesideBox)
                 : new List<int>();
 
             var leftCards = new List<CardKind> { CardKind.Box };
@@ -132,6 +170,9 @@ namespace DragonBoxAlgebra.Gameplay
             CardKind obstacleKind = solverKind == CardKind.NegativeConstant
                 ? CardKind.PositiveConstant
                 : CardKind.NegativeConstant;
+            CardKind oppositeObstacle = obstacleKind == CardKind.PositiveConstant
+                ? CardKind.NegativeConstant
+                : CardKind.PositiveConstant;
 
             var leftCards = new List<CardKind> { CardKind.Box };
             var leftValues = new List<int> { 1 };
@@ -139,7 +180,10 @@ namespace DragonBoxAlgebra.Gameplay
 
             for (int i = 0; i < leftBesideBox; i++)
             {
-                leftCards.Add(obstacleKind);
+                CardKind kind = leftBesideBox <= 1
+                    ? obstacleKind
+                    : i % 2 == 0 ? obstacleKind : oppositeObstacle;
+                leftCards.Add(kind);
                 leftValues.Add(value);
                 leftVisualThemes.Add(-1);
             }
@@ -148,11 +192,25 @@ namespace DragonBoxAlgebra.Gameplay
             var rightValues = new List<int>();
             var rightVisualThemes = new List<int>();
 
-            for (int i = 0; i < rightCount; i++)
+            if (rightCount >= 2)
             {
-                rightCards.Add(obstacleKind);
+                int pairTheme = level.CreatureTheme;
+                rightCards.Add(CardKind.DayCreature);
                 rightValues.Add(value);
-                rightVisualThemes.Add(-1);
+                rightVisualThemes.Add(pairTheme);
+                rightCards.Add(CardKind.NightCreature);
+                rightValues.Add(value);
+                rightVisualThemes.Add(pairTheme);
+            }
+            else
+            {
+                for (int i = 0; i < rightCount; i++)
+                {
+                    CardKind kind = i % 2 == 0 ? obstacleKind : oppositeObstacle;
+                    rightCards.Add(kind);
+                    rightValues.Add(value);
+                    rightVisualThemes.Add(-1);
+                }
             }
 
             level.LeftCards = leftCards;
