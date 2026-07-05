@@ -32,6 +32,20 @@ git fetch origin
 git checkout save/no-right-matches-problem-11-16-21-26
 ```
 
+## Saved copy + frog only (bee swapped, nothing else)
+
+Same gameplay as this snapshot; theme 6 is frog/snake instead of bee.
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+git merge --abort 2>/dev/null || true
+git fetch origin
+git checkout cursor/snapshot-frog-only-1c5d
+bash scripts/restore-snapshot-frog.sh
+```
+
+Do **not** use `restore-scripts.sh` alone — it defaults to `main`, which changes hand tiles and levels.
+
 ## SymbolAlgebra folder (Windows)
 
 `C:\Users\rober\SymbolAlgebra`

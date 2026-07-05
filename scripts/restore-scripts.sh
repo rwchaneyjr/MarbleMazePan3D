@@ -7,6 +7,9 @@
 #
 # Custom branch:
 #   RESTORE_BRANCH=main bash scripts/restore-scripts.sh
+#
+# Saved snapshot + frog only (not main):
+#   bash scripts/restore-snapshot-frog.sh
 
 set -euo pipefail
 
