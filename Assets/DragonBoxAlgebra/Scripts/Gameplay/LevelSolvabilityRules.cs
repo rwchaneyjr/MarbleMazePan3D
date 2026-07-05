@@ -8,16 +8,47 @@ namespace DragonBoxAlgebra.Gameplay
         public const int ExtraPuzzleFromIndex = 12;
         public const int ExtraPuzzleToIndex = 22;
         public const int ExtraPuzzleCount = ExtraPuzzleToIndex - ExtraPuzzleFromIndex;
-        public const int MinOtherSideExtras = 4;
-        public const int MaxOtherSideExtras = 4;
+        public const int MinOtherSideExtras = 10;
+        public const int MaxOtherSideExtras = 10;
 
         public static bool ShouldConfigureBoxSide(int handCount) => handCount >= 2;
 
         public static bool IsExtraPuzzleLevel(int levelIndex) =>
             levelIndex >= ExtraPuzzleFromIndex && levelIndex < ExtraPuzzleToIndex;
 
+        /// <summary>
+        /// Tile count for the side opposite the red box (display levels 13–22 only).
+        /// Change MinOtherSideExtras / MaxOtherSideExtras above to adjust.
+        /// </summary>
         public static int OtherSideCountForExtraLevel(int extraIndex) =>
             MinOtherSideExtras + (extraIndex % (MaxOtherSideExtras - MinOtherSideExtras + 1));
+
+        /// <summary>
+        /// Single entry point from LevelGenerator — picks standard vs extra layout.
+        /// </summary>
+        public static void ConfigureLevel(LevelDefinition level, int levelIndex, int handCount, bool diceLevel,
+            int value)
+        {
+            if (!ShouldConfigureBoxSide(handCount))
+            {
+                return;
+            }
+
+            if (IsExtraPuzzleLevel(levelIndex))
+            {
+                int extraIndex = levelIndex - ExtraPuzzleFromIndex;
+                int otherSideCount = OtherSideCountForExtraLevel(extraIndex);
+                ConfigureExtraPuzzleLevel(level, handCount, diceLevel, value, otherSideCount);
+                return;
+            }
+
+            ConfigureStandardSolvableLevel(level, handCount, diceLevel, value);
+        }
+
+        public static int OtherSideCountForLevelIndex(int levelIndex) =>
+            IsExtraPuzzleLevel(levelIndex)
+                ? OtherSideCountForExtraLevel(levelIndex - ExtraPuzzleFromIndex)
+                : 0;
 
         public static void ConfigureExtraPuzzleLevel(LevelDefinition level, int handCount, bool diceLevel, int value,
             int otherSideCount)
