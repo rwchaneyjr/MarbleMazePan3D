@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Restore the saved snapshot + frog-only swap (no main gameplay changes).
 #
+# Points at save/frog-level-fixes-jul-2026 on cursor/snapshot-frog-only-1c5d.
 # Usage (Git Bash):
 #   cd /c/Users/rober/SymbolAlgebra
 #   bash scripts/restore-snapshot-frog.sh
