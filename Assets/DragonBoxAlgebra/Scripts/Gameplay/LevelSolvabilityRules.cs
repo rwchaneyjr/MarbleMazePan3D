@@ -69,6 +69,46 @@ namespace DragonBoxAlgebra.Gameplay
             ApplyCreatureBoardWithOtherSide(level, handCount, otherSideCount, value);
         }
 
+        /// <summary>
+        /// Legacy entry point. Prefer ConfigureLevel(level, levelIndex, ...).
+        /// Pass extraTileCount = -1 to use MinOtherSideExtras / MaxOtherSideExtras.
+        /// </summary>
+        public static void ConfigureSolvableLevel(LevelDefinition level, int handCount, bool diceLevel, int value,
+            int extraTileCount = -1, bool extraTilesOnOtherSide = true)
+        {
+            if (handCount < 2)
+            {
+                return;
+            }
+
+            if (extraTileCount < 0)
+            {
+                extraTileCount = MinOtherSideExtras;
+            }
+
+            if (extraTileCount == 0)
+            {
+                ConfigureStandardSolvableLevel(level, handCount, diceLevel, value);
+                return;
+            }
+
+            if (!extraTilesOnOtherSide)
+            {
+                if (diceLevel)
+                {
+                    ApplyDiceBoard(level, handCount + extraTileCount, rightCount: 0, value);
+                }
+                else
+                {
+                    ApplyCreatureBoard(level, handCount + extraTileCount, rightCount: 0, value, handCount);
+                }
+
+                return;
+            }
+
+            ConfigureExtraPuzzleLevel(level, handCount, diceLevel, value, extraTileCount);
+        }
+
         public static void ConfigureStandardSolvableLevel(LevelDefinition level, int handCount, bool diceLevel, int value)
         {
             level.RightCards.Clear();
