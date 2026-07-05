@@ -210,6 +210,18 @@ namespace DragonBoxAlgebra.Gameplay
                     ? solver
                     : CardKind.NightCreature);
 
+            if (diceLevel && handCount >= 2)
+            {
+                CardKind creatureSolver = CardKind.NightCreature;
+                for (int i = 0; i < handCount; i++)
+                {
+                    level.HandCards.Add(creatureSolver);
+                    level.HandValues.Add(value);
+                }
+
+                return;
+            }
+
             if (handCount <= 1)
             {
                 level.HandCards.Add(solver);

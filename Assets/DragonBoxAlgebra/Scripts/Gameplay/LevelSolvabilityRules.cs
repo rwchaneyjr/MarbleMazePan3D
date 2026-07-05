@@ -47,6 +47,12 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (diceLevel)
             {
+                if (handCount >= 2)
+                {
+                    ApplyCreatureBoard(level, leftBesideBox, rightCount, value, handCount);
+                    return;
+                }
+
                 ApplyDiceBoard(level, leftBesideBox, rightCount, value);
                 return;
             }
@@ -59,6 +65,12 @@ namespace DragonBoxAlgebra.Gameplay
             level.RightCards.Clear();
             level.RightValues.Clear();
             level.RightVisualThemes.Clear();
+
+            if (diceLevel && handCount >= 2)
+            {
+                ApplyCreatureBoard(level, handCount, rightCount: 0, value, handCount);
+                return;
+            }
 
             if (diceLevel)
             {
