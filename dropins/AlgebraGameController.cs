@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
+using DragonBoxAlgebra.UI;
 
 namespace DragonBoxAlgebra.Gameplay
 {
@@ -37,6 +38,7 @@ namespace DragonBoxAlgebra.Gameplay
         private BalancePending _pendingBalance;
         private int _levelIndex;
         private bool _levelComplete;
+        private static readonly Random Rng = new();
 
         public int LevelIndex => _levelIndex;
         public int LevelCount => LevelLibrary.Levels.Count;
@@ -83,6 +85,7 @@ namespace DragonBoxAlgebra.Gameplay
         {
             _levelIndex = Math.Clamp(index, 0, LevelLibrary.Levels.Count - 1);
             LevelDefinition level = CurrentLevel;
+            CreatureArt.SetTheme(level.CreatureTheme);
 
             Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues),
                 level.BuildSide(level.RightCards, level.RightValues));
@@ -108,8 +111,26 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
                 ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
-                : "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                  "Light + dark on the same side become one *. Pairs never cross the middle.");
+                : HandMessage(level));
+        }
+
+        private static string HandMessage(LevelDefinition level)
+        {
+            int count = level.HandCards.Count;
+            if (count <= 1)
+            {
+                return "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
+                       "Light + dark on the same side become one *. Pairs never cross the middle.";
+            }
+
+            if (count == 2)
+            {
+                return "Two tiles in hand — play each one: drag to a side, then drag the same tile to the ?. " +
+                       "Finish one tile before starting the next.";
+            }
+
+            return "Three tiles in hand — play each one: drag to a side, then drag the same tile to the ?. " +
+                   "Light + dark on the same side become one *.";
         }
 
         public void LoadNextLevel()
@@ -118,6 +139,23 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 LoadLevel(_levelIndex + 1);
             }
+            else
+            {
+                LoadRandomLevel();
+            }
+        }
+
+        public void LoadRandomLevel()
+        {
+            if (LevelLibrary.Levels.Count <= 6)
+            {
+                LoadLevel(0);
+                return;
+            }
+
+            int index = 6 + Rng.Next(LevelLibrary.Levels.Count - 6);
+            LoadLevel(index);
+            MessageChanged?.Invoke($"Random puzzle — {CreatureArt.ThemeName}!");
         }
 
         public void RestartLevel()
@@ -163,7 +201,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (_pendingBalance != null)
             {
-                MessageChanged?.Invoke("Fill the ? hole first — flip the card before you play it.");
+                MessageChanged?.Invoke("Fill the ? hole first — finish this tile before playing another.");
                 return false;
             }
 
@@ -397,17 +435,14 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 Card = template.Clone(),
                 PlacedSide = targetSide,
+                PlacedIndex = placedIndex,
                 HandIndex = handIndex,
                 HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
             };
 
-            ActivateOppositePairOrCancelDice(targetSide, placedIndex);
-
-            MessageChanged?.Invoke(_pendingCancels.Count > 0
-                ? "? on the other side — drag the same tile to fill the hole. Light met dark: spinning * appeared!"
-                : "? appeared on the other side — drag the same tile to fill the hole.");
+            MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
-            ResolveCombines();
+            HandChanged?.Invoke();
             return true;
         }
 
@@ -415,7 +450,7 @@ namespace DragonBoxAlgebra.Gameplay
         {
             if (handIndex != _pendingBalance.HandIndex)
             {
-                MessageChanged?.Invoke("Use the same hand card to fill the hole.");
+                MessageChanged?.Invoke("Fill the ? hole first — finish the tile you started.");
                 return false;
             }
 
@@ -440,13 +475,15 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
-            int placedIndex = insertIndex;
+            int holePlacedIndex = insertIndex;
+            string placedSide = _pendingBalance.PlacedSide;
+            int placedBoardIndex = _pendingBalance.PlacedIndex;
             _hand.RemoveAt(handIndex);
             _pendingBalance = null;
             HandChanged?.Invoke();
 
-            // Only the hole side gets a new pair check — placed side was handled on first drag.
-            ActivateOppositePairOrCancelDice(targetSide, placedIndex);
+            ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
+            ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
 
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke(_pendingCancels.Count > 0

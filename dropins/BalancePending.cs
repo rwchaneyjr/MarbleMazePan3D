@@ -6,6 +6,7 @@ namespace DragonBoxAlgebra.Gameplay
     {
         public BoardCard Card;
         public string PlacedSide;
+        public int PlacedIndex;
         public int HandIndex;
         public int HoleInsertIndex;
 

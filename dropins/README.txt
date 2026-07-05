@@ -1,6 +1,17 @@
 # SymbolAlgebra — copy these files into your Unity project
 
-## Where to copy (SymbolAlgebra on main branch)
+## Git Bash (fastest)
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+bash scripts/sync-dropins.sh import
+```
+
+See `scripts/DROPIN-BASH.txt` for more options.
+
+---
+
+## Manual copy
 
 Copy each file from this `dropins/` folder into the matching path under your project:
 
@@ -10,6 +21,7 @@ C:\Users\rober\SymbolAlgebra\Assets\DragonBoxAlgebra\Scripts\
 
 | Drop-in file | Copy to |
 |--------------|---------|
+| AlgebraBootstrap.cs | Scripts/ (parent of Core) |
 | AlgebraGameController.cs | Gameplay/ |
 | BalancePending.cs | Gameplay/ |
 | GameSnapshot.cs | Gameplay/ |
@@ -17,33 +29,37 @@ C:\Users\rober\SymbolAlgebra\Assets\DragonBoxAlgebra\Scripts\
 | HandRules.cs | Gameplay/ |
 | PendingCancelMarker.cs | Gameplay/ |
 | LevelLibrary.cs | Gameplay/ |
+| LevelGenerator.cs | Gameplay/ |
+| LevelDefinition.cs | Gameplay/ |
+| MoveTracker.cs | Gameplay/ |
 | CombineRules.cs | Core/ |
 | BoardCard.cs | Core/ |
+| AlgebraBoard.cs | Core/ |
+| BoardSide.cs | Core/ |
+| CardKind.cs | Core/ |
+| WinChecker.cs | Core/ |
 | BoardView.cs | UI/ |
 | CardWidget.cs | UI/ |
 | HandView.cs | UI/ |
 | BoardDropZone.cs | UI/ |
 | BalanceHoleWidget.cs | UI/ |
 | AsteriskCancelWidget.cs | UI/ |
-| AlgebraBootstrap.cs | Scripts/ (parent of Core) |
 | AlgebraUI.cs | UI/ |
-
-**New files** (create folder if missing): `BalancePending.cs`, `BalanceHoleWidget.cs`, `AsteriskCancelWidget.cs`, `PendingCancelMarker.cs`, `CardFlipRules.cs`, `HandRules.cs`
+| AudioManager.cs | Audio/ |
 
 ## After copying
 
 1. Return to Unity — wait for compile
 2. Press **Play**
-3. Level 1 test:
-   - Drag night to RIGHT → * on right, ? on left
-   - Same card stays in hand at bottom
-   - Drag it to the ? on LEFT → hand empty, balanced
+3. Open `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
 
 ## Fixes included
 
+- Right side accommodates up to 6 tiles (auto-scaled layout)
 - ? hole merges with incoming tile
 - Hand card stays visible after first drag
 - One * per side max
 - Light + dark on same side → spinning *
+- Day/night cancel waits until balance completes
 - Click hand card to flip light/dark before playing
 - Dice cancel instantly (level 4), no asterisks

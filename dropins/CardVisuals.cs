@@ -53,8 +53,8 @@ namespace DragonBoxAlgebra.UI
         public static string Emoji(BoardCard card) => card.Kind switch
         {
             CardKind.Box => "📦",
-            CardKind.DayCreature => "🐠",
-            CardKind.NightCreature => "🐢",
+            CardKind.DayCreature => CreatureArt.LightEmoji,
+            CardKind.NightCreature => CreatureArt.DarkEmoji,
             CardKind.PositiveConstant => "🎲",
             CardKind.NegativeConstant => "🎲",
             CardKind.One => "😊",
@@ -78,7 +78,8 @@ namespace DragonBoxAlgebra.UI
 
         public static Sprite CreatureSprite(BoardCard card)
         {
-            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box)
+            if (CreatureArt.ThemeIndex == 0
+                && card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box)
             {
                 Sprite loaded = CardSpriteLoader.ForCard(card);
                 if (loaded != null)
@@ -89,8 +90,8 @@ namespace DragonBoxAlgebra.UI
 
             return card.Kind switch
             {
-                CardKind.DayCreature => SpriteFactory.FishCreature,
-                CardKind.NightCreature => SpriteFactory.TurtleCreature,
+                CardKind.DayCreature => CreatureArt.LightSprite(card),
+                CardKind.NightCreature => CreatureArt.DarkSprite(card),
                 CardKind.Box => SpriteFactory.BoxSprite,
                 _ => null
             };
