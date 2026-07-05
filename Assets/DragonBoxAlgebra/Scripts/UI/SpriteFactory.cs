@@ -36,7 +36,7 @@ namespace DragonBoxAlgebra.UI
             _themedSprites[row, col] = row switch
             {
                 0 => light ? CreateFishSprite() : CreateTurtleSprite(),
-                1 => CreateBirdSprite(light),
+                1 => light ? CreateRobinSprite() : CreateOwlSprite(),
                 2 => CreateCrabSprite(light),
                 3 => CreateWingSprite(light),
                 4 => CreateStarSprite(light),
@@ -252,11 +252,59 @@ namespace DragonBoxAlgebra.UI
             return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
         }
 
-        private static Sprite CreateBirdSprite(bool light)
+        private static Sprite CreateRobinSprite()
         {
-            var body = light ? new Color(0.35f, 0.72f, 0.98f) : new Color(0.35f, 0.28f, 0.55f);
-            var accent = light ? new Color(1f, 0.75f, 0.15f) : new Color(0.85f, 0.72f, 0.35f);
-            return CreateWingedCreature(body, accent, light);
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+
+            var body = new Color(0.42f, 0.58f, 0.82f);
+            var belly = new Color(0.95f, 0.42f, 0.18f);
+            var beak = new Color(1f, 0.72f, 0.12f);
+            var eye = Color.white;
+            var pupil = new Color(0.1f, 0.1f, 0.12f);
+
+            FillEllipse(texture, 48, 54, 22, 20, body);
+            FillEllipse(texture, 48, 60, 14, 12, belly);
+            FillEllipse(texture, 48, 42, 16, 14, body);
+            FillEllipse(texture, 44, 40, 5, 5, eye);
+            FillEllipse(texture, 52, 40, 5, 5, eye);
+            FillEllipse(texture, 45, 40, 2, 2, pupil);
+            FillEllipse(texture, 53, 40, 2, 2, pupil);
+            FillEllipse(texture, 48, 34, 6, 4, beak);
+
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static Sprite CreateOwlSprite()
+        {
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+
+            var body = new Color(0.48f, 0.38f, 0.28f);
+            var face = new Color(0.72f, 0.62f, 0.48f);
+            var eyeRing = new Color(0.95f, 0.82f, 0.2f);
+            var pupil = new Color(0.08f, 0.08f, 0.1f);
+            var beak = new Color(0.92f, 0.62f, 0.15f);
+
+            FillEllipse(texture, 48, 56, 26, 24, body);
+            FillEllipse(texture, 48, 50, 22, 18, face);
+            FillEllipse(texture, 38, 48, 10, 10, eyeRing);
+            FillEllipse(texture, 58, 48, 10, 10, eyeRing);
+            FillEllipse(texture, 38, 48, 6, 6, Color.white);
+            FillEllipse(texture, 58, 48, 6, 6, Color.white);
+            FillEllipse(texture, 38, 48, 3, 3, pupil);
+            FillEllipse(texture, 58, 48, 3, 3, pupil);
+            FillEllipse(texture, 48, 58, 5, 4, beak);
+            FillEllipse(texture, 32, 34, 6, 8, body);
+            FillEllipse(texture, 64, 34, 6, 8, body);
+
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
         }
 
         private static Sprite CreateCrabSprite(bool light)
