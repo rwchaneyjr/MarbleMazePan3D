@@ -8,8 +8,9 @@ namespace DragonBoxAlgebra.Gameplay
         public const int ExtraPuzzleFromIndex = 12;
         public const int ExtraPuzzleToIndex = 22;
         public const int ExtraPuzzleCount = ExtraPuzzleToIndex - ExtraPuzzleFromIndex;
-        public const int MinOtherSideExtras = 10;
-        public const int MaxOtherSideExtras = 10;
+        public const int DistinctAnimalsForExtraLevel = 5;
+        public const int MinOtherSideExtras = 2;
+        public const int MaxOtherSideExtras = 2;
 
         public static bool ShouldConfigureBoxSide(int handCount) => handCount >= 2;
 
@@ -137,11 +138,19 @@ namespace DragonBoxAlgebra.Gameplay
             CardKind redSolverKind = level.HandCards[0];
             CardKind redObstacleKind = CoordinatedCreatureThemes.OppositeCreature(redSolverKind);
 
-            List<int> redThemes = CoordinatedCreatureThemes.BuildRedSideThemes(handCount, level.CreatureTheme);
+            List<int> allThemes = CoordinatedCreatureThemes.BuildRedSideThemes(
+                DistinctAnimalsForExtraLevel, level.CreatureTheme);
+            List<int> redThemes = allThemes.GetRange(0, handCount);
+
+            var usedThemes = new HashSet<int>(redThemes);
+            int uniqueOtherCount = DistinctAnimalsForExtraLevel - handCount;
+            List<int> uniqueOtherThemes = CoordinatedCreatureThemes.BuildOtherSideThemes(
+                uniqueOtherCount, usedThemes, level.CreatureTheme);
+
             List<int> otherThemes = new List<int>(otherSideCount);
             for (int i = 0; i < otherSideCount; i++)
             {
-                otherThemes.Add(redThemes[i % handCount]);
+                otherThemes.Add(uniqueOtherThemes[i % uniqueOtherCount]);
             }
 
             List<CardKind> otherObstacleKinds =
@@ -178,13 +187,25 @@ namespace DragonBoxAlgebra.Gameplay
 
             level.HandCards.Clear();
             level.HandValues.Clear();
-            for (int i = 0; i < handCount; i++)
+            for (int i = 0; i < DistinctAnimalsForExtraLevel; i++)
             {
-                level.HandCards.Add(redSolverKind);
+                if (i < handCount)
+                {
+                    level.HandCards.Add(redSolverKind);
+                }
+                else
+                {
+                    int otherIndex = i - handCount;
+                    CardKind otherKind = otherIndex < otherObstacleKinds.Count
+                        ? otherObstacleKinds[otherIndex]
+                        : otherObstacleKinds[otherIndex % otherObstacleKinds.Count];
+                    level.HandCards.Add(CoordinatedCreatureThemes.OppositeCreature(otherKind));
+                }
+
                 level.HandValues.Add(value);
             }
 
-            CoordinatedCreatureThemes.ApplyRedSideAndHand(level, redThemes);
+            CoordinatedCreatureThemes.ApplyRedSideAndOtherHand(level, redThemes, uniqueOtherThemes);
         }
 
         private static void ApplyDiceBoard(LevelDefinition level, int leftBesideBox, int rightCount, int baseValue)

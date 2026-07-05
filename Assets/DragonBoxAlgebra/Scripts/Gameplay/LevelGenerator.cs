@@ -121,7 +121,7 @@ namespace DragonBoxAlgebra.Gameplay
                     {
                         int otherSideCount = LevelSolvabilityRules.OtherSideCountForLevelIndex(levelIndex);
                         level.ParMoves = handCount + otherSideCount + 1;
-                        level.ParCards = handCount;
+                        level.ParCards = LevelSolvabilityRules.DistinctAnimalsForExtraLevel;
                     }
                     else
                     {
