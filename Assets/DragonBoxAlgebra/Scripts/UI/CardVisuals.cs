@@ -107,8 +107,8 @@ namespace DragonBoxAlgebra.UI
 
             return card.Kind switch
             {
-                CardKind.PositiveConstant => SpriteFactory.DiceSprite,
-                CardKind.NegativeConstant => SpriteFactory.DiceSprite,
+                CardKind.PositiveConstant => SpriteFactory.PositiveDiceSprite,
+                CardKind.NegativeConstant => SpriteFactory.NegativeDiceSprite,
                 CardKind.One => SpriteFactory.SmileySprite,
                 CardKind.DivideTool => SpriteFactory.DiceSprite,
                 _ => null

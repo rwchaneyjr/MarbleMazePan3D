@@ -2,10 +2,10 @@
 
 **Saved:** 2026-07-05
 
-## Notes
+## Known issues
 
 - **No right matches** — opposite creatures on the right side do not pair / cancel correctly (or right-side tiles do not match when they should).
-- **Problem levels:** 11, 16, 21, 26
+- **Problem levels:** 11, 16, 21, 26 (partial fixes applied for 4, 6, 16, 21 in `cursor/snapshot-frog-only-1c5d`)
 
 ## Level reference (1-based, as shown in game UI)
 

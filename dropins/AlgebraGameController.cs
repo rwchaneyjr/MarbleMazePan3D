@@ -93,6 +93,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
+            HandVisualRules.EnsureDistinctHandVisuals(_hand, level.CreatureTheme);
             CaptureHandTemplates();
             Moves.Reset();
             _undoStack.Clear();
@@ -102,10 +103,7 @@ namespace DragonBoxAlgebra.Gameplay
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
-            if (_hand.Count == 0)
-            {
-                ActivatePreplacedOppositePairs();
-            }
+            ActivatePreplacedOppositePairs();
             ResolveCombines();
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
             BoardChanged?.Invoke();
