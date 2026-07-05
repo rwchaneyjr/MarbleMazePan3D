@@ -2,37 +2,60 @@
 
 ## Your Unity folder: C:\Users\rober\SymbolAlgebra
 
-### One command — copy latest drop-ins into your Unity project
+### If scripts/sync-dropins.sh is missing — paste this whole block
 
-From a git clone of MarbleMazePan3D (this repo):
+Works without any script file (copies dropins/ into Assets):
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+S=Assets/DragonBoxAlgebra/Scripts
+mkdir -p "$S/Core" "$S/Gameplay" "$S/UI" "$S/Audio"
+cp dropins/AlgebraBootstrap.cs "$S/"
+cp dropins/AlgebraBoard.cs dropins/BoardCard.cs dropins/BoardSide.cs dropins/CardKind.cs dropins/CombineRules.cs dropins/WinChecker.cs "$S/Core/"
+cp dropins/AlgebraGameController.cs dropins/BalancePending.cs dropins/CardFlipRules.cs dropins/GameSnapshot.cs dropins/HandRules.cs dropins/LevelDefinition.cs dropins/LevelGenerator.cs dropins/LevelLibrary.cs dropins/MoveTracker.cs dropins/PendingCancelMarker.cs "$S/Gameplay/"
+cp dropins/AudioManager.cs "$S/Audio/"
+cp dropins/*.cs "$S/UI/" 2>/dev/null || true
+for f in AlgebraBootstrap AlgebraBoard BoardCard BoardSide CardKind CombineRules WinChecker AlgebraGameController BalancePending CardFlipRules GameSnapshot HandRules LevelDefinition LevelGenerator LevelLibrary MoveTracker PendingCancelMarker AudioManager; do
+  rm -f "$S/UI/${f}.cs" 2>/dev/null || true
+done
+echo "Done — open Unity and press Play"
+```
+
+---
+
+### Get latest from GitHub (includes sync script)
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+git fetch origin
+git pull origin main
+bash scripts/sync-dropins.sh import
+```
+
+If you use a feature branch instead of main:
+
+```bash
+git pull origin cursor/fix-right-side-tile-limit-1c5d
+bash scripts/sync-dropins.sh import
+```
+
+---
+
+### One command (after git pull — script is in repo)
 
 ```bash
 cd /c/Users/rober/SymbolAlgebra
 bash scripts/sync-dropins.sh import
 ```
 
-Or if the repo lives elsewhere:
-
-```bash
-SYMBOL_ALGEBRA_DIR="/c/Users/rober/SymbolAlgebra" bash /c/path/to/MarbleMazePan3D/scripts/sync-dropins.sh import
-```
-
 ---
 
-### Update dropins/ folder after you change scripts in Assets
+### Update dropins/ after pulling new Assets
 
 ```bash
 cd /c/Users/rober/SymbolAlgebra
 git pull origin main
 bash scripts/sync-dropins.sh export
-```
-
----
-
-### Import into this repo's Assets (cloud agent / local dev)
-
-```bash
-bash scripts/sync-dropins.sh import --here
 ```
 
 ---
