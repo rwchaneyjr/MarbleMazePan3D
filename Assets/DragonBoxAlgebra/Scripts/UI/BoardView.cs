@@ -15,8 +15,10 @@ namespace DragonBoxAlgebra.UI
         private const float DefaultTileWidth = 110f;
         private const float DefaultTileHeight = 120f;
         private const float DefaultTileSpacing = 16f;
-        private const float MinTileWidth = 72f;
-        private const float MinTileSpacing = 6f;
+        private const float MinTileWidth = 52f;
+        private const float MinTileSpacing = 4f;
+        private const int CompactPadding = 12;
+        private const int DefaultPadding = 24;
 
         private RectTransform _leftPanel;
         private RectTransform _rightPanel;
@@ -227,26 +229,37 @@ namespace DragonBoxAlgebra.UI
 
         private TileLayout ComputeTileLayout(RectTransform panel, int slotCount)
         {
-            var layout = panel.GetComponent<HorizontalLayoutGroup>();
-            float padding = layout != null ? layout.padding.horizontal : 48f;
-            float available = Mathf.Max(0f, panel.rect.width - padding);
+            int padding = slotCount >= 5 ? CompactPadding : DefaultPadding;
+            float available = Mathf.Max(0f, panel.rect.width - padding * 2f);
 
             if (slotCount <= 0 || available <= 0f)
             {
-                return new TileLayout(DefaultTileWidth, DefaultTileHeight, DefaultTileSpacing);
+                return new TileLayout(DefaultTileWidth, DefaultTileHeight, DefaultTileSpacing, DefaultPadding);
             }
 
-            float needed = slotCount * DefaultTileWidth + (slotCount - 1) * DefaultTileSpacing;
+            float spacing = slotCount >= 5 ? 8f : DefaultTileSpacing;
+            float needed = slotCount * DefaultTileWidth + (slotCount - 1) * spacing;
+
             if (needed <= available)
             {
-                return new TileLayout(DefaultTileWidth, DefaultTileHeight, DefaultTileSpacing);
+                return new TileLayout(DefaultTileWidth, DefaultTileHeight, DefaultTileSpacing, padding);
             }
 
-            float scale = available / needed;
-            return new TileLayout(
-                Mathf.Max(MinTileWidth, DefaultTileWidth * scale),
-                Mathf.Max(MinTileWidth * 1.09f, DefaultTileHeight * scale),
-                Mathf.Max(MinTileSpacing, DefaultTileSpacing * scale));
+            float width = (available - (slotCount - 1) * MinTileSpacing) / slotCount;
+            width = Mathf.Clamp(width, MinTileWidth, DefaultTileWidth);
+            spacing = slotCount > 1
+                ? Mathf.Max(MinTileSpacing, (available - slotCount * width) / (slotCount - 1))
+                : 0f;
+
+            float total = slotCount * width + (slotCount - 1) * spacing;
+            if (total > available)
+            {
+                width = (available - (slotCount - 1) * MinTileSpacing) / slotCount;
+                spacing = MinTileSpacing;
+            }
+
+            float height = width * (DefaultTileHeight / DefaultTileWidth);
+            return new TileLayout(width, height, spacing, padding);
         }
 
         private readonly struct TileLayout
@@ -254,12 +267,14 @@ namespace DragonBoxAlgebra.UI
             public readonly float Width;
             public readonly float Height;
             public readonly float Spacing;
+            public readonly int Padding;
 
-            public TileLayout(float width, float height, float spacing)
+            public TileLayout(float width, float height, float spacing, int padding)
             {
                 Width = width;
                 Height = height;
                 Spacing = spacing;
+                Padding = padding;
             }
         }
 
@@ -299,6 +314,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             horizontalLayout.spacing = layout.Spacing;
+            horizontalLayout.padding = new RectOffset(layout.Padding, layout.Padding, layout.Padding, layout.Padding);
 
             for (int i = 0; i < side.Cards.Count; i++)
             {
