@@ -9,9 +9,9 @@ namespace DragonBoxAlgebra.UI
 {
     public class HandView : MonoBehaviour
     {
-        private const float DefaultCardWidth = 100f;
-        private const float DefaultCardHeight = 110f;
-        private const float MinCardWidth = 56f;
+        private const float DefaultCardWidth = 90f;
+        private const float DefaultCardHeight = 100f;
+        private const float MinCardWidth = 44f;
         private const float TileGap = 10f;
         private const float HorizontalPadding = 12f;
 
@@ -92,7 +92,7 @@ namespace DragonBoxAlgebra.UI
 
             var layout = _panel.GetComponent<HorizontalLayoutGroup>();
             int handCount = _controller.Hand.Count;
-            bool useManualLayout = handCount > 5;
+            bool useManualLayout = handCount > 4;
 
             if (layout == null)
             {

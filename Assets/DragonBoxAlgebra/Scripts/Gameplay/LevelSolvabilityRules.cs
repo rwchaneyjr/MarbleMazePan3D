@@ -8,9 +8,9 @@ namespace DragonBoxAlgebra.Gameplay
         public const int ExtraPuzzleFromIndex = 12;
         public const int ExtraPuzzleToIndex = 22;
         public const int ExtraPuzzleCount = ExtraPuzzleToIndex - ExtraPuzzleFromIndex;
-        public const int DistinctAnimalsForExtraLevel = 5;
-        public const int MinOtherSideExtras = 2;
-        public const int MaxOtherSideExtras = 2;
+        public const int DistinctAnimalsForExtraLevel = 10;
+        public const int MinOtherSideExtras = 6;
+        public const int MaxOtherSideExtras = 6;
 
         public static bool ShouldConfigureBoxSide(int handCount) => handCount >= 2;
 
@@ -236,10 +236,11 @@ namespace DragonBoxAlgebra.Gameplay
                 else
                 {
                     int otherIndex = i - handCount;
-                    CardKind otherKind = otherIndex < otherObstacleKinds.Count
-                        ? otherObstacleKinds[otherIndex]
-                        : otherObstacleKinds[otherIndex % otherObstacleKinds.Count];
-                    level.HandCards.Add(CoordinatedCreatureThemes.OppositeCreature(otherKind));
+                    int boardSlot = otherIndex < otherSideCount
+                        ? otherIndex
+                        : otherIndex % otherSideCount;
+                    level.HandCards.Add(
+                        CoordinatedCreatureThemes.OppositeCreature(otherObstacleKinds[boardSlot]));
                 }
 
                 level.HandValues.Add(value);
@@ -273,7 +274,7 @@ namespace DragonBoxAlgebra.Gameplay
             for (int i = 0; i < rightCount; i++)
             {
                 rightCards.Add(obstacleKind);
-                rightValues.Add(baseValue + (i % leftBesideBox));
+                rightValues.Add(baseValue + leftBesideBox + i);
                 rightVisualThemes.Add(-1);
             }
 
