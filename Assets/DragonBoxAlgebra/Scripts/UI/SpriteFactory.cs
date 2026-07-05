@@ -41,7 +41,7 @@ namespace DragonBoxAlgebra.UI
                 3 => CreateWingSprite(light),
                 4 => CreateStarSprite(light),
                 5 => CreateHopperSprite(light),
-                6 => CreateStripedSprite(light),
+                6 => light ? CreateFrogSprite() : CreateSnakeSprite(),
                 7 => CreateWeatherSprite(light),
                 8 => CreateDragonSprite(light),
                 _ => CreatePetSprite(light)
@@ -287,11 +287,55 @@ namespace DragonBoxAlgebra.UI
             return CreateRoundCreature(body, accent, 1.1f);
         }
 
-        private static Sprite CreateStripedSprite(bool light)
+        private static Sprite CreateFrogSprite()
         {
-            var body = light ? new Color(1f, 0.85f, 0.1f) : new Color(0.25f, 0.55f, 0.22f);
-            var accent = light ? new Color(0.2f, 0.2f, 0.2f) : new Color(0.85f, 0.2f, 0.15f);
-            return CreateStripedCreature(body, accent);
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+
+            var body = new Color(0.28f, 0.82f, 0.38f);
+            var belly = new Color(0.55f, 0.92f, 0.48f);
+            var eyeWhite = Color.white;
+            var pupil = new Color(0.12f, 0.12f, 0.15f);
+
+            FillEllipse(texture, 48, 56, 28, 22, body);
+            FillEllipse(texture, 48, 62, 18, 12, belly);
+            FillEllipse(texture, 34, 44, 10, 10, body);
+            FillEllipse(texture, 62, 44, 10, 10, body);
+            FillEllipse(texture, 34, 44, 7, 7, eyeWhite);
+            FillEllipse(texture, 62, 44, 7, 7, eyeWhite);
+            FillEllipse(texture, 36, 44, 4, 4, pupil);
+            FillEllipse(texture, 64, 44, 4, 4, pupil);
+            FillEllipse(texture, 48, 66, 8, 4, new Color(0.15f, 0.45f, 0.2f));
+
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        private static Sprite CreateSnakeSprite()
+        {
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            ClearTexture(texture);
+
+            var body = new Color(0.22f, 0.58f, 0.28f);
+            var band = new Color(0.85f, 0.22f, 0.18f);
+            var eye = Color.white;
+
+            FillEllipse(texture, 30, 50, 14, 12, body);
+            FillEllipse(texture, 48, 54, 16, 14, body);
+            FillEllipse(texture, 66, 50, 14, 12, body);
+            FillEllipse(texture, 24, 52, 8, 8, body);
+            FillEllipse(texture, 40, 56, 3, 10, band);
+            FillEllipse(texture, 56, 56, 3, 10, band);
+            FillEllipse(texture, 22, 54, 4, 4, eye);
+            FillEllipse(texture, 21, 54, 2, 2, Color.black);
+            FillEllipse(texture, 72, 48, 5, 4, new Color(0.9f, 0.25f, 0.2f));
+
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
         }
 
         private static Sprite CreateWeatherSprite(bool light) =>
@@ -426,22 +470,6 @@ namespace DragonBoxAlgebra.UI
             FillEllipse(texture, 48, 58, (int)(18 * scale), (int)(10 * scale), accent);
             FillEllipse(texture, 38, 48, 6, 6, Color.white);
             FillEllipse(texture, 58, 48, 6, 6, Color.white);
-            texture.Apply();
-            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
-        }
-
-        private static Sprite CreateStripedCreature(Color body, Color accent)
-        {
-            const int size = 96;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            texture.filterMode = FilterMode.Bilinear;
-            ClearTexture(texture);
-            FillEllipse(texture, 48, 52, 30, 18, body);
-            for (int i = 0; i < 4; i++)
-            {
-                FillEllipse(texture, 30 + i * 12, 52, 4, 14, accent);
-            }
-
             texture.Apply();
             return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
         }

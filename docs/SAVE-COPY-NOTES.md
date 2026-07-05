@@ -32,17 +32,17 @@ git fetch origin
 git checkout save/no-right-matches-problem-11-16-21-26
 ```
 
-## Saved snapshot restore (all scripts)
+## Saved snapshot + frog (bee swapped, nothing else)
 
 ```bash
 cd /c/Users/rober/SymbolAlgebra
 git merge --abort 2>/dev/null || true
 git fetch origin
-git checkout cursor/snapshot-known-issues-1c5d
-RESTORE_BRANCH=cursor/snapshot-known-issues-1c5d bash scripts/restore-scripts.sh
+git checkout cursor/snapshot-frog-only-1c5d
+RESTORE_BRANCH=cursor/snapshot-frog-only-1c5d bash scripts/restore-scripts.sh
 ```
 
-Or use `cursor/snapshot-frog-only-1c5d` (same snapshot + compile aliases for mixed `CardVisuals`).
+Or use `bash scripts/restore-snapshot-frog.sh` after pulling latest.
 
 Do **not** use `restore-scripts.sh` alone — it defaults to `main`, which changes hand tiles and levels.
 
