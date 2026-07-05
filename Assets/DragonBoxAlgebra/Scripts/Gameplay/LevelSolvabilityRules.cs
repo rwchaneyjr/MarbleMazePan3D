@@ -101,9 +101,8 @@ namespace DragonBoxAlgebra.Gameplay
                 ? handThemes
                 : CoordinatedCreatureThemes.BuildRedSideThemes(leftBesideBox, level.CreatureTheme);
 
-            var usedThemes = new HashSet<int>(leftThemes);
             List<int> rightThemes = rightCount > 0
-                ? CoordinatedCreatureThemes.BuildOtherSideThemes(rightCount, usedThemes, level.CreatureTheme)
+                ? CoordinatedCreatureThemes.BuildRightSideThemesMatchingHand(rightCount, handThemes, level.CreatureTheme)
                 : new List<int>();
 
             var leftCards = new List<CardKind> { CardKind.Box };

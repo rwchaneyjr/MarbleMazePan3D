@@ -165,6 +165,7 @@ namespace DragonBoxAlgebra.Gameplay
             else
             {
                 BoardVisualRules.AssignDistinctSideThemes(level);
+                CoordinatedCreatureThemes.PairRightSideWithHand(level);
             }
 
             return level;
@@ -192,6 +193,7 @@ namespace DragonBoxAlgebra.Gameplay
             else
             {
                 BoardVisualRules.AssignDistinctSideThemes(level);
+                CoordinatedCreatureThemes.PairRightSideWithHand(level);
             }
 
             return level;

@@ -4,6 +4,12 @@
 **Branch:** `cursor/snapshot-frog-only-1c5d`  
 **Tag:** `save/frog-level-fixes-jul-2026`
 
+## Status
+
+**Just about everything works in this build** — hand tiles, left-side themes, dice visuals, multi-card levels, frog/robin-owl art.
+
+**Still broken / partial:** right-side matching improved for levels that start with 1–2 creatures on the right (themes now align with hand). Test and report any remaining cases.
+
 ## What's in this save
 
 - Theme 6: frog & snake (not bee)
