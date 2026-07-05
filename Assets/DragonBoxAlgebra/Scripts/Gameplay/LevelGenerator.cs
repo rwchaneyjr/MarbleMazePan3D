@@ -130,7 +130,6 @@ namespace DragonBoxAlgebra.Gameplay
 
                     level.ParMoves = handCount + 1;
                     level.ParCards = handCount;
-                    HandVisualRules.AssignLevelHandVisualThemes(level);
                 }
 
                 levels.Add(level);
@@ -223,13 +222,20 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (handCount == 2)
             {
+                if (diceLevel)
+                {
+                    level.HandCards.Add(solver);
+                    level.HandValues.Add(value);
+                    level.HandCards.Add(companion);
+                    level.HandValues.Add(value);
+                    HandVisualRules.AssignLevelHandVisualThemes(level);
+                    return;
+                }
+
                 level.HandCards.Add(solver);
-                level.HandValues.Add(diceLevel && solver is CardKind.PositiveConstant or CardKind.NegativeConstant
-                    ? value
-                    : value);
-                level.HandCards.Add(companion);
                 level.HandValues.Add(value);
-                HandVisualRules.AssignLevelHandVisualThemes(level);
+                level.HandCards.Add(solver);
+                level.HandValues.Add(value);
                 return;
             }
 
@@ -244,15 +250,17 @@ namespace DragonBoxAlgebra.Gameplay
             }
             else
             {
-                level.HandCards.Add(solver);
-                level.HandValues.Add(value);
-                level.HandCards.Add(companion);
-                level.HandValues.Add(value);
-                level.HandCards.Add(CardKind.NegativeConstant);
-                level.HandValues.Add(value);
+                for (int i = 0; i < handCount; i++)
+                {
+                    level.HandCards.Add(solver);
+                    level.HandValues.Add(value);
+                }
             }
 
-            HandVisualRules.AssignLevelHandVisualThemes(level);
+            if (diceLevel)
+            {
+                HandVisualRules.AssignLevelHandVisualThemes(level);
+            }
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)

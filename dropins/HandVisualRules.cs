@@ -44,7 +44,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            bool sharePairTheme = hasDay && hasNight;
+            bool sharePairTheme = hasDay && hasNight && creatureIndices.Count == 2
+                && !AllSameCreatureKind(level.HandCards, creatureIndices);
             List<int> themes = sharePairTheme
                 ? new List<int> { ThemeAssignment.DistinctThemes(1, level.CreatureTheme)[0] }
                 : ThemeAssignment.DistinctThemes(creatureIndices.Count, level.CreatureTheme);
@@ -123,7 +124,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (hasDay && hasNight && creatureIndices.Count == 2)
+            if (hasDay && hasNight && creatureIndices.Count == 2
+                && AllSameCreatureKind(hand, creatureIndices) == false)
             {
                 if (!hasUnset)
                 {
@@ -155,6 +157,44 @@ namespace DragonBoxAlgebra.Gameplay
                 card.VisualTheme = themes[i];
                 hand[index] = card;
             }
+        }
+
+        private static bool AllSameCreatureKind(IReadOnlyList<CardKind> cards, IReadOnlyList<int> indices)
+        {
+            if (indices.Count == 0)
+            {
+                return true;
+            }
+
+            CardKind kind = cards[indices[0]];
+            for (int i = 1; i < indices.Count; i++)
+            {
+                if (cards[indices[i]] != kind)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool AllSameCreatureKind(List<BoardCard> hand, IReadOnlyList<int> indices)
+        {
+            if (indices.Count == 0)
+            {
+                return true;
+            }
+
+            CardKind kind = hand[indices[0]].Kind;
+            for (int i = 1; i < indices.Count; i++)
+            {
+                if (hand[indices[i]].Kind != kind)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }
