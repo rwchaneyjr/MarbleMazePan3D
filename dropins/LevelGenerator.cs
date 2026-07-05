@@ -125,7 +125,7 @@ namespace DragonBoxAlgebra.Gameplay
                     }
                     else
                     {
-                        LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel, value);
+                        LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel, value, levelIndex);
                     }
 
                     level.ParMoves = handCount + 1;

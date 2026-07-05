@@ -19,14 +19,17 @@ namespace DragonBoxAlgebra.Gameplay
         /// Right-side starters (1–2 tiles) share themes with hand solvers so day/night pairs can cancel.
         /// </summary>
         public static List<int> BuildRightSideThemesMatchingHand(int rightCount, IReadOnlyList<int> handThemes,
-            int levelTheme)
+            int levelTheme, int handThemeStartIndex = 0)
         {
             var themes = new List<int>();
             for (int i = 0; i < rightCount; i++)
             {
-                int theme = handThemes.Count > 0
-                    ? handThemes[i % handThemes.Count]
-                    : levelTheme;
+                int handIndex = handThemeStartIndex + i;
+                int theme = handIndex < handThemes.Count
+                    ? handThemes[handIndex]
+                    : handThemes.Count > 0
+                        ? handThemes[i % handThemes.Count]
+                        : levelTheme;
                 themes.Add(theme);
             }
 

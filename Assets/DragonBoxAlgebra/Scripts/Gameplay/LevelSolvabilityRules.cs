@@ -60,15 +60,18 @@ namespace DragonBoxAlgebra.Gameplay
             ApplyCreatureBoard(level, leftBesideBox, rightCount, value, handCount);
         }
 
-        public static void ConfigureStandardSolvableLevel(LevelDefinition level, int handCount, bool diceLevel, int value)
+        public static void ConfigureStandardSolvableLevel(LevelDefinition level, int handCount, bool diceLevel, int value,
+            int levelIndex = 0)
         {
             level.RightCards.Clear();
             level.RightValues.Clear();
             level.RightVisualThemes.Clear();
 
+            (int leftBesideBox, int rightCount) = SplitObstaclesBesideBox(handCount, levelIndex);
+
             if (diceLevel && handCount >= 2)
             {
-                ApplyCreatureBoard(level, handCount, rightCount: 0, value, handCount);
+                ApplyCreatureBoard(level, leftBesideBox, rightCount, value, handCount);
                 return;
             }
 
@@ -85,7 +88,30 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            ApplyCreatureBoard(level, handCount, rightCount: 0, value, handCount);
+            ApplyCreatureBoard(level, leftBesideBox, rightCount, value, handCount);
+        }
+
+        /// <summary>
+        /// Splits hand-sized obstacles between left (beside box) and right starters.
+        /// </summary>
+        private static (int leftBesideBox, int rightCount) SplitObstaclesBesideBox(int handCount, int levelIndex)
+        {
+            if (handCount <= 2)
+            {
+                if (handCount == 2 && levelIndex % 3 == 1)
+                {
+                    return (1, 1);
+                }
+
+                return (handCount, 0);
+            }
+
+            return (levelIndex % 3) switch
+            {
+                1 => (2, 1),
+                2 => (1, 2),
+                _ => (3, 0)
+            };
         }
 
         private static void ApplyCreatureBoard(LevelDefinition level, int leftBesideBox, int rightCount, int value,
@@ -102,7 +128,8 @@ namespace DragonBoxAlgebra.Gameplay
                 : CoordinatedCreatureThemes.BuildRedSideThemes(leftBesideBox, level.CreatureTheme);
 
             List<int> rightThemes = rightCount > 0
-                ? CoordinatedCreatureThemes.BuildRightSideThemesMatchingHand(rightCount, handThemes, level.CreatureTheme)
+                ? CoordinatedCreatureThemes.BuildRightSideThemesMatchingHand(
+                    rightCount, handThemes, level.CreatureTheme, leftBesideBox)
                 : new List<int>();
 
             var leftCards = new List<CardKind> { CardKind.Box };
