@@ -50,6 +50,8 @@ namespace DragonBoxAlgebra.UI
             return _themedSprites[row, col];
         }
         public static Sprite DiceSprite => _diceSprite ??= CreateDiceSprite();
+        public static Sprite PositiveDiceSprite => DiceSprite;
+        public static Sprite NegativeDiceSprite => DiceSprite;
         public static Sprite SmileySprite => _smileySprite ??= CreateSmileySprite();
         public static Sprite BoxSprite => _boxSprite ??= CreateBoxSprite();
 
