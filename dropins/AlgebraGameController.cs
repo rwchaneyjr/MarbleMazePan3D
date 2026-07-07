@@ -265,13 +265,14 @@ namespace DragonBoxAlgebra.Gameplay
             if (action == CombineActionType.OppositeCancel)
             {
                 PushUndo();
-                _pendingBalance = null;
                 BoardCard cardA = side.Cards[indexA];
                 BoardCard cardB = side.Cards[indexB];
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
-                    MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
+                    MessageChanged?.Invoke(_pendingBalance != null
+                        ? "Light met dark — click *. The ? hole stays until you fill it."
+                        : "Light met dark — click the spinning * to dismiss.");
                 }
                 else
                 {
@@ -321,7 +322,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool TryDismissCancelMarker(int markerIndex)
         {
-            if (_levelComplete || _pendingBalance != null)
+            if (_levelComplete)
             {
                 return false;
             }
@@ -576,7 +577,9 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool CanPresentWin()
         {
-            return _pendingCancels.Count == 0 && _activeMergeAnimations == 0;
+            return _pendingBalance == null
+                && _pendingCancels.Count == 0
+                && _activeMergeAnimations == 0;
         }
 
         private void CheckWin()
