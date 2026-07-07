@@ -4,35 +4,47 @@
 
 ### One command — copy latest drop-ins into your Unity project
 
-From a git clone of MarbleMazePan3D (this repo):
+```bash
+cd /c/path/to/MarbleMazePan3D
+git fetch origin
+git checkout cursor/ch1-merge-intro-1c5d
+SYMBOL_ALGEBRA_DIR="/c/Users/rober/SymbolAlgebra" bash scripts/sync-dropins.sh import
+```
+
+Or if the repo clone lives inside SymbolAlgebra:
 
 ```bash
 cd /c/Users/rober/SymbolAlgebra
+git fetch origin
+git checkout cursor/ch1-merge-intro-1c5d
 bash scripts/sync-dropins.sh import
 ```
 
-Or if the repo lives elsewhere:
+---
+
+### Fix compile errors (duplicate HandVisualRules / ThemeAssignment)
+
+If Unity shows **CS0101 duplicate definition** for `HandVisualRules` or `ThemeAssignment`:
 
 ```bash
-SYMBOL_ALGEBRA_DIR="/c/Users/rober/SymbolAlgebra" bash /c/path/to/MarbleMazePan3D/scripts/sync-dropins.sh import
+cd /c/Users/rober/SymbolAlgebra
+rm -f Assets/DragonBoxAlgebra/Scripts/UI/HandVisualRules.cs
+rm -f Assets/DragonBoxAlgebra/Scripts/UI/HandVisualRules.cs.meta
+rm -f Assets/DragonBoxAlgebra/Scripts/UI/ThemeAssignment.cs
+rm -f Assets/DragonBoxAlgebra/Scripts/UI/ThemeAssignment.cs.meta
+rm -f Assets/DragonBoxAlgebra/Scripts/UI/BoardSideLayout.cs.meta
+git pull origin cursor/ch1-merge-intro-1c5d
+bash scripts/sync-dropins.sh import
 ```
+
+The import script now routes those files to **Gameplay/** and removes stale UI copies.
 
 ---
 
 ### Update dropins/ folder after you change scripts in Assets
 
 ```bash
-cd /c/Users/rober/SymbolAlgebra
-git pull origin main
 bash scripts/sync-dropins.sh export
-```
-
----
-
-### Import into this repo's Assets (cloud agent / local dev)
-
-```bash
-bash scripts/sync-dropins.sh import --here
 ```
 
 ---
@@ -43,7 +55,8 @@ bash scripts/sync-dropins.sh import --here
 2. Scene: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
 3. Press **Play**
 
-Fixes in latest drop-ins include:
-- Right side fits up to 6 tiles (scaled layout)
-- Balance ? hole and spinning * markers
-- Deferred day/night cancel until balance completes
+## Latest (ch1-merge-intro branch)
+
+- Levels 1–14: Day + Night on one side, Box on the other, empty hand
+- Light and dark slide together into spinning * (clickable)
+- Ch1 merge intro animation
