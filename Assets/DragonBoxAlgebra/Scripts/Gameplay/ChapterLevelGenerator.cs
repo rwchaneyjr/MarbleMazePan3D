@@ -56,7 +56,7 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Ch1: drag day/night together on one side → *; box alone on the other.</summary>
         private static LevelDefinition BuildChapter1Level(int index, int theme)
         {
-            if (index < 8)
+            if (index < 10)
             {
                 return Make(
                     $"Ch1 • {ChapterNames[0]} {index + 1}",
@@ -70,11 +70,40 @@ namespace DragonBoxAlgebra.Gameplay
                     dragToMergePairs: true);
             }
 
-            if (index < 14)
+            return Make(
+                $"Ch1 • {ChapterNames[0]} {index + 1}",
+                chapter: 1,
+                theme,
+                left: new[] { CardKind.Box },
+                right: new[] { CardKind.DayCreature, CardKind.NightCreature },
+                hand: System.Array.Empty<CardKind>(),
+                parMoves: 2,
+                parCards: 0,
+                dragToMergePairs: true);
+        }
+
+        /// <summary>Ch2: levels 1–16 drag board pairs; later levels use hand opposite.</summary>
+        private static LevelDefinition BuildChapter2Level(int index, int theme)
+        {
+            if (index < 8)
             {
                 return Make(
-                    $"Ch1 • {ChapterNames[0]} {index + 1}",
-                    chapter: 1,
+                    $"Ch2 • {ChapterNames[1]} {index + 1}",
+                    chapter: 2,
+                    theme,
+                    left: new[] { CardKind.DayCreature, CardKind.NightCreature },
+                    right: new[] { CardKind.Box },
+                    hand: System.Array.Empty<CardKind>(),
+                    parMoves: 2,
+                    parCards: 0,
+                    dragToMergePairs: true);
+            }
+
+            if (index < 16)
+            {
+                return Make(
+                    $"Ch2 • {ChapterNames[1]} {index + 1}",
+                    chapter: 2,
                     theme,
                     left: new[] { CardKind.Box },
                     right: new[] { CardKind.DayCreature, CardKind.NightCreature },
@@ -84,21 +113,7 @@ namespace DragonBoxAlgebra.Gameplay
                     dragToMergePairs: true);
             }
 
-            return Make(
-                $"Ch1 • {ChapterNames[0]} {index + 1}",
-                chapter: 1,
-                theme,
-                left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
-                right: new[] { CardKind.DayCreature, CardKind.NightCreature },
-                hand: System.Array.Empty<CardKind>(),
-                parMoves: 3,
-                parCards: 0);
-        }
-
-        /// <summary>Ch2: drag hand opposite onto a board creature → *.</summary>
-        private static LevelDefinition BuildChapter2Level(int index, int theme)
-        {
-            if (index < 10)
+            if (index < 18)
             {
                 return Make(
                     $"Ch2 • {ChapterNames[1]} {index + 1}",
@@ -107,19 +122,6 @@ namespace DragonBoxAlgebra.Gameplay
                     left: new[] { CardKind.Box, CardKind.DayCreature },
                     right: System.Array.Empty<CardKind>(),
                     hand: new[] { CardKind.NightCreature },
-                    parMoves: 2,
-                    parCards: 1);
-            }
-
-            if (index < 16)
-            {
-                return Make(
-                    $"Ch2 • {ChapterNames[1]} {index + 1}",
-                    chapter: 2,
-                    theme,
-                    left: System.Array.Empty<CardKind>(),
-                    right: new[] { CardKind.Box, CardKind.NightCreature },
-                    hand: new[] { CardKind.DayCreature },
                     parMoves: 2,
                     parCards: 1);
             }
