@@ -81,7 +81,12 @@ namespace DragonBoxAlgebra.UI
             ApplyCreatureVisual();
             if (_labelText != null)
             {
-                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled;
+                bool showHandSlotLabel = SideName == "Hand"
+                    && _controller != null
+                    && _controller.Hand.Count > 1
+                    && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
+                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled
+                    && !showHandSlotLabel;
 
                 if (showIconOnly)
                 {
@@ -101,7 +106,11 @@ namespace DragonBoxAlgebra.UI
         private void ApplyCreatureVisual()
         {
             Sprite icon = CardVisuals.IconSprite(Card);
-            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card);
+            bool showHandSlotLabel = SideName == "Hand"
+                && _controller != null
+                && _controller.Hand.Count > 1
+                && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
+            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card) && !showHandSlotLabel;
 
             if (_creatureImage != null)
             {
@@ -233,7 +242,7 @@ namespace DragonBoxAlgebra.UI
                     }
                 }
 
-                Destroy(gameObject);
+                DestroyImmediate(gameObject);
                 _controller.RefreshHandPresentation();
                 return;
             }
