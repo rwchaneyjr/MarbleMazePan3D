@@ -597,11 +597,6 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (!WinChecker.IsBoxAlone(Board))
-            {
-                return;
-            }
-
             if (_activeMergeAnimations > 0)
             {
                 MessageChanged?.Invoke("Wait for every * to finish forming.");
@@ -614,10 +609,20 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
+            bool puzzleComplete = UsesManualPairMerge
+                ? WinChecker.HasSingleBox(Board)
+                : WinChecker.IsBoxAlone(Board);
+            if (!puzzleComplete)
+            {
+                return;
+            }
+
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            MessageChanged?.Invoke("You win! The red box is alone.");
+            MessageChanged?.Invoke(UsesManualPairMerge
+                ? "You win! The sides come together."
+                : "You win! The red box is alone.");
             WinSequenceStarted?.Invoke(stars, moves);
         }
 
