@@ -37,7 +37,8 @@ namespace DragonBoxAlgebra.UI
 
         private void OnLevelLoaded(int current, int total)
         {
-            _progressText.text = $"{current}/{total}";
+            int chapter = ChapterLevelGenerator.ChapterForLevelIndex(current - 1);
+            _progressText.text = $"{current}/{total}  ·  Ch{chapter}";
             _titleText.text = $"{Controller.CurrentLevel.Title}  •  {CreatureArt.ThemeName}";
             _completeView.Hide();
         }

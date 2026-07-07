@@ -91,7 +91,7 @@ import_dropins() {
       AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs)
         dest_subdir="Core" ;;
       AlgebraGameController.cs|BalancePending.cs|CardFlipRules.cs|GameSnapshot.cs|HandRules.cs|\
-      LevelDefinition.cs|LevelGenerator.cs|LevelLibrary.cs|MoveTracker.cs|PendingCancelMarker.cs)
+      LevelDefinition.cs|LevelGenerator.cs|LevelLibrary.cs|ChapterLevelGenerator.cs|MoveTracker.cs|PendingCancelMarker.cs)
         dest_subdir="Gameplay" ;;
       *) dest_subdir="UI" ;;
     esac
