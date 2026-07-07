@@ -45,7 +45,7 @@ target_subdir_for() {
 gameplay_dropin() {
   case "$1" in
     AlgebraGameController.cs|BalancePending.cs|CardFlipRules.cs|ChapterLevelGenerator.cs|\
-    DragMergeLevelGenerator.cs|GameSnapshot.cs|HandRules.cs|HandVisualRules.cs|\
+    DragMergeLevelGenerator.cs|GameSnapshot.cs|BoardFoldRules.cs|HandRules.cs|HandVisualRules.cs|\
     LevelDefinition.cs|LevelGenerator.cs|LevelLibrary.cs|MoveTracker.cs|\
     PendingCancelMarker.cs|ThemeAssignment.cs)
       return 0

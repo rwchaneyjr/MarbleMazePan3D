@@ -94,6 +94,11 @@ namespace DragonBoxAlgebra.Gameplay
             Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues, level.LeftCreatureTheme),
                 level.BuildSide(level.RightCards, level.RightValues, level.RightCreatureTheme));
 
+            if (UsesManualPairMerge)
+            {
+                BoardFoldRules.FoldMatchingPairsForPlayableRight(Board);
+            }
+
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
             if (level.Chapter < 4)

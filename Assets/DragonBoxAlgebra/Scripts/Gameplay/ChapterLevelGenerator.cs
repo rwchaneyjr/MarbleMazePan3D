@@ -197,12 +197,25 @@ namespace DragonBoxAlgebra.Gameplay
                     parCards: 2);
             }
 
+            if (index < 19)
+            {
+                return Make(
+                    $"Ch4 • {ChapterNames[3]} {index + 1}",
+                    chapter: 4,
+                    theme,
+                    left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
+                    right: new[] { CardKind.NightCreature, CardKind.NightCreature },
+                    hand: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.DayCreature },
+                    parMoves: 5,
+                    parCards: 3);
+            }
+
             return Make(
                 $"Ch4 • {ChapterNames[3]} {index + 1}",
                 chapter: 4,
                 theme,
                 left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
-                right: new[] { CardKind.NightCreature, CardKind.NightCreature },
+                right: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.NightCreature },
                 hand: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.DayCreature },
                 parMoves: 5,
                 parCards: 3);
