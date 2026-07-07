@@ -32,6 +32,7 @@ namespace DragonBoxAlgebra.Gameplay
         public BalancePending PendingBalance => _pendingBalance;
 
         private readonly List<BoardCard> _hand = new();
+        private readonly List<BoardCard> _handTemplates = new();
         private readonly List<PendingCancelMarker> _pendingCancels = new();
         private readonly Stack<GameSnapshot> _undoStack = new();
         private GameSnapshot _initialSnapshot;
@@ -93,6 +94,7 @@ namespace DragonBoxAlgebra.Gameplay
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
             HandRules.DedupeFlipFamilies(_hand);
+            CaptureHandTemplates();
             Moves.Reset();
             _undoStack.Clear();
             _levelComplete = false;
@@ -190,6 +192,11 @@ namespace DragonBoxAlgebra.Gameplay
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             MessageChanged?.Invoke("Undid the last move.");
+        }
+
+        public void RefreshHandPresentation()
+        {
+            HandChanged?.Invoke();
         }
 
         public bool TryFlipHandCard(int handIndex)
@@ -397,16 +404,14 @@ namespace DragonBoxAlgebra.Gameplay
                 side.Cards.Add(handCard.CloneForPlacement());
                 BoardCard placed = side.Cards[side.Cards.Count - 1];
                 TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
-                _hand.RemoveAt(handIndex);
-                HandChanged?.Invoke();
+                SyncHandFromTemplates();
                 Moves.RegisterBalancedPlay();
                 MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
             }
             else
             {
                 CombineRules.RemoveCardById(side, targetCard.Id);
-                _hand.RemoveAt(handIndex);
-                HandChanged?.Invoke();
+                SyncHandFromTemplates();
                 Moves.RegisterCombine();
                 CombineOccurred?.Invoke(new CombineEvent
                 {
@@ -418,9 +423,28 @@ namespace DragonBoxAlgebra.Gameplay
                 MessageChanged?.Invoke("Dice canceled.");
             }
 
+            HandChanged?.Invoke();
             BoardChanged?.Invoke();
             CheckWin();
             return true;
+        }
+
+        private void CaptureHandTemplates()
+        {
+            _handTemplates.Clear();
+            foreach (BoardCard card in _hand)
+            {
+                _handTemplates.Add(card.Clone());
+            }
+        }
+
+        private void SyncHandFromTemplates()
+        {
+            _hand.Clear();
+            foreach (BoardCard template in _handTemplates)
+            {
+                _hand.Add(template.Clone());
+            }
         }
 
         private bool TryStartBalance(int handIndex, string targetSide, BoardCard template)
@@ -442,7 +466,6 @@ namespace DragonBoxAlgebra.Gameplay
 
             MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
-            HandChanged?.Invoke();
             return true;
         }
 
@@ -478,8 +501,8 @@ namespace DragonBoxAlgebra.Gameplay
             int holePlacedIndex = insertIndex;
             string placedSide = _pendingBalance.PlacedSide;
             int placedBoardIndex = _pendingBalance.PlacedIndex;
-            _hand.RemoveAt(handIndex);
             _pendingBalance = null;
+            SyncHandFromTemplates();
             HandChanged?.Invoke();
 
             ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
