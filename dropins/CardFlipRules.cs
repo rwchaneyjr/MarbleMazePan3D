@@ -22,6 +22,7 @@ namespace DragonBoxAlgebra.Gameplay
             };
 
             flipped.Id = card.Id;
+            flipped.VisualTheme = card.VisualTheme;
             return flipped;
         }
 

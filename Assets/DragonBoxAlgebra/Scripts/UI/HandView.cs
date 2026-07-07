@@ -34,6 +34,11 @@ namespace DragonBoxAlgebra.UI
 
         private void RefreshHandInPlace()
         {
+            if (HasHandWidgetOnDragRoot())
+            {
+                return;
+            }
+
             var widgets = new List<CardWidget>();
             for (int i = 0; i < _panel.childCount; i++)
             {
@@ -55,6 +60,20 @@ namespace DragonBoxAlgebra.UI
             }
 
             Refresh();
+        }
+
+        private bool HasHandWidgetOnDragRoot()
+        {
+            for (int i = 0; i < _dragRoot.childCount; i++)
+            {
+                CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand")
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void Refresh()
