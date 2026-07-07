@@ -209,12 +209,6 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (_pendingBalance != null)
-            {
-                MessageChanged?.Invoke("Fill the ? hole first — finish this tile before playing another.");
-                return false;
-            }
-
             BoardCard card = _hand[handIndex];
             if (!CardFlipRules.CanFlip(card.Kind))
             {
@@ -224,6 +218,11 @@ namespace DragonBoxAlgebra.Gameplay
 
             PushUndo();
             _hand[handIndex] = CardFlipRules.Flip(card);
+            if (handIndex < _handTemplates.Count)
+            {
+                _handTemplates[handIndex] = _hand[handIndex].Clone();
+            }
+
             HandChanged?.Invoke();
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
                 ? "Flipped to yellow (light). Click again for dark."

@@ -38,6 +38,11 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            TryFlipHandOnTap();
+        }
+
+        private void TryFlipHandOnTap()
+        {
             if (_controller.TryFlipHandCard(Index))
             {
                 Card = _controller.Hand[Index];
@@ -210,7 +215,14 @@ namespace DragonBoxAlgebra.UI
             {
                 if (!_handPlayHandled)
                 {
-                    TryPlayHandDrop(eventData);
+                    if (_didDrag)
+                    {
+                        TryPlayHandDrop(eventData);
+                    }
+                    else
+                    {
+                        TryFlipHandOnTap();
+                    }
                 }
 
                 if (_controller.Hand.Count == 0 || Index >= _controller.Hand.Count)
