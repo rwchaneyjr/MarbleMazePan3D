@@ -9,7 +9,8 @@ namespace DragonBoxAlgebra.UI
 {
     public class AsteriskCancelWidget : MonoBehaviour, IPointerClickHandler
     {
-        private const float MergeDuration = 1.15f;
+        private const float MergeDuration = 4.6f;
+        private const float MergeHalfOffset = 72f;
 
         private AlgebraGameController _controller;
         private int _markerIndex;
@@ -109,8 +110,8 @@ namespace DragonBoxAlgebra.UI
         {
             Image lightHalf = CreateMergeHalf(transform, "LightHalf", lightCard, true);
             Image darkHalf = CreateMergeHalf(transform, "DarkHalf", darkCard, false);
-            lightHalf.rectTransform.anchoredPosition = new Vector2(-28f, 0f);
-            darkHalf.rectTransform.anchoredPosition = new Vector2(28f, 0f);
+            lightHalf.rectTransform.anchoredPosition = new Vector2(-MergeHalfOffset, 0f);
+            darkHalf.rectTransform.anchoredPosition = new Vector2(MergeHalfOffset, 0f);
         }
 
         private static Image CreateMergeHalf(Transform parent, string name, BoardCard card, bool light)
@@ -153,8 +154,8 @@ namespace DragonBoxAlgebra.UI
             RectTransform lightRect = lightHalf?.rectTransform;
             RectTransform darkRect = darkHalf?.rectTransform;
 
-            Vector2 lightStart = lightRect != null ? lightRect.anchoredPosition : new Vector2(-28f, 0f);
-            Vector2 darkStart = darkRect != null ? darkRect.anchoredPosition : new Vector2(28f, 0f);
+            Vector2 lightStart = lightRect != null ? lightRect.anchoredPosition : new Vector2(-MergeHalfOffset, 0f);
+            Vector2 darkStart = darkRect != null ? darkRect.anchoredPosition : new Vector2(MergeHalfOffset, 0f);
             Color lightStartColor = lightHalf != null ? lightHalf.color : Color.white;
             Color darkStartColor = darkHalf != null ? darkHalf.color : Color.white;
 
