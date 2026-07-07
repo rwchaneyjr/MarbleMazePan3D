@@ -281,7 +281,8 @@ namespace DragonBoxAlgebra.UI
         private void BuildCancelMarkers(RectTransform panel, string sideName, TileLayout layout)
         {
             BoardSide side = sideName == "Left" ? _controller.Board.Left : _controller.Board.Right;
-            bool useMergeIntro = _controller.CurrentLevel.Chapter == 1;
+            bool useMergeIntro = _controller.CurrentLevel.Chapter == 1
+                || _controller.CurrentLevel.DragToMergePairs;
             IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
             for (int i = 0; i < markers.Count; i++)
             {

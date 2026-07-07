@@ -4,6 +4,6 @@ namespace DragonBoxAlgebra.Gameplay
 {
     public static class LevelLibrary
     {
-        public static IReadOnlyList<LevelDefinition> Levels { get; } = ChapterLevelGenerator.GenerateAll();
+        public static IReadOnlyList<LevelDefinition> Levels { get; } = DragMergeLevelGenerator.GenerateAll();
     }
 }
