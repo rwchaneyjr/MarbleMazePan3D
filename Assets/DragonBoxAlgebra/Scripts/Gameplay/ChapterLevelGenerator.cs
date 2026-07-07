@@ -53,7 +53,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        /// <summary>Ch1: pre-placed opposite pairs on the board → tap * (empty hand).</summary>
+        /// <summary>Ch1: two creatures on one side merge into *; box alone on the other (empty hand).</summary>
         private static LevelDefinition BuildChapter1Level(int index, int theme)
         {
             if (index < 8)
@@ -62,10 +62,10 @@ namespace DragonBoxAlgebra.Gameplay
                     $"Ch1 • {ChapterNames[0]} {index + 1}",
                     chapter: 1,
                     theme,
-                    left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
-                    right: System.Array.Empty<CardKind>(),
+                    left: new[] { CardKind.DayCreature, CardKind.NightCreature },
+                    right: new[] { CardKind.Box },
                     hand: System.Array.Empty<CardKind>(),
-                    parMoves: 2,
+                    parMoves: 1,
                     parCards: 0);
             }
 
@@ -75,10 +75,10 @@ namespace DragonBoxAlgebra.Gameplay
                     $"Ch1 • {ChapterNames[0]} {index + 1}",
                     chapter: 1,
                     theme,
-                    left: System.Array.Empty<CardKind>(),
-                    right: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
+                    left: new[] { CardKind.Box },
+                    right: new[] { CardKind.DayCreature, CardKind.NightCreature },
                     hand: System.Array.Empty<CardKind>(),
-                    parMoves: 2,
+                    parMoves: 1,
                     parCards: 0);
             }
 
