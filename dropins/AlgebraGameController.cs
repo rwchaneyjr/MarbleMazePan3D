@@ -112,7 +112,9 @@ namespace DragonBoxAlgebra.Gameplay
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
-                ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
+                ? level.Chapter == 1
+                    ? "Watch light and dark merge into *. Tap the spinning * to dismiss. Leave the red box alone!"
+                    : "Click the spinning * to dismiss the creatures. Leave the red box alone!"
                 : HandMessage(level));
         }
 
