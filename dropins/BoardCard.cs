@@ -9,15 +9,13 @@ namespace DragonBoxAlgebra.Core
         public CardKind Kind;
         public int Value;
         public int StackCount;
-        public int VisualTheme;
 
-        public BoardCard(CardKind kind, int value = 1, int stackCount = 1, int visualTheme = -1)
+        public BoardCard(CardKind kind, int value = 1, int stackCount = 1)
         {
             Id = Guid.NewGuid().ToString("N");
             Kind = kind;
             Value = value;
             StackCount = stackCount;
-            VisualTheme = visualTheme;
         }
 
         public BoardCard Clone()
@@ -27,8 +25,7 @@ namespace DragonBoxAlgebra.Core
                 Id = Id,
                 Kind = Kind,
                 Value = Value,
-                StackCount = StackCount,
-                VisualTheme = VisualTheme
+                StackCount = StackCount
             };
         }
 
@@ -39,8 +36,7 @@ namespace DragonBoxAlgebra.Core
                 Id = Guid.NewGuid().ToString("N"),
                 Kind = Kind,
                 Value = Value,
-                StackCount = StackCount,
-                VisualTheme = VisualTheme
+                StackCount = StackCount
             };
         }
 

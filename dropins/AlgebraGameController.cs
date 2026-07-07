@@ -93,16 +93,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
-            if (level.Chapter < 4)
-            {
-                HandRules.DedupeFlipFamilies(_hand);
-            }
-
-            if (_hand.Count > 1)
-            {
-                HandVisualRules.EnsureDistinctHandVisuals(_hand, level.CreatureTheme);
-            }
-
+            HandRules.DedupeFlipFamilies(_hand);
             CaptureHandTemplates();
             Moves.Reset();
             _undoStack.Clear();
