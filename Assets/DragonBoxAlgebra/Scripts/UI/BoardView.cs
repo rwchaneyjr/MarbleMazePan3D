@@ -103,6 +103,11 @@ namespace DragonBoxAlgebra.UI
         {
             _playingWinSequence = true;
 
+            while (!_controller.CanPresentWin())
+            {
+                yield return null;
+            }
+
             yield return new WaitForSeconds(WinPreDelay);
 
             bool animateLeft = SideHasVisibleCards("Left");

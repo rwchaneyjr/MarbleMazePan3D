@@ -30,6 +30,7 @@ namespace DragonBoxAlgebra.Gameplay
         public bool CanUndo => _undoStack.Count > 0;
         public bool HasPendingBalance => _pendingBalance != null;
         public BalancePending PendingBalance => _pendingBalance;
+        public bool HasActiveMergeAnimations => _activeMergeAnimations > 0;
 
         private readonly List<BoardCard> _hand = new();
         private readonly List<BoardCard> _handTemplates = new();
@@ -39,6 +40,7 @@ namespace DragonBoxAlgebra.Gameplay
         private BalancePending _pendingBalance;
         private int _levelIndex;
         private bool _levelComplete;
+        private int _activeMergeAnimations;
         private static readonly Random Rng = new();
 
         public int LevelIndex => _levelIndex;
@@ -109,6 +111,7 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = false;
             _pendingBalance = null;
             _pendingCancels.Clear();
+            _activeMergeAnimations = 0;
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
@@ -565,6 +568,21 @@ namespace DragonBoxAlgebra.Gameplay
             CheckWin();
         }
 
+        public void NotifyMergeAnimationStarted()
+        {
+            _activeMergeAnimations++;
+        }
+
+        public void NotifyMergeAnimationCompleted()
+        {
+            _activeMergeAnimations = Math.Max(0, _activeMergeAnimations - 1);
+        }
+
+        public bool CanPresentWin()
+        {
+            return _pendingCancels.Count == 0 && _activeMergeAnimations == 0;
+        }
+
         private void CheckWin()
         {
             if (_pendingBalance != null)
@@ -574,6 +592,12 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (!WinChecker.IsBoxAlone(Board))
             {
+                return;
+            }
+
+            if (_activeMergeAnimations > 0)
+            {
+                MessageChanged?.Invoke("Wait for every * to finish forming.");
                 return;
             }
 

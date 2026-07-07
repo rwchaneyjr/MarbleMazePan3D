@@ -17,6 +17,16 @@ namespace DragonBoxAlgebra.UI
         private RectTransform _symbolRect;
         private CanvasGroup _symbolGroup;
         private bool _readyToClick;
+        private bool _mergeInProgress;
+
+        private void OnDestroy()
+        {
+            if (_mergeInProgress && _controller != null)
+            {
+                _controller.NotifyMergeAnimationCompleted();
+                _mergeInProgress = false;
+            }
+        }
 
         public void Initialize(AlgebraGameController controller, int markerIndex,
             float tileWidth = 110f, float tileHeight = 120f)
@@ -149,6 +159,9 @@ namespace DragonBoxAlgebra.UI
 
         private IEnumerator PlayMergeAnimation()
         {
+            _mergeInProgress = true;
+            _controller?.NotifyMergeAnimationStarted();
+
             Image lightHalf = transform.Find("LightHalf")?.GetComponent<Image>();
             Image darkHalf = transform.Find("DarkHalf")?.GetComponent<Image>();
             RectTransform lightRect = lightHalf?.rectTransform;
@@ -218,6 +231,8 @@ namespace DragonBoxAlgebra.UI
             }
 
             _readyToClick = true;
+            _mergeInProgress = false;
+            _controller?.NotifyMergeAnimationCompleted();
             StartCoroutine(SpinSymbol());
         }
 
