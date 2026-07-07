@@ -4,17 +4,22 @@
 
 ### One command — always use this (prevents duplicate-script errors)
 
-Run import **from the MarbleMazePan3D repo**, not from inside Unity alone.
-The script copies files to the right folders and deletes stale UI duplicates.
+**Easiest — run every time you want latest code in Unity:**
 
 ```bash
 cd /c/path/to/MarbleMazePan3D
-git fetch origin
-git checkout cursor/ch1-merge-intro-1c5d
-SYMBOL_ALGEBRA_DIR="/c/Users/rober/SymbolAlgebra" bash scripts/sync-dropins.sh import
+SYMBOL_ALGEBRA_DIR="/c/Users/rober/SymbolAlgebra" bash scripts/update-unity.sh
 ```
 
-**Do not** manually copy `.cs` files into `Scripts/UI/` — gameplay scripts belong in `Scripts/Gameplay/`.
+This pulls latest, deletes bad UI duplicates, and imports to the right folders.
+
+**Do not:**
+- Manually copy `.cs` files into `Scripts/UI/`
+- Commit Unity `.meta` files in GitHub Desktop unless you meant to change the repo
+- Run an old `sync-dropins.sh` from before the routing fix
+
+**Gameplay/** = HandVisualRules, ThemeAssignment, AlgebraGameController, etc.  
+**UI/** = BoardView, CardWidget, HandView, etc.
 
 ---
 
