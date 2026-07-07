@@ -117,6 +117,8 @@ import_dropins() {
 
   mkdir -p "$scripts_dir/Core" "$scripts_dir/Gameplay" "$scripts_dir/UI" "$scripts_dir/Audio"
 
+  cleanup_stale_imports "$scripts_dir"
+
   local count=0
   for src in "$DROPINS_DIR"/*.cs; do
     [[ -f "$src" ]] || continue

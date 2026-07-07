@@ -2,7 +2,10 @@
 
 ## Your Unity folder: C:\Users\rober\SymbolAlgebra
 
-### One command — copy latest drop-ins into your Unity project
+### One command — always use this (prevents duplicate-script errors)
+
+Run import **from the MarbleMazePan3D repo**, not from inside Unity alone.
+The script copies files to the right folders and deletes stale UI duplicates.
 
 ```bash
 cd /c/path/to/MarbleMazePan3D
@@ -11,14 +14,7 @@ git checkout cursor/ch1-merge-intro-1c5d
 SYMBOL_ALGEBRA_DIR="/c/Users/rober/SymbolAlgebra" bash scripts/sync-dropins.sh import
 ```
 
-Or if the repo clone lives inside SymbolAlgebra:
-
-```bash
-cd /c/Users/rober/SymbolAlgebra
-git fetch origin
-git checkout cursor/ch1-merge-intro-1c5d
-bash scripts/sync-dropins.sh import
-```
+**Do not** manually copy `.cs` files into `Scripts/UI/` — gameplay scripts belong in `Scripts/Gameplay/`.
 
 ---
 
