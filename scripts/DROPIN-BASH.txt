@@ -7,7 +7,8 @@
 From a git clone of MarbleMazePan3D (this repo):
 
 ```bash
-cd /c/Users/rober/SymbolAlgebra
+cd /c/path/to/MarbleMazePan3D
+git pull origin cursor/drag-merge-levels-1c5d
 bash scripts/sync-dropins.sh import
 ```
 
@@ -17,14 +18,17 @@ Or if the repo lives elsewhere:
 SYMBOL_ALGEBRA_DIR="/c/Users/rober/SymbolAlgebra" bash /c/path/to/MarbleMazePan3D/scripts/sync-dropins.sh import
 ```
 
+**Main 80-level game** (not drag-merge): use branch `cursor/single-hand-levels-1c5d` instead.
+
 ---
 
 ### Update dropins/ folder after you change scripts in Assets
 
 ```bash
-cd /c/Users/rober/SymbolAlgebra
-git pull origin main
+cd /c/path/to/MarbleMazePan3D
 bash scripts/sync-dropins.sh export
+git add dropins/ Assets/
+git commit -m "Sync dropins"
 ```
 
 ---
@@ -43,7 +47,10 @@ bash scripts/sync-dropins.sh import --here
 2. Scene: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
 3. Press **Play**
 
-Fixes in latest drop-ins include:
-- Right side fits up to 6 tiles (scaled layout)
-- Balance ? hole and spinning * markers
-- Deferred day/night cancel until balance completes
+## Latest drop-ins (drag-merge branch)
+
+- **20 drag-merge levels** — drag light onto dark on the same side → spinning *
+- `DragMergeLevelGenerator.cs` + `LevelLibrary` wired to drag-merge mode on this branch
+- Merge intro animation when * appears (light/dark slide together)
+- Tap * to dismiss pair; win when only the red box remains
+- Reusable hand, balance ?, single-hand levels 61–70 (on single-hand branch)

@@ -3,11 +3,16 @@
 ## Git Bash (fastest)
 
 ```bash
-cd /c/Users/rober/SymbolAlgebra
+cd /c/path/to/MarbleMazePan3D
+git pull origin cursor/drag-merge-levels-1c5d
 bash scripts/sync-dropins.sh import
 ```
 
 See `scripts/DROPIN-BASH.txt` for more options.
+
+**Branches:**
+- `cursor/drag-merge-levels-1c5d` — 20 drag-merge tutorial levels
+- `cursor/single-hand-levels-1c5d` — main 80-chapter game
 
 ---
 
@@ -24,6 +29,8 @@ C:\Users\rober\SymbolAlgebra\Assets\DragonBoxAlgebra\Scripts\
 | AlgebraBootstrap.cs | Scripts/ (parent of Core) |
 | AlgebraGameController.cs | Gameplay/ |
 | BalancePending.cs | Gameplay/ |
+| ChapterLevelGenerator.cs | Gameplay/ |
+| DragMergeLevelGenerator.cs | Gameplay/ |
 | GameSnapshot.cs | Gameplay/ |
 | CardFlipRules.cs | Gameplay/ |
 | HandRules.cs | Gameplay/ |
@@ -53,13 +60,11 @@ C:\Users\rober\SymbolAlgebra\Assets\DragonBoxAlgebra\Scripts\
 2. Press **Play**
 3. Open `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
 
-## Fixes included
+## Fixes included (drag-merge branch)
 
-- Right side accommodates up to 6 tiles (auto-scaled layout)
-- ? hole merges with incoming tile
-- Hand card stays visible after first drag
-- One * per side max
-- Light + dark on same side → spinning *
-- Day/night cancel waits until balance completes
-- Click hand card to flip light/dark before playing
-- Dice cancel instantly (level 4), no asterisks
+- Drag light onto dark on same side → spinning *
+- 20 tutorial levels (5 left, 5 right, 5 two-vs-one, 5 three-vs-two)
+- Merge intro animation (light/dark slide together)
+- Tap * to dismiss; win with red box alone
+- Right side fits up to 6 tiles (scaled layout)
+- Balance ? hole and deferred day/night cancel
