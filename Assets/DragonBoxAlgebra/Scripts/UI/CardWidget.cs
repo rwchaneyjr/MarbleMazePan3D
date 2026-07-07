@@ -446,8 +446,11 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
-            if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index)
-                || _controller.TryPlayFromHand(Index, target.SideName))
+            bool played = _controller.CurrentLevel.Chapter >= 3
+                ? _controller.TryPlayFromHand(Index, target.SideName)
+                : _controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index);
+
+            if (played)
             {
                 MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();

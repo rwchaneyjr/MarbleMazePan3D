@@ -1,7 +1,6 @@
-using System.Collections;
+using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
 using DragonBoxAlgebra.Gameplay;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -22,7 +21,6 @@ namespace DragonBoxAlgebra.UI
             _canvas = canvas;
             _dragRoot = dragRoot;
             _controller.HandChanged += RefreshHandInPlace;
-            _controller.BoardChanged += OnBoardChanged;
             Refresh();
         }
 
@@ -31,37 +29,7 @@ namespace DragonBoxAlgebra.UI
             if (_controller != null)
             {
                 _controller.HandChanged -= RefreshHandInPlace;
-                _controller.BoardChanged -= OnBoardChanged;
             }
-        }
-
-        private void OnBoardChanged()
-        {
-            if (_controller.HasPendingBalance && _controller.Hand.Count > 0)
-            {
-                StartCoroutine(EnsureHandVisibleNextFrame());
-            }
-        }
-
-        private IEnumerator EnsureHandVisibleNextFrame()
-        {
-            yield return null;
-
-            if (_controller.Hand.Count == 0)
-            {
-                yield break;
-            }
-
-            for (int i = 0; i < _panel.childCount; i++)
-            {
-                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    yield break;
-                }
-            }
-
-            Refresh();
         }
 
         private void RefreshHandInPlace()
@@ -91,6 +59,15 @@ namespace DragonBoxAlgebra.UI
 
         private void Refresh()
         {
+            for (int i = _dragRoot.childCount - 1; i >= 0; i--)
+            {
+                CardWidget stray = _dragRoot.GetChild(i).GetComponent<CardWidget>();
+                if (stray != null && stray.SideName == "Hand")
+                {
+                    Destroy(stray.gameObject);
+                }
+            }
+
             for (int i = _panel.childCount - 1; i >= 0; i--)
             {
                 Transform child = _panel.GetChild(i);

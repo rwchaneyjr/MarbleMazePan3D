@@ -93,7 +93,10 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
-            HandRules.DedupeFlipFamilies(_hand);
+            if (level.Chapter < 4)
+            {
+                HandRules.DedupeFlipFamilies(_hand);
+            }
             CaptureHandTemplates();
             Moves.Reset();
             _undoStack.Clear();
@@ -363,6 +366,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return TryCompleteBalance(handIndex, targetSide, template);
             }
 
+            if (CurrentLevel.Chapter == 2)
+            {
+                MessageChanged?.Invoke("Drag onto the opposite creature on the board.");
+                return false;
+            }
+
             return TryStartBalance(handIndex, targetSide, template);
         }
 
@@ -374,6 +383,11 @@ namespace DragonBoxAlgebra.Gameplay
         public bool TryPlayHandOntoOpposite(int handIndex, string sideName, int targetBoardIndex)
         {
             if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return false;
+            }
+
+            if (CurrentLevel.Chapter >= 3)
             {
                 return false;
             }
