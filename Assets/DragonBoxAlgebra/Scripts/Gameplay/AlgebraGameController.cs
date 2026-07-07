@@ -112,7 +112,7 @@ namespace DragonBoxAlgebra.Gameplay
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
-            if (_hand.Count == 0)
+            if (_hand.Count == 0 && !level.DragToMergePairs)
             {
                 ActivatePreplacedOppositePairs();
             }
@@ -124,7 +124,9 @@ namespace DragonBoxAlgebra.Gameplay
                 ? level.Chapter == 1
                     ? "Watch light and dark merge into *. Tap the spinning * to dismiss. Leave the red box alone!"
                     : "Click the spinning * to dismiss the creatures. Leave the red box alone!"
-                : HandMessage(level));
+                : level.DragToMergePairs
+                    ? "Drag light onto dark on the same side. They snap together into *. Tap * to dismiss. Leave the red box alone!"
+                    : HandMessage(level));
         }
 
         private static string HandMessage(LevelDefinition level)

@@ -9,8 +9,8 @@ namespace DragonBoxAlgebra.UI
 {
     public class AsteriskCancelWidget : MonoBehaviour, IPointerClickHandler
     {
-        private const float MergeDuration = 4.6f;
-        private const float MergeHalfOffset = 72f;
+        private const float MergeDuration = 1.15f;
+        private const float MergeHalfOffset = 28f;
 
         private AlgebraGameController _controller;
         private int _markerIndex;

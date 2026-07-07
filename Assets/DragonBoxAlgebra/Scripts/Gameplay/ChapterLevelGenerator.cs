@@ -53,7 +53,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        /// <summary>Ch1: two creatures on one side merge into *; box alone on the other (empty hand).</summary>
+        /// <summary>Ch1: drag day/night together on one side → *; box alone on the other.</summary>
         private static LevelDefinition BuildChapter1Level(int index, int theme)
         {
             if (index < 8)
@@ -65,8 +65,9 @@ namespace DragonBoxAlgebra.Gameplay
                     left: new[] { CardKind.DayCreature, CardKind.NightCreature },
                     right: new[] { CardKind.Box },
                     hand: System.Array.Empty<CardKind>(),
-                    parMoves: 1,
-                    parCards: 0);
+                    parMoves: 2,
+                    parCards: 0,
+                    dragToMergePairs: true);
             }
 
             if (index < 14)
@@ -78,8 +79,9 @@ namespace DragonBoxAlgebra.Gameplay
                     left: new[] { CardKind.Box },
                     right: new[] { CardKind.DayCreature, CardKind.NightCreature },
                     hand: System.Array.Empty<CardKind>(),
-                    parMoves: 1,
-                    parCards: 0);
+                    parMoves: 2,
+                    parCards: 0,
+                    dragToMergePairs: true);
             }
 
             return Make(
@@ -214,13 +216,15 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         private static LevelDefinition Make(string title, int chapter, int theme,
-            CardKind[] left, CardKind[] right, CardKind[] hand, int parMoves, int parCards)
+            CardKind[] left, CardKind[] right, CardKind[] hand, int parMoves, int parCards,
+            bool dragToMergePairs = false)
         {
             var level = new LevelDefinition
             {
                 Title = title,
                 Chapter = chapter,
                 CreatureTheme = theme,
+                DragToMergePairs = dragToMergePairs,
                 LeftCards = new List<CardKind>(left),
                 RightCards = new List<CardKind>(right),
                 HandCards = new List<CardKind>(hand),

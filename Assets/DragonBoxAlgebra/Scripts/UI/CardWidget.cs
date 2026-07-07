@@ -250,7 +250,10 @@ namespace DragonBoxAlgebra.UI
             CardWidget target = FindDropTarget(eventData);
             if (target != null && target != this)
             {
-                HandleDropOnCard(target);
+                if (HandleDropOnCard(target))
+                {
+                    return;
+                }
             }
 
             transform.SetParent(_originalParent, false);
@@ -324,7 +327,7 @@ namespace DragonBoxAlgebra.UI
             dragged.HandleDropOnCard(this);
         }
 
-        public void HandleDropOnCard(CardWidget target)
+        public bool HandleDropOnCard(CardWidget target)
         {
             if (SideName == "Hand")
             {
@@ -335,9 +338,10 @@ namespace DragonBoxAlgebra.UI
                     {
                         MarkHandPlayHandled();
                         DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                        return true;
                     }
 
-                    return;
+                    return false;
                 }
 
                 if (target.SideName != "Hand")
@@ -345,15 +349,43 @@ namespace DragonBoxAlgebra.UI
                     TryPlayHandOnBoardTarget(target);
                 }
 
-                return;
+                return false;
             }
 
             if (SideName != target.SideName)
             {
+                return false;
+            }
+
+            SnapOnto(target);
+            if (_controller.TryCombine(SideName, Index, target.Index))
+            {
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                return true;
+            }
+
+            return false;
+        }
+
+        private void SnapOnto(CardWidget target)
+        {
+            if (_rect == null || _dragRoot == null)
+            {
                 return;
             }
 
-            _controller.TryCombine(SideName, Index, target.Index);
+            var targetRect = target.transform as RectTransform;
+            if (targetRect == null)
+            {
+                return;
+            }
+
+            Vector3 world = targetRect.position;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, world,
+                    _canvas != null ? _canvas.worldCamera : null, out Vector2 local))
+            {
+                _rect.localPosition = local;
+            }
         }
 
         private BalanceHoleWidget FindBalanceHole(PointerEventData eventData)
