@@ -41,6 +41,7 @@ namespace DragonBoxAlgebra.Gameplay
         private int _levelIndex;
         private bool _levelComplete;
         private int _activeMergeAnimations;
+        private bool UsesManualPairMerge => _levelIndex >= 36;
         private static readonly Random Rng = new();
 
         public int LevelIndex => _levelIndex;
@@ -546,13 +547,20 @@ namespace DragonBoxAlgebra.Gameplay
             SyncHandFromTemplates();
             HandChanged?.Invoke();
 
-            ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
-            ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
+            if (!UsesManualPairMerge)
+            {
+                ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
+                ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
+            }
 
             Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke(_pendingCancels.Count > 0
-                ? "Balanced! Click the spinning * to dismiss creatures."
-                : "Balanced!");
+            MessageChanged?.Invoke(UsesManualPairMerge
+                ? _pendingCancels.Count > 0
+                    ? "Balanced! Tap every *. Drag light onto dark on the same side to make more *."
+                    : "Balanced! Drag light onto dark on the same side to make *."
+                : _pendingCancels.Count > 0
+                    ? "Balanced! Click the spinning * to dismiss creatures."
+                    : "Balanced!");
             PruneInvalidCancelMarkers();
             ResolveCombines();
             return true;
