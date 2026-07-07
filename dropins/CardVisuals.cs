@@ -76,6 +76,36 @@ namespace DragonBoxAlgebra.UI
 
         public static bool PreferEmoji(BoardCard card) => false;
 
+        public static bool ShowsIconOnly(BoardCard card) =>
+            card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box
+                or CardKind.PositiveConstant or CardKind.NegativeConstant;
+
+        public static Color FaceBackground(BoardCard card, string sideName)
+        {
+            if (sideName == "Hand"
+                && card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+            {
+                return Background(card.Kind);
+            }
+
+            return sideName == "Hand"
+                ? HandFaceBackground(card)
+                : Background(card.Kind);
+        }
+
+        public static Color FaceBorder(BoardCard card, string sideName)
+        {
+            if (sideName == "Hand"
+                && card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+            {
+                return Border(card.Kind);
+            }
+
+            return sideName == "Hand"
+                ? HandFaceBorder(card)
+                : Border(card.Kind);
+        }
+
         public static Sprite CreatureSprite(BoardCard card)
         {
             if (CreatureArt.ThemeIndex == 0

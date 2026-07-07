@@ -28,6 +28,7 @@ namespace DragonBoxAlgebra.Gameplay
             levels.AddRange(GenerateChapter(2));
             levels.AddRange(GenerateChapter(3));
             levels.AddRange(GenerateChapter(4));
+            HandRules.AssertAllHandCardsFlippable(levels);
             return levels;
         }
 
@@ -172,7 +173,7 @@ namespace DragonBoxAlgebra.Gameplay
                 parCards: 1);
         }
 
-        /// <summary>Ch4: two or three hand tiles, tiles on both sides.</summary>
+        /// <summary>Ch4: mostly one reusable hand tile; multi-card on late puzzles.</summary>
         private static LevelDefinition BuildChapter4Level(int index, int theme)
         {
             if (index < 10)
@@ -183,9 +184,9 @@ namespace DragonBoxAlgebra.Gameplay
                     theme,
                     left: new[] { CardKind.Box, CardKind.DayCreature },
                     right: new[] { CardKind.NightCreature },
-                    hand: new[] { CardKind.NightCreature, CardKind.DayCreature },
-                    parMoves: 3,
-                    parCards: 2);
+                    hand: new[] { CardKind.NightCreature },
+                    parMoves: 2,
+                    parCards: 1);
             }
 
             if (index < 16)
@@ -199,6 +200,19 @@ namespace DragonBoxAlgebra.Gameplay
                     hand: new[] { CardKind.NightCreature, CardKind.NightCreature },
                     parMoves: 4,
                     parCards: 2);
+            }
+
+            if (index == 16)
+            {
+                return Make(
+                    $"Ch4 • {ChapterNames[3]} {index + 1}",
+                    chapter: 4,
+                    theme,
+                    left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
+                    right: new[] { CardKind.NightCreature, CardKind.NightCreature },
+                    hand: new[] { CardKind.NightCreature },
+                    parMoves: 3,
+                    parCards: 1);
             }
 
             return Make(

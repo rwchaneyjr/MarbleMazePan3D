@@ -1,7 +1,6 @@
-using System.Collections;
+using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
 using DragonBoxAlgebra.Gameplay;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -21,8 +20,7 @@ namespace DragonBoxAlgebra.UI
             _panel = panel;
             _canvas = canvas;
             _dragRoot = dragRoot;
-            _controller.HandChanged += RefreshHandInPlace;
-            _controller.BoardChanged += OnBoardChanged;
+            _controller.HandChanged += Refresh;
             Refresh();
         }
 
@@ -30,63 +28,8 @@ namespace DragonBoxAlgebra.UI
         {
             if (_controller != null)
             {
-                _controller.HandChanged -= RefreshHandInPlace;
-                _controller.BoardChanged -= OnBoardChanged;
+                _controller.HandChanged -= Refresh;
             }
-        }
-
-        private void OnBoardChanged()
-        {
-            if (_controller.HasPendingBalance && _controller.Hand.Count > 0)
-            {
-                StartCoroutine(EnsureHandVisibleNextFrame());
-            }
-        }
-
-        private IEnumerator EnsureHandVisibleNextFrame()
-        {
-            yield return null;
-
-            if (_controller.Hand.Count == 0)
-            {
-                yield break;
-            }
-
-            for (int i = 0; i < _panel.childCount; i++)
-            {
-                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    yield break;
-                }
-            }
-
-            Refresh();
-        }
-
-        private void RefreshHandInPlace()
-        {
-            var widgets = new List<CardWidget>();
-            for (int i = 0; i < _panel.childCount; i++)
-            {
-                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    widgets.Add(widget);
-                }
-            }
-
-            if (widgets.Count == _controller.Hand.Count)
-            {
-                for (int i = 0; i < widgets.Count; i++)
-                {
-                    widgets[i].Bind(_controller.Hand[i], i, "Hand", _controller, _canvas, _dragRoot);
-                }
-
-                return;
-            }
-
-            Refresh();
         }
 
         private void Refresh()
@@ -96,7 +39,7 @@ namespace DragonBoxAlgebra.UI
                 Transform child = _panel.GetChild(i);
                 if (child.GetComponent<BoardDropZone>() == null)
                 {
-                    Destroy(child.gameObject);
+                    Object.DestroyImmediate(child.gameObject);
                 }
             }
 
