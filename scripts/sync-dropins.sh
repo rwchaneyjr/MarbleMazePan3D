@@ -42,6 +42,44 @@ target_subdir_for() {
   esac
 }
 
+gameplay_dropin() {
+  case "$1" in
+    AlgebraGameController.cs|BalancePending.cs|CardFlipRules.cs|ChapterLevelGenerator.cs|\
+    DragMergeLevelGenerator.cs|GameSnapshot.cs|BoardFoldRules.cs|HandRules.cs|HandVisualRules.cs|\
+    LevelDefinition.cs|LevelGenerator.cs|LevelLibrary.cs|MoveTracker.cs|\
+    PendingCancelMarker.cs|ThemeAssignment.cs)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+core_dropin() {
+  case "$1" in
+    AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+audio_dropin() {
+  [[ "$1" == "AudioManager.cs" ]]
+}
+
+cleanup_stale_imports() {
+  local scripts_dir="$1"
+  local stale
+  for stale in HandVisualRules.cs ThemeAssignment.cs ChapterLevelGenerator.cs DragMergeLevelGenerator.cs; do
+    rm -f "$scripts_dir/UI/$stale" "$scripts_dir/UI/${stale}.meta"
+  done
+  rm -f "$scripts_dir/UI/BoardSideLayout.cs" "$scripts_dir/UI/BoardSideLayout.cs.meta"
+}
+
 export_dropins() {
   echo "==> Exporting Assets -> dropins/"
   echo "    From: $ASSETS_SCRIPTS"
@@ -79,6 +117,8 @@ import_dropins() {
 
   mkdir -p "$scripts_dir/Core" "$scripts_dir/Gameplay" "$scripts_dir/UI" "$scripts_dir/Audio"
 
+  cleanup_stale_imports "$scripts_dir"
+
   local count=0
   for src in "$DROPINS_DIR"/*.cs; do
     [[ -f "$src" ]] || continue
@@ -87,13 +127,17 @@ import_dropins() {
 
     case "$base" in
       AlgebraBootstrap.cs) dest_subdir="" ;;
-      AudioManager.cs) dest_subdir="Audio" ;;
-      AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs)
-        dest_subdir="Core" ;;
-      AlgebraGameController.cs|BalancePending.cs|CardFlipRules.cs|GameSnapshot.cs|HandRules.cs|\
-      LevelDefinition.cs|LevelGenerator.cs|LevelLibrary.cs|ChapterLevelGenerator.cs|MoveTracker.cs|PendingCancelMarker.cs)
-        dest_subdir="Gameplay" ;;
-      *) dest_subdir="UI" ;;
+      *)
+        if gameplay_dropin "$base"; then
+          dest_subdir="Gameplay"
+        elif core_dropin "$base"; then
+          dest_subdir="Core"
+        elif audio_dropin "$base"; then
+          dest_subdir="Audio"
+        else
+          dest_subdir="UI"
+        fi
+        ;;
     esac
 
     if [[ -z "$dest_subdir" ]]; then
@@ -110,6 +154,8 @@ import_dropins() {
       echo "    $base -> $dest_subdir/"
     fi
   done
+
+  cleanup_stale_imports "$scripts_dir"
 
   echo ""
   echo "Imported $count files."

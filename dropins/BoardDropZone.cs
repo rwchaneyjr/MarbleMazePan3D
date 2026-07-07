@@ -22,11 +22,6 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (ui.Controller.CurrentLevel.Chapter == 2)
-            {
-                return;
-            }
-
             if (ui.Controller.HasPendingBalance && SideName != ui.Controller.PendingBalance.HoleSide)
             {
                 return;

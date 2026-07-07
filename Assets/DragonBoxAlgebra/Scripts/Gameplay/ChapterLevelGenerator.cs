@@ -53,50 +53,58 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        /// <summary>Ch1: pre-placed opposite pairs on the board → tap * (empty hand).</summary>
+        /// <summary>Ch1: drag day/night together on one side → *; box alone on the other.</summary>
         private static LevelDefinition BuildChapter1Level(int index, int theme)
         {
-            if (index < 8)
+            if (index >= 19)
             {
-                return Make(
+                return MakeDualPairDragLevel(
                     $"Ch1 • {ChapterNames[0]} {index + 1}",
                     chapter: 1,
                     theme,
-                    left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
-                    right: System.Array.Empty<CardKind>(),
-                    hand: System.Array.Empty<CardKind>(),
-                    parMoves: 2,
-                    parCards: 0);
+                    index);
             }
 
-            if (index < 14)
+            if (index < 10)
             {
                 return Make(
                     $"Ch1 • {ChapterNames[0]} {index + 1}",
                     chapter: 1,
                     theme,
-                    left: System.Array.Empty<CardKind>(),
-                    right: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
+                    left: new[] { CardKind.DayCreature, CardKind.NightCreature },
+                    right: new[] { CardKind.Box },
                     hand: System.Array.Empty<CardKind>(),
                     parMoves: 2,
-                    parCards: 0);
+                    parCards: 0,
+                    dragToMergePairs: true);
             }
 
             return Make(
                 $"Ch1 • {ChapterNames[0]} {index + 1}",
                 chapter: 1,
                 theme,
-                left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
+                left: new[] { CardKind.Box },
                 right: new[] { CardKind.DayCreature, CardKind.NightCreature },
                 hand: System.Array.Empty<CardKind>(),
-                parMoves: 3,
-                parCards: 0);
+                parMoves: 2,
+                parCards: 0,
+                dragToMergePairs: true);
         }
 
-        /// <summary>Ch2: drag hand opposite onto a board creature → *.</summary>
+        /// <summary>Ch2: levels 1–16 dual pairs on both sides; later levels use hand opposite.</summary>
         private static LevelDefinition BuildChapter2Level(int index, int theme)
         {
-            if (index < 10)
+            if (index < 16)
+            {
+                return MakeDualPairDragLevel(
+                    $"Ch2 • {ChapterNames[1]} {index + 1}",
+                    chapter: 2,
+                    theme,
+                    index,
+                    differentSideThemes: index >= 9);
+            }
+
+            if (index < 18)
             {
                 return Make(
                     $"Ch2 • {ChapterNames[1]} {index + 1}",
@@ -105,19 +113,6 @@ namespace DragonBoxAlgebra.Gameplay
                     left: new[] { CardKind.Box, CardKind.DayCreature },
                     right: System.Array.Empty<CardKind>(),
                     hand: new[] { CardKind.NightCreature },
-                    parMoves: 2,
-                    parCards: 1);
-            }
-
-            if (index < 16)
-            {
-                return Make(
-                    $"Ch2 • {ChapterNames[1]} {index + 1}",
-                    chapter: 2,
-                    theme,
-                    left: System.Array.Empty<CardKind>(),
-                    right: new[] { CardKind.Box, CardKind.NightCreature },
-                    hand: new[] { CardKind.DayCreature },
                     parMoves: 2,
                     parCards: 1);
             }
@@ -202,25 +197,76 @@ namespace DragonBoxAlgebra.Gameplay
                     parCards: 2);
             }
 
+            if (index < 19)
+            {
+                return Make(
+                    $"Ch4 • {ChapterNames[3]} {index + 1}",
+                    chapter: 4,
+                    theme,
+                    left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
+                    right: new[] { CardKind.NightCreature, CardKind.NightCreature },
+                    hand: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.DayCreature },
+                    parMoves: 5,
+                    parCards: 3);
+            }
+
             return Make(
                 $"Ch4 • {ChapterNames[3]} {index + 1}",
                 chapter: 4,
                 theme,
                 left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
-                right: new[] { CardKind.NightCreature, CardKind.NightCreature },
+                right: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.NightCreature },
                 hand: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.DayCreature },
                 parMoves: 5,
                 parCards: 3);
         }
 
+        private static LevelDefinition MakeDualPairDragLevel(string title, int chapter, int theme, int index,
+            bool differentSideThemes = false)
+        {
+            bool boxOnLeft = index % 2 == 0;
+            LevelDefinition level = boxOnLeft
+                ? Make(
+                    title,
+                    chapter,
+                    theme,
+                    left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
+                    right: new[] { CardKind.DayCreature, CardKind.NightCreature },
+                    hand: System.Array.Empty<CardKind>(),
+                    parMoves: 4,
+                    parCards: 0,
+                    dragToMergePairs: true)
+                : Make(
+                    title,
+                    chapter,
+                    theme,
+                    left: new[] { CardKind.DayCreature, CardKind.NightCreature },
+                    right: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
+                    hand: System.Array.Empty<CardKind>(),
+                    parMoves: 4,
+                    parCards: 0,
+                    dragToMergePairs: true);
+
+            if (differentSideThemes)
+            {
+                List<int> themes = ThemeAssignment.DistinctThemes(2, theme);
+                level.LeftCreatureTheme = themes[0];
+                level.RightCreatureTheme = themes[1];
+            }
+
+            return level;
+        }
+
         private static LevelDefinition Make(string title, int chapter, int theme,
-            CardKind[] left, CardKind[] right, CardKind[] hand, int parMoves, int parCards)
+            CardKind[] left, CardKind[] right, CardKind[] hand, int parMoves, int parCards,
+            bool dragToMergePairs = false)
         {
             var level = new LevelDefinition
             {
                 Title = title,
                 Chapter = chapter,
                 CreatureTheme = theme,
+                DragToMergePairs = dragToMergePairs,
                 LeftCards = new List<CardKind>(left),
                 RightCards = new List<CardKind>(right),
                 HandCards = new List<CardKind>(hand),

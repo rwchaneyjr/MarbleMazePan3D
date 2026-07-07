@@ -30,6 +30,7 @@ namespace DragonBoxAlgebra.Gameplay
         public bool CanUndo => _undoStack.Count > 0;
         public bool HasPendingBalance => _pendingBalance != null;
         public BalancePending PendingBalance => _pendingBalance;
+        public bool HasActiveMergeAnimations => _activeMergeAnimations > 0;
 
         private readonly List<BoardCard> _hand = new();
         private readonly List<BoardCard> _handTemplates = new();
@@ -39,6 +40,8 @@ namespace DragonBoxAlgebra.Gameplay
         private BalancePending _pendingBalance;
         private int _levelIndex;
         private bool _levelComplete;
+        private int _activeMergeAnimations;
+        private bool UsesManualPairMerge => _levelIndex >= 36;
         private static readonly Random Rng = new();
 
         public int LevelIndex => _levelIndex;
@@ -88,8 +91,13 @@ namespace DragonBoxAlgebra.Gameplay
             LevelDefinition level = CurrentLevel;
             CreatureArt.SetTheme(level.CreatureTheme);
 
-            Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues),
-                level.BuildSide(level.RightCards, level.RightValues));
+            Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues, level.LeftCreatureTheme),
+                level.BuildSide(level.RightCards, level.RightValues, level.RightCreatureTheme));
+
+            if (UsesManualPairMerge)
+            {
+                BoardFoldRules.FoldMatchingPairsForPlayableRight(Board);
+            }
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
@@ -109,10 +117,11 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = false;
             _pendingBalance = null;
             _pendingCancels.Clear();
+            _activeMergeAnimations = 0;
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
-            if (_hand.Count == 0)
+            if (_hand.Count == 0 && !level.DragToMergePairs)
             {
                 ActivatePreplacedOppositePairs();
             }
@@ -121,8 +130,14 @@ namespace DragonBoxAlgebra.Gameplay
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
-                ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
-                : HandMessage(level));
+                ? level.Chapter == 1
+                    ? "Watch light and dark merge into *. Tap the spinning * to dismiss. Leave the red box alone!"
+                    : "Click the spinning * to dismiss the creatures. Leave the red box alone!"
+                : level.DragToMergePairs
+                    ? level.LeftCards.Count >= 2 && level.RightCards.Count >= 2
+                        ? "Drag light onto dark on each side to make *. Tap every * before the puzzle finishes!"
+                        : "Drag light onto dark on the same side. They snap together into *. Tap * to dismiss. Leave the red box alone!"
+                    : HandMessage(level));
         }
 
         private static string HandMessage(LevelDefinition level)
@@ -256,13 +271,14 @@ namespace DragonBoxAlgebra.Gameplay
             if (action == CombineActionType.OppositeCancel)
             {
                 PushUndo();
-                _pendingBalance = null;
                 BoardCard cardA = side.Cards[indexA];
                 BoardCard cardB = side.Cards[indexB];
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
-                    MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
+                    MessageChanged?.Invoke(_pendingBalance != null
+                        ? "Light met dark — click *. The ? hole stays until you fill it."
+                        : "Light met dark — click the spinning * to dismiss.");
                 }
                 else
                 {
@@ -312,7 +328,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool TryDismissCancelMarker(int markerIndex)
         {
-            if (_levelComplete || _pendingBalance != null)
+            if (_levelComplete)
             {
                 return false;
             }
@@ -366,12 +382,6 @@ namespace DragonBoxAlgebra.Gameplay
             if (_pendingBalance != null)
             {
                 return TryCompleteBalance(handIndex, targetSide, template);
-            }
-
-            if (CurrentLevel.Chapter == 2)
-            {
-                MessageChanged?.Invoke("Drag onto the opposite creature on the board.");
-                return false;
             }
 
             return TryStartBalance(handIndex, targetSide, template);
@@ -542,13 +552,20 @@ namespace DragonBoxAlgebra.Gameplay
             SyncHandFromTemplates();
             HandChanged?.Invoke();
 
-            ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
-            ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
+            if (!UsesManualPairMerge)
+            {
+                ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
+                ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
+            }
 
             Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke(_pendingCancels.Count > 0
-                ? "Balanced! Click the spinning * to dismiss creatures."
-                : "Balanced!");
+            MessageChanged?.Invoke(UsesManualPairMerge
+                ? _pendingCancels.Count > 0
+                    ? "Balanced! Tap every *. Drag light onto dark on the same side to make more *."
+                    : "Balanced! Drag light onto dark on the same side to make *."
+                : _pendingCancels.Count > 0
+                    ? "Balanced! Click the spinning * to dismiss creatures."
+                    : "Balanced!");
             PruneInvalidCancelMarkers();
             ResolveCombines();
             return true;
@@ -561,6 +578,23 @@ namespace DragonBoxAlgebra.Gameplay
             CheckWin();
         }
 
+        public void NotifyMergeAnimationStarted()
+        {
+            _activeMergeAnimations++;
+        }
+
+        public void NotifyMergeAnimationCompleted()
+        {
+            _activeMergeAnimations = Math.Max(0, _activeMergeAnimations - 1);
+        }
+
+        public bool CanPresentWin()
+        {
+            return _pendingBalance == null
+                && _pendingCancels.Count == 0
+                && _activeMergeAnimations == 0;
+        }
+
         private void CheckWin()
         {
             if (_pendingBalance != null)
@@ -568,8 +602,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (!WinChecker.IsBoxAlone(Board))
+            if (_activeMergeAnimations > 0)
             {
+                MessageChanged?.Invoke("Wait for every * to finish forming.");
                 return;
             }
 
@@ -579,10 +614,20 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
+            bool puzzleComplete = UsesManualPairMerge
+                ? WinChecker.IsBoxAloneOnItsSide(Board)
+                : WinChecker.IsBoxAlone(Board);
+            if (!puzzleComplete)
+            {
+                return;
+            }
+
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            MessageChanged?.Invoke("You win! The red box is alone.");
+            MessageChanged?.Invoke(UsesManualPairMerge
+                ? "You win! The sides come together."
+                : "You win! The red box is alone.");
             WinSequenceStarted?.Invoke(stars, moves);
         }
 

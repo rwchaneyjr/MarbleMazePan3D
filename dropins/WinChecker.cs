@@ -6,9 +6,25 @@ namespace DragonBoxAlgebra.Core
     {
         public static bool IsBoxAlone(AlgebraBoard board)
         {
+            int totalCards = board.Left.Cards.Count + board.Right.Cards.Count;
+            if (totalCards != 1)
+            {
+                return false;
+            }
+
+            if (board.Left.Cards.Count == 1)
+            {
+                return board.Left.Cards[0].Kind == CardKind.Box;
+            }
+
+            return board.Right.Cards.Count == 1 && board.Right.Cards[0].Kind == CardKind.Box;
+        }
+
+        /// <summary>True when the red box is the only tile on its side (the other side may have cards).</summary>
+        public static bool IsBoxAloneOnItsSide(AlgebraBoard board)
+        {
             int leftBoxes = board.Left.Cards.Count(c => c.Kind == CardKind.Box);
             int rightBoxes = board.Right.Cards.Count(c => c.Kind == CardKind.Box);
-
             if (leftBoxes + rightBoxes != 1)
             {
                 return false;
