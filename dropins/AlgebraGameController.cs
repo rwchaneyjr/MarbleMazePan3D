@@ -90,8 +90,8 @@ namespace DragonBoxAlgebra.Gameplay
             LevelDefinition level = CurrentLevel;
             CreatureArt.SetTheme(level.CreatureTheme);
 
-            Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues),
-                level.BuildSide(level.RightCards, level.RightValues));
+            Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues, level.LeftCreatureTheme),
+                level.BuildSide(level.RightCards, level.RightValues, level.RightCreatureTheme));
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
@@ -128,7 +128,9 @@ namespace DragonBoxAlgebra.Gameplay
                     ? "Watch light and dark merge into *. Tap the spinning * to dismiss. Leave the red box alone!"
                     : "Click the spinning * to dismiss the creatures. Leave the red box alone!"
                 : level.DragToMergePairs
-                    ? "Drag light onto dark on the same side. They snap together into *. Tap * to dismiss. Leave the red box alone!"
+                    ? level.LeftCards.Count >= 2 && level.RightCards.Count >= 2
+                        ? "Drag light onto dark on each side to make *. Tap every * before the puzzle finishes!"
+                        : "Drag light onto dark on the same side. They snap together into *. Tap * to dismiss. Leave the red box alone!"
                     : HandMessage(level));
         }
 
@@ -373,12 +375,6 @@ namespace DragonBoxAlgebra.Gameplay
             if (_pendingBalance != null)
             {
                 return TryCompleteBalance(handIndex, targetSide, template);
-            }
-
-            if (CurrentLevel.Chapter == 2)
-            {
-                MessageChanged?.Invoke("Drag onto the opposite creature on the board.");
-                return false;
             }
 
             return TryStartBalance(handIndex, targetSide, template);

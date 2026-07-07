@@ -10,6 +10,8 @@ namespace DragonBoxAlgebra.Gameplay
         public string Title;
         public int Chapter;
         public int CreatureTheme;
+        public int LeftCreatureTheme = -1;
+        public int RightCreatureTheme = -1;
         public List<CardKind> LeftCards = new();
         public List<CardKind> RightCards = new();
         public List<int> LeftValues = new();
@@ -20,13 +22,17 @@ namespace DragonBoxAlgebra.Gameplay
         public int ParCards = 2;
         public bool DragToMergePairs;
 
-        public BoardSide BuildSide(List<CardKind> kinds, List<int> values)
+        public BoardSide BuildSide(List<CardKind> kinds, List<int> values, int sideTheme = -1)
         {
             var side = new BoardSide();
+            int resolvedTheme = sideTheme >= 0 ? sideTheme : CreatureTheme;
             for (int i = 0; i < kinds.Count; i++)
             {
                 int value = values != null && i < values.Count ? values[i] : 1;
-                side.Cards.Add(new BoardCard(kinds[i], value));
+                int visualTheme = kinds[i] is CardKind.DayCreature or CardKind.NightCreature
+                    ? resolvedTheme
+                    : -1;
+                side.Cards.Add(new BoardCard(kinds[i], value, 1, visualTheme));
             }
 
             return side;
