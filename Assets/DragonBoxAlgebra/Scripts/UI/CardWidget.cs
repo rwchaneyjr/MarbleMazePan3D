@@ -30,6 +30,9 @@ namespace DragonBoxAlgebra.UI
         private bool _isDragging;
         private bool _didDrag;
         private bool _handPlayHandled;
+        private Vector2 _dragPressScreenPosition;
+
+        private const float FlipDragThresholdPixels = 12f;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -38,6 +41,11 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            TryFlipHandOnTap();
+        }
+
+        private void TryFlipHandOnTap()
+        {
             if (_controller.TryFlipHandCard(Index))
             {
                 Card = _controller.Hand[Index];
@@ -62,25 +70,25 @@ namespace DragonBoxAlgebra.UI
         {
             if (_background != null)
             {
-                _background.color = SideName == "Hand"
-                    ? CardVisuals.HandFaceBackground(Card)
-                    : CardVisuals.Background(Card.Kind);
+                _background.color = CardVisuals.FaceBackground(Card, SideName);
             }
 
             if (_border != null)
             {
-                _border.color = SideName == "Hand"
-                    ? CardVisuals.HandFaceBorder(Card)
-                    : CardVisuals.Border(Card.Kind);
+                _border.color = CardVisuals.FaceBorder(Card, SideName);
             }
 
             ApplyCreatureVisual();
             if (_labelText != null)
             {
-                bool showCreatureArt = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box
-                    && _creatureImage != null && _creatureImage.enabled;
+                bool showHandSlotLabel = SideName == "Hand"
+                    && _controller != null
+                    && _controller.Hand.Count > 1
+                    && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
+                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled
+                    && !showHandSlotLabel;
 
-                if (showCreatureArt)
+                if (showIconOnly)
                 {
                     _labelText.text = string.Empty;
                 }
@@ -98,7 +106,11 @@ namespace DragonBoxAlgebra.UI
         private void ApplyCreatureVisual()
         {
             Sprite icon = CardVisuals.IconSprite(Card);
-            bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
+            bool showHandSlotLabel = SideName == "Hand"
+                && _controller != null
+                && _controller.Hand.Count > 1
+                && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
+            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card) && !showHandSlotLabel;
 
             if (_creatureImage != null)
             {
@@ -107,7 +119,7 @@ namespace DragonBoxAlgebra.UI
                 _creatureImage.preserveAspect = true;
                 if (icon != null && _creatureImage.rectTransform != null)
                 {
-                    var inset = isCreature ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
+                    var inset = usesFullIcon ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
                     _creatureImage.rectTransform.offsetMin = inset;
                     _creatureImage.rectTransform.offsetMax = new Vector2(-inset.x, -inset.y);
                 }
@@ -126,9 +138,7 @@ namespace DragonBoxAlgebra.UI
         {
             if (_background != null)
             {
-                Color baseColor = SideName == "Hand"
-                    ? CardVisuals.HandFaceBackground(Card)
-                    : CardVisuals.Background(Card.Kind);
+                Color baseColor = CardVisuals.FaceBackground(Card, SideName);
                 _background.color = on
                     ? Color.Lerp(baseColor, Color.white, 0.35f)
                     : baseColor;
@@ -179,6 +189,7 @@ namespace DragonBoxAlgebra.UI
             _isDragging = true;
             _didDrag = false;
             _handPlayHandled = false;
+            _dragPressScreenPosition = eventData.pressPosition;
             _originalParent = transform.parent;
             _originalSiblingIndex = transform.GetSiblingIndex();
             transform.SetParent(_dragRoot, true);
@@ -202,6 +213,10 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
+        private bool ExceededFlipDragThreshold(PointerEventData eventData) =>
+            eventData != null
+            && Vector2.Distance(_dragPressScreenPosition, eventData.position) > FlipDragThresholdPixels;
+
         public void MarkHandPlayHandled() => _handPlayHandled = true;
 
         public void OnEndDrag(PointerEventData eventData)
@@ -217,18 +232,18 @@ namespace DragonBoxAlgebra.UI
             {
                 if (!_handPlayHandled)
                 {
-                    TryPlayHandDrop(eventData);
+                    if (ExceededFlipDragThreshold(eventData))
+                    {
+                        TryPlayHandDrop(eventData);
+                    }
+                    else
+                    {
+                        TryFlipHandOnTap();
+                    }
                 }
 
-                if (_controller.Hand.Count == 0 || Index >= _controller.Hand.Count)
-                {
-                    Destroy(gameObject);
-                    return;
-                }
-
-                transform.SetParent(_originalParent, false);
-                transform.SetSiblingIndex(_originalSiblingIndex);
-                Bind(_controller.Hand[Index], Index, "Hand", _controller, _canvas, _dragRoot);
+                DestroyImmediate(gameObject);
+                _controller.RefreshHandPresentation();
                 return;
             }
 
@@ -445,8 +460,11 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
-            if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index)
-                || _controller.TryPlayFromHand(Index, target.SideName))
+            bool played = _controller.CurrentLevel.Chapter >= 3
+                ? _controller.TryPlayFromHand(Index, target.SideName)
+                : _controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index);
+
+            if (played)
             {
                 MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();

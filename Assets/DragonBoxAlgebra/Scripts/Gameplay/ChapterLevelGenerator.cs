@@ -28,6 +28,7 @@ namespace DragonBoxAlgebra.Gameplay
             levels.AddRange(GenerateChapter(2));
             levels.AddRange(GenerateChapter(3));
             levels.AddRange(GenerateChapter(4));
+            HandRules.AssertAllHandCardsFlippable(levels);
             return levels;
         }
 

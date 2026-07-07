@@ -1,7 +1,6 @@
-using System.Collections;
+using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
 using DragonBoxAlgebra.Gameplay;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -22,7 +21,6 @@ namespace DragonBoxAlgebra.UI
             _canvas = canvas;
             _dragRoot = dragRoot;
             _controller.HandChanged += RefreshHandInPlace;
-            _controller.BoardChanged += OnBoardChanged;
             Refresh();
         }
 
@@ -31,74 +29,37 @@ namespace DragonBoxAlgebra.UI
             if (_controller != null)
             {
                 _controller.HandChanged -= RefreshHandInPlace;
-                _controller.BoardChanged -= OnBoardChanged;
             }
-        }
-
-        private void OnBoardChanged()
-        {
-            if (_controller.HasPendingBalance && _controller.Hand.Count > 0)
-            {
-                StartCoroutine(EnsureHandVisibleNextFrame());
-            }
-        }
-
-        private IEnumerator EnsureHandVisibleNextFrame()
-        {
-            yield return null;
-
-            if (_controller.Hand.Count == 0)
-            {
-                yield break;
-            }
-
-            for (int i = 0; i < _panel.childCount; i++)
-            {
-                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    yield break;
-                }
-            }
-
-            Refresh();
         }
 
         private void RefreshHandInPlace()
         {
-            var widgets = new List<CardWidget>();
-            for (int i = 0; i < _panel.childCount; i++)
+            if (HasHandWidgetOnDragRoot())
             {
-                CardWidget widget = _panel.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    widgets.Add(widget);
-                }
-            }
-
-            if (widgets.Count == _controller.Hand.Count)
-            {
-                for (int i = 0; i < widgets.Count; i++)
-                {
-                    widgets[i].Bind(_controller.Hand[i], i, "Hand", _controller, _canvas, _dragRoot);
-                }
-
                 return;
             }
 
             Refresh();
         }
 
-        private void Refresh()
+        private bool HasHandWidgetOnDragRoot()
         {
-            for (int i = _panel.childCount - 1; i >= 0; i--)
+            for (int i = 0; i < _dragRoot.childCount; i++)
             {
-                Transform child = _panel.GetChild(i);
-                if (child.GetComponent<BoardDropZone>() == null)
+                CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand")
                 {
-                    Destroy(child.gameObject);
+                    return true;
                 }
             }
+
+            return false;
+        }
+
+        private void Refresh()
+        {
+            ClearHandWidgets(_dragRoot);
+            ClearHandPanel(_panel);
 
             var layout = _panel.GetComponent<HorizontalLayoutGroup>();
             if (layout == null)
@@ -116,6 +77,50 @@ namespace DragonBoxAlgebra.UI
             {
                 BoardCard card = _controller.Hand[i];
                 CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
+            }
+        }
+
+        private static void ClearHandWidgets(RectTransform panel)
+        {
+            var toRemove = new List<GameObject>();
+            for (int i = 0; i < panel.childCount; i++)
+            {
+                Transform child = panel.GetChild(i);
+                if (child.GetComponent<BoardDropZone>() != null)
+                {
+                    continue;
+                }
+
+                CardWidget widget = child.GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand")
+                {
+                    toRemove.Add(child.gameObject);
+                }
+            }
+
+            foreach (GameObject go in toRemove)
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        private static void ClearHandPanel(RectTransform panel)
+        {
+            var toRemove = new List<GameObject>();
+            for (int i = 0; i < panel.childCount; i++)
+            {
+                Transform child = panel.GetChild(i);
+                if (child.GetComponent<BoardDropZone>() != null)
+                {
+                    continue;
+                }
+
+                toRemove.Add(child.gameObject);
+            }
+
+            foreach (GameObject go in toRemove)
+            {
+                Object.DestroyImmediate(go);
             }
         }
     }
