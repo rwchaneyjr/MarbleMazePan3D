@@ -610,7 +610,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             bool puzzleComplete = UsesManualPairMerge
-                ? WinChecker.HasSingleBox(Board)
+                ? WinChecker.IsBoxAloneOnItsSide(Board)
                 : WinChecker.IsBoxAlone(Board);
             if (!puzzleComplete)
             {

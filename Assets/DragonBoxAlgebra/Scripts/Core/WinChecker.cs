@@ -20,12 +20,22 @@ namespace DragonBoxAlgebra.Core
             return board.Right.Cards.Count == 1 && board.Right.Cards[0].Kind == CardKind.Box;
         }
 
-        /// <summary>True when the board has exactly one red box (other tiles may remain).</summary>
-        public static bool HasSingleBox(AlgebraBoard board)
+        /// <summary>True when the red box is the only tile on its side (the other side may have cards).</summary>
+        public static bool IsBoxAloneOnItsSide(AlgebraBoard board)
         {
             int leftBoxes = board.Left.Cards.Count(c => c.Kind == CardKind.Box);
             int rightBoxes = board.Right.Cards.Count(c => c.Kind == CardKind.Box);
-            return leftBoxes + rightBoxes == 1;
+            if (leftBoxes + rightBoxes != 1)
+            {
+                return false;
+            }
+
+            if (leftBoxes == 1)
+            {
+                return board.Left.Cards.Count == 1;
+            }
+
+            return board.Right.Cards.Count == 1;
         }
 
         public static bool HasPendingOpposites(AlgebraBoard board)
