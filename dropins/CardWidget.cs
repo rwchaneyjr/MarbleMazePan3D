@@ -30,6 +30,9 @@ namespace DragonBoxAlgebra.UI
         private bool _isDragging;
         private bool _didDrag;
         private bool _handPlayHandled;
+        private Vector2 _dragPressScreenPosition;
+
+        private const float FlipDragThresholdPixels = 12f;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -177,6 +180,7 @@ namespace DragonBoxAlgebra.UI
             _isDragging = true;
             _didDrag = false;
             _handPlayHandled = false;
+            _dragPressScreenPosition = eventData.pressPosition;
             _originalParent = transform.parent;
             _originalSiblingIndex = transform.GetSiblingIndex();
             transform.SetParent(_dragRoot, true);
@@ -200,6 +204,10 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
+        private bool ExceededFlipDragThreshold(PointerEventData eventData) =>
+            eventData != null
+            && Vector2.Distance(_dragPressScreenPosition, eventData.position) > FlipDragThresholdPixels;
+
         public void MarkHandPlayHandled() => _handPlayHandled = true;
 
         public void OnEndDrag(PointerEventData eventData)
@@ -215,7 +223,7 @@ namespace DragonBoxAlgebra.UI
             {
                 if (!_handPlayHandled)
                 {
-                    if (_didDrag)
+                    if (ExceededFlipDragThreshold(eventData))
                     {
                         TryPlayHandDrop(eventData);
                     }

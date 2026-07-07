@@ -210,7 +210,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             BoardCard card = _hand[handIndex];
-            if (!CardFlipRules.CanFlip(card.Kind))
+            if (!CardFlipRules.CanFlip(card))
             {
                 MessageChanged?.Invoke("That card cannot flip.");
                 return false;
@@ -218,10 +218,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             PushUndo();
             _hand[handIndex] = CardFlipRules.Flip(card);
-            if (handIndex < _handTemplates.Count)
-            {
-                _handTemplates[handIndex] = _hand[handIndex].Clone();
-            }
+            SyncHandTemplateForCard(_hand[handIndex]);
 
             HandChanged?.Invoke();
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
@@ -457,6 +454,27 @@ namespace DragonBoxAlgebra.Gameplay
             foreach (BoardCard template in _handTemplates)
             {
                 _hand.Add(template.Clone());
+            }
+        }
+
+        private void SyncHandTemplateForCard(BoardCard card)
+        {
+            for (int i = 0; i < _handTemplates.Count; i++)
+            {
+                if (_handTemplates[i].Id == card.Id)
+                {
+                    _handTemplates[i] = card.Clone();
+                    return;
+                }
+            }
+
+            for (int i = 0; i < _hand.Count && i < _handTemplates.Count; i++)
+            {
+                if (_hand[i].Id == card.Id)
+                {
+                    _handTemplates[i] = card.Clone();
+                    return;
+                }
             }
         }
 

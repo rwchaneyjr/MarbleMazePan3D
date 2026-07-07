@@ -8,6 +8,8 @@ namespace DragonBoxAlgebra.Gameplay
             kind is CardKind.DayCreature or CardKind.NightCreature
                 or CardKind.PositiveConstant or CardKind.NegativeConstant;
 
+        public static bool CanFlip(BoardCard card) => CanFlip(card.Kind);
+
         public static BoardCard Flip(BoardCard card)
         {
             BoardCard flipped = card.Kind switch
