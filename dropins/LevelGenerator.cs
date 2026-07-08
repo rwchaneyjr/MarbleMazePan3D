@@ -10,38 +10,22 @@ namespace DragonBoxAlgebra.Gameplay
         private const int HandPlayFromIndex = 36;
         private const int MirroredHandFromIndex = 43;
 
+        private static readonly string[] CreatureThemeNames =
+        {
+            "Fish & Turtle", "Bird & Owl", "Crab & Jelly", "Butterfly & Bat", "Star & Moon",
+            "Rabbit & Fox", "Frog & Snake", "Sun & Storm", "Dragon & Flame", "Cat & Dog"
+        };
+
         public static IReadOnlyList<LevelDefinition> GenerateAll(int seed = 20260703)
         {
             var levels = new List<LevelDefinition>(TotalLevels);
             levels.AddRange(GenerateMergeIntroLevels());
-            levels.AddRange(GenerateHandPlayLevels(seed));
+            levels.AddRange(GenerateHandPlayLevels());
             return levels;
         }
 
-        public static int HandCountForLevelIndex(int levelIndex)
-        {
-            if (levelIndex < HandPlayFromIndex)
-            {
-                return 0;
-            }
-
-            int handSection = levelIndex - HandPlayFromIndex;
-            if (handSection >= MirroredHandFromIndex - HandPlayFromIndex)
-            {
-                int mirroredSection = handSection - (MirroredHandFromIndex - HandPlayFromIndex);
-                return mirroredSection switch
-                {
-                    0 or 1 or 2 or 3 => 1,
-                    _ => 2
-                };
-            }
-
-            return handSection switch
-            {
-                0 or 1 or 2 or 3 => 1,
-                _ => 2
-            };
-        }
+        public static int HandCountForLevelIndex(int levelIndex) =>
+            levelIndex < HandPlayFromIndex ? 0 : 1;
 
         private static IEnumerable<LevelDefinition> GenerateMergeIntroLevels()
         {
@@ -118,98 +102,84 @@ namespace DragonBoxAlgebra.Gameplay
             return level;
         }
 
-        private static List<LevelDefinition> GenerateHandPlayLevels(int seed)
+        private static List<LevelDefinition> GenerateHandPlayLevels()
         {
-            var rng = new Random(seed);
             var levels = new List<LevelDefinition>();
-            string[] placeNames =
-            {
-                "Reef", "Coral", "Lagoon", "Tide", "Shoal", "Harbor", "Cove",
-                "Forest", "Meadow", "Grove", "Summit", "Valley", "Glade", "Dune"
-            };
 
-            for (int i = 0; i < TotalLevels - HandPlayFromIndex; i++)
+            for (int levelIndex = HandPlayFromIndex; levelIndex < TotalLevels; levelIndex++)
             {
-                int levelIndex = HandPlayFromIndex + i;
-                int handCount = HandCountForLevelIndex(levelIndex);
-                int theme = (levelIndex + 3) % 10;
-                int value = 1 + (i / 5);
-                int pattern = i % 3;
+                int theme = levelIndex % 10;
                 bool mirrorBox = levelIndex >= MirroredHandFromIndex;
-                string place = placeNames[i % placeNames.Length];
-                string handLabel = handCount == 1 ? string.Empty : " (2 tiles)";
-                string title = $"{place} Puzzle {levelIndex + 1}{handLabel}";
+                int sectionNumber = levelIndex - HandPlayFromIndex + 1;
+                string themeName = CreatureThemeNames[theme];
+                string title = mirrorBox
+                    ? $"Opposite Cards {sectionNumber} • {themeName} (right)"
+                    : $"Opposite Cards {sectionNumber} • {themeName}";
 
-                LevelDefinition level = BuildHandPatternLevel(title, theme, value, handCount, pattern, mirrorBox);
-
-                if (LevelSolvabilityRules.ShouldConfigureBoxSide(handCount))
-                {
-                    if (mirrorBox)
-                    {
-                        LevelSolvabilityRules.ConfigureMirrorSolvableLevel(level, handCount, diceLevel: false, value);
-                    }
-                    else
-                    {
-                        LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: false, value);
-                    }
-
-                    level.ParMoves = handCount + 1;
-                    level.ParCards = handCount;
-                    HandVisualRules.AssignLevelHandVisualThemes(level);
-                }
-
-                levels.Add(level);
-
-                if (rng.NextDouble() < 0.15)
-                {
-                    level.ParMoves++;
-                }
+                levels.Add(BuildOppositeCardsLevel(title, theme, mirrorBox));
             }
 
             return levels;
         }
 
         /// <summary>
-        /// Levels 37-50: hand-play puzzles like procedural patterns 41-43 (box-left),
-        /// mirrored on the other side for 44-50.
+        /// Levels 37-43: box + light/dark pair on left, one dark tile on right, one hand tile.
+        /// Levels 44-50: mirrored — one dark tile on left, box + pair on right, one hand tile.
         /// </summary>
-        private static LevelDefinition BuildHandPatternLevel(string title, int theme, int value, int handCount,
-            int pattern, bool mirrorBox)
+        private static LevelDefinition BuildOppositeCardsLevel(string title, int theme, bool mirrorBox)
         {
+            CardKind[] left;
+            CardKind[] right;
+
             if (mirrorBox)
             {
-                return pattern switch
-                {
-                    0 => CreatureLevel(title, theme, value, handCount, mirrorBox,
-                        new[] { CardKind.DayCreature },
-                        new[] { CardKind.Box, CardKind.DayCreature },
-                        CardKind.NightCreature, value, handCount * 2, handCount),
-                    1 => CreatureLevel(title, theme, value, handCount, mirrorBox,
-                        new[] { CardKind.NightCreature },
-                        new[] { CardKind.Box, CardKind.NightCreature },
-                        CardKind.DayCreature, value, handCount * 2, handCount),
-                    _ => CreatureLevel(title, theme, value, handCount, mirrorBox,
-                        Array.Empty<CardKind>(),
-                        new[] { CardKind.Box, CardKind.DayCreature },
-                        CardKind.NightCreature, value, handCount * 2, handCount)
-                };
+                left = new[] { CardKind.NightCreature };
+                right = new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature };
+            }
+            else
+            {
+                left = new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature };
+                right = new[] { CardKind.NightCreature };
             }
 
-            return pattern switch
+            var level = new LevelDefinition
             {
-                0 => CreatureLevel(title, theme, value, handCount, mirrorBox: false,
-                    new[] { CardKind.Box, CardKind.DayCreature },
-                    new[] { CardKind.DayCreature },
-                    CardKind.NightCreature, value, handCount * 2, handCount),
-                1 => CreatureLevel(title, theme, value, handCount, mirrorBox: false,
-                    new[] { CardKind.Box, CardKind.NightCreature },
-                    new[] { CardKind.NightCreature },
-                    CardKind.DayCreature, value, handCount * 2, handCount),
-                _ => CreatureLevel(title, theme, value, handCount, mirrorBox: false,
-                    new[] { CardKind.Box, CardKind.DayCreature },
-                    Array.Empty<CardKind>(),
-                    CardKind.NightCreature, value, handCount * 2, handCount)
+                Title = title,
+                CreatureTheme = theme,
+                LeftCards = new List<CardKind>(left),
+                RightCards = new List<CardKind>(right),
+                LeftValues = ValuesForCreatures(left, 1),
+                RightValues = ValuesForCreatures(right, 1),
+                HandCards = new List<CardKind> { CardKind.NightCreature },
+                HandValues = new List<int> { 1 },
+                ParMoves = 2,
+                ParCards = 1
             };
+
+            AssignOppositeCardsThemes(level);
+            return level;
+        }
+
+        private static void AssignOppositeCardsThemes(LevelDefinition level)
+        {
+            int theme = level.CreatureTheme;
+            level.LeftVisualThemes.Clear();
+            level.RightVisualThemes.Clear();
+            level.HandVisualThemes.Clear();
+
+            foreach (CardKind kind in level.LeftCards)
+            {
+                level.LeftVisualThemes.Add(
+                    kind is CardKind.DayCreature or CardKind.NightCreature ? theme : -1);
+            }
+
+            foreach (CardKind kind in level.RightCards)
+            {
+                level.RightVisualThemes.Add(
+                    kind is CardKind.DayCreature or CardKind.NightCreature ? theme : -1);
+            }
+
+            level.HandVisualThemes.Add(theme);
         }
 
         private static void AssignMatchingPairThemes(LevelDefinition level)
@@ -228,82 +198,6 @@ namespace DragonBoxAlgebra.Gameplay
                 level.RightVisualThemes.Add(
                     kind is CardKind.DayCreature or CardKind.NightCreature ? level.CreatureTheme : -1);
             }
-        }
-
-        private static LevelDefinition CreatureLevel(string title, int theme, int value, int handCount, bool mirrorBox,
-            CardKind[] left, CardKind[] right, CardKind primaryHand, int handValue, int parMoves, int parCards)
-        {
-            var level = new LevelDefinition
-            {
-                Title = title,
-                CreatureTheme = theme,
-                LeftCards = new List<CardKind>(left),
-                RightCards = new List<CardKind>(right),
-                LeftValues = ValuesForCreatures(left, value),
-                RightValues = ValuesForCreatures(right, value),
-                ParMoves = parMoves,
-                ParCards = parCards
-            };
-            FillHand(level, handCount, primaryHand, handValue, value, diceLevel: false);
-            if (handCount >= 2)
-            {
-                if (mirrorBox)
-                {
-                    LevelSolvabilityRules.ConfigureMirrorSolvableLevel(level, handCount, diceLevel: false, value);
-                }
-                else
-                {
-                    LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: false, value);
-                }
-            }
-            else
-            {
-                BoardVisualRules.AssignDistinctSideThemes(level);
-            }
-
-            return level;
-        }
-
-        private static void FillHand(LevelDefinition level, int handCount, CardKind primaryHand, int handValue, int value,
-            bool diceLevel)
-        {
-            level.HandCards.Clear();
-            level.HandValues.Clear();
-            level.HandVisualThemes.Clear();
-
-            CardKind solver = HandCompositionRules.PrimarySolverCard(level, diceLevel, primaryHand);
-            CardKind companion = HandCompositionRules.CompanionCreature(
-                solver is CardKind.DayCreature or CardKind.NightCreature
-                    ? solver
-                    : CardKind.NightCreature);
-
-            if (handCount <= 1)
-            {
-                level.HandCards.Add(solver);
-                level.HandValues.Add(diceLevel && solver is CardKind.PositiveConstant or CardKind.NegativeConstant
-                    ? value
-                    : handValue);
-                HandVisualRules.AssignLevelHandVisualThemes(level);
-                return;
-            }
-
-            if (handCount == 2)
-            {
-                level.HandCards.Add(solver);
-                level.HandValues.Add(value);
-                level.HandCards.Add(companion);
-                level.HandValues.Add(value);
-                HandVisualRules.AssignLevelHandVisualThemes(level);
-                return;
-            }
-
-            level.HandCards.Add(solver);
-            level.HandValues.Add(value);
-            level.HandCards.Add(companion);
-            level.HandValues.Add(value);
-            level.HandCards.Add(CardKind.NegativeConstant);
-            level.HandValues.Add(value);
-            HandVisualRules.AssignLevelHandVisualThemes(level);
         }
 
         private static List<int> ValuesForCreatures(CardKind[] cards, int value)
