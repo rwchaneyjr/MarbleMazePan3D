@@ -28,7 +28,12 @@ namespace DragonBoxAlgebra.Gameplay
             int handSection = levelIndex - HandPlayFromIndex;
             if (handSection >= MirroredHandFromIndex - HandPlayFromIndex)
             {
-                return 1;
+                int mirroredSection = handSection - (MirroredHandFromIndex - HandPlayFromIndex);
+                return mirroredSection switch
+                {
+                    0 or 1 or 2 or 3 => 1,
+                    _ => 2
+                };
             }
 
             return handSection switch
@@ -49,8 +54,8 @@ namespace DragonBoxAlgebra.Gameplay
 
         /// <summary>
         /// Levels 1-36: pre-placed light/dark pairs to combine on the board (empty hand).
-        /// 1-7 left pair beside box, 8-15 right pair beside box,
-        /// 16-25 pair on right (box on left), 26-36 two pairs on left.
+        /// 1-7 left pair beside box, 8-14 right pair beside box,
+        /// 15-25 pair on right (box on left), 26-36 two pairs on left.
         /// </summary>
         private static LevelDefinition BuildMergeIntroLevel(int index, int theme)
         {
@@ -68,7 +73,7 @@ namespace DragonBoxAlgebra.Gameplay
                 right = Array.Empty<CardKind>();
                 parMoves = 2;
             }
-            else if (index < 15)
+            else if (index < 14)
             {
                 title = $"Pair on Right {display}";
                 left = Array.Empty<CardKind>();
@@ -137,9 +142,17 @@ namespace DragonBoxAlgebra.Gameplay
 
                 LevelDefinition level = BuildHandPatternLevel(title, theme, value, handCount, pattern, mirrorBox);
 
-                if (!mirrorBox && LevelSolvabilityRules.ShouldConfigureBoxSide(handCount))
+                if (LevelSolvabilityRules.ShouldConfigureBoxSide(handCount))
                 {
-                    LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: false, value);
+                    if (mirrorBox)
+                    {
+                        LevelSolvabilityRules.ConfigureMirrorSolvableLevel(level, handCount, diceLevel: false, value);
+                    }
+                    else
+                    {
+                        LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: false, value);
+                    }
+
                     level.ParMoves = handCount + 1;
                     level.ParCards = handCount;
                     HandVisualRules.AssignLevelHandVisualThemes(level);
@@ -167,15 +180,15 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 return pattern switch
                 {
-                    0 => CreatureLevel(title, theme, value, handCount,
+                    0 => CreatureLevel(title, theme, value, handCount, mirrorBox,
                         new[] { CardKind.DayCreature },
                         new[] { CardKind.Box, CardKind.DayCreature },
                         CardKind.NightCreature, value, handCount * 2, handCount),
-                    1 => CreatureLevel(title, theme, value, handCount,
+                    1 => CreatureLevel(title, theme, value, handCount, mirrorBox,
                         new[] { CardKind.NightCreature },
                         new[] { CardKind.Box, CardKind.NightCreature },
                         CardKind.DayCreature, value, handCount * 2, handCount),
-                    _ => CreatureLevel(title, theme, value, handCount,
+                    _ => CreatureLevel(title, theme, value, handCount, mirrorBox,
                         Array.Empty<CardKind>(),
                         new[] { CardKind.Box, CardKind.DayCreature },
                         CardKind.NightCreature, value, handCount * 2, handCount)
@@ -184,15 +197,15 @@ namespace DragonBoxAlgebra.Gameplay
 
             return pattern switch
             {
-                0 => CreatureLevel(title, theme, value, handCount,
+                0 => CreatureLevel(title, theme, value, handCount, mirrorBox: false,
                     new[] { CardKind.Box, CardKind.DayCreature },
                     new[] { CardKind.DayCreature },
                     CardKind.NightCreature, value, handCount * 2, handCount),
-                1 => CreatureLevel(title, theme, value, handCount,
+                1 => CreatureLevel(title, theme, value, handCount, mirrorBox: false,
                     new[] { CardKind.Box, CardKind.NightCreature },
                     new[] { CardKind.NightCreature },
                     CardKind.DayCreature, value, handCount * 2, handCount),
-                _ => CreatureLevel(title, theme, value, handCount,
+                _ => CreatureLevel(title, theme, value, handCount, mirrorBox: false,
                     new[] { CardKind.Box, CardKind.DayCreature },
                     Array.Empty<CardKind>(),
                     CardKind.NightCreature, value, handCount * 2, handCount)
@@ -217,7 +230,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        private static LevelDefinition CreatureLevel(string title, int theme, int value, int handCount,
+        private static LevelDefinition CreatureLevel(string title, int theme, int value, int handCount, bool mirrorBox,
             CardKind[] left, CardKind[] right, CardKind primaryHand, int handValue, int parMoves, int parCards)
         {
             var level = new LevelDefinition
@@ -234,7 +247,14 @@ namespace DragonBoxAlgebra.Gameplay
             FillHand(level, handCount, primaryHand, handValue, value, diceLevel: false);
             if (handCount >= 2)
             {
-                LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: false, value);
+                if (mirrorBox)
+                {
+                    LevelSolvabilityRules.ConfigureMirrorSolvableLevel(level, handCount, diceLevel: false, value);
+                }
+                else
+                {
+                    LevelSolvabilityRules.ConfigureStandardSolvableLevel(level, handCount, diceLevel: false, value);
+                }
             }
             else
             {
