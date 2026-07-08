@@ -21,8 +21,9 @@ Then open Unity → wait for compile → Play.
 
 Scene: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
 
-**What changed:** 50 levels — pairs on left/right (1–36), then hand-play
-37–43 (box left), mirrored 44–50 (box right).
+**What changed:** 50 levels — pairs on left/right (1–36). Levels 37–43:
+box + pair on left, 1 tile on right, 1 hand tile (like your screenshot).
+Levels 44–50: mirrored to the other side.
 
 ---
 
