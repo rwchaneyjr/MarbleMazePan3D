@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
 using UnityEngine;
 
@@ -37,7 +39,9 @@ namespace DragonBoxAlgebra.UI
 
         private static void LoadFromResources(string folder)
         {
-            foreach (Sprite sprite in Resources.LoadAll<Sprite>(folder))
+            Sprite[] sprites = Resources.LoadAll<Sprite>(folder);
+            Array.Sort(sprites, (a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
+            foreach (Sprite sprite in sprites)
             {
                 RegisterByName(sprite);
             }

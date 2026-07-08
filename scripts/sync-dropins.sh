@@ -90,7 +90,7 @@ import_dropins() {
       AudioManager.cs) dest_subdir="Audio" ;;
       AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs)
         dest_subdir="Core" ;;
-      AlgebraGameController.cs|BalancePending.cs|CardFlipRules.cs|GameSnapshot.cs|HandRules.cs|\
+      AlgebraGameController.cs|BalancePending.cs|CardFlipRules.cs|GameSnapshot.cs|GameProgress.cs|HandRules.cs|\
       BoardVisualRules.cs|CoordinatedCreatureThemes.cs|HandCompositionRules.cs|HandVisualRules.cs|\
       LevelDefinition.cs|LevelGenerator.cs|LevelLibrary.cs|LevelSolvabilityRules.cs|MoveTracker.cs|\
       PendingCancelMarker.cs|ThemeAssignment.cs)

@@ -21,9 +21,14 @@ Then open Unity → wait for compile → Play.
 
 Scene: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
 
-**What changed:** 50 levels — pairs on left/right (1–36). Levels 37–43:
-box + pair on left, 1 tile on right, 1 hand tile (like your screenshot).
-Levels 44–50: mirrored to the other side.
+**What changed:** 50 fixed levels (no random puzzles). Progress is saved so the
+same level loads every time you press Play. Top-left button is **Next** (not random).
+
+To restart from level 1:
+```bash
+# In Unity: Edit > Clear All PlayerPrefs
+# Or delete Library/PlayerPrefs in your project folder after closing Unity
+```
 
 ---
 

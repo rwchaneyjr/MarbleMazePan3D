@@ -22,7 +22,7 @@ namespace DragonBoxAlgebra.UI
             controller.LevelLoaded += OnLevelLoaded;
             controller.MessageChanged += OnMessageChanged;
             controller.LevelCompleted += OnLevelCompleted;
-            controller.LoadLevel(0);
+            controller.LoadLevel(GameProgress.SavedLevelIndex);
         }
 
         private void OnDestroy()
@@ -123,7 +123,7 @@ namespace DragonBoxAlgebra.UI
                 new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 12f), 18, TextAnchor.LowerCenter);
 
             CreateRoundButton(background.transform, "Menu", new Vector2(0.06f, 0.92f), OnRestartClicked, "⬆");
-            CreateRoundButton(background.transform, "Random", new Vector2(0.12f, 0.92f), OnRandomClicked, "🎲");
+            CreateRoundButton(background.transform, "Next", new Vector2(0.12f, 0.92f), OnRandomClicked, "⏭");
             CreateRoundButton(background.transform, "Undo", new Vector2(0.88f, 0.92f), OnUndoClicked, "↩");
             CreateRoundButton(background.transform, "Rewind", new Vector2(0.94f, 0.92f), OnRewindClicked, "⏪");
 
