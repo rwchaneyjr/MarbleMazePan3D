@@ -1,5 +1,31 @@
 # Paste into Git Bash (Windows) — SymbolAlgebra
 
+## Get the latest 50-level curriculum (PR #23)
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+git fetch origin
+git checkout cursor/level-curriculum-50-3fe3
+bash scripts/sync-dropins.sh import --here
+```
+
+Or stay on `main` after merge:
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+git fetch origin
+git pull origin main
+```
+
+Then open Unity → wait for compile → Play.
+
+Scene: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
+
+**What changed:** 50 levels — pairs on left/right (1–36), then hand-play
+37–43 (box left), mirrored 44–50 (box right).
+
+---
+
 ## 31 compile errors after sync-dropins? Run this first
 
 `sync-dropins.sh import` only copies 33 flat files. If you were on
@@ -63,7 +89,9 @@ echo "Done"
 2. Scene: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
 3. Press **Play**
 
-Latest main includes:
-- Hand gameplay branch (distinct themes, matching pairs)
+Latest main / PR #23 includes:
+- 50-level light/dark pair curriculum (LevelGenerator)
+- Mirror solvability for box-on-right hand levels (48–50)
+- Hand gameplay (distinct themes, matching pairs)
 - Right side fits up to 6 tiles
 - Balance defer + bash restore script
