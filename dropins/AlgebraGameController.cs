@@ -113,6 +113,7 @@ namespace DragonBoxAlgebra.Gameplay
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
                 ? "Click the spinning * to dismiss the creatures. Leave the red box alone!"
                 : HandMessage(level));
+            CreatureSpriteDebug.LogLevel(Board, _hand, level);
         }
 
         private static string HandMessage(LevelDefinition level)

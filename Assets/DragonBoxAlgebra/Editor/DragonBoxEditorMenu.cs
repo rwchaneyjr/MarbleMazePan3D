@@ -22,6 +22,14 @@ namespace DragonBoxAlgebra.Editor
             SetupScene();
         }
 
+        [MenuItem("DragonBox Algebra/Print Sprite Debug to Console", false, 30)]
+        public static void PrintSpriteDebug()
+        {
+            CardSpriteLoader.Reset();
+            CardSpriteLoader.EnsureLoaded();
+            CreatureSpriteDebug.LogStartup();
+        }
+
         [MenuItem("DragonBox Algebra/Setup Scene (Camera + Bootstrap)", false, 1)]
         public static void SetupScene()
         {

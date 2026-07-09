@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Text;
 using DragonBoxAlgebra.Core;
 using UnityEngine;
 
@@ -18,6 +20,13 @@ namespace DragonBoxAlgebra.UI
         private static Sprite _box;
         private static int _boxPriority;
         private static bool _initialized;
+
+        private static readonly List<string> DebugFilesFound = new();
+        private static readonly List<string> DebugRegistered = new();
+        private static readonly List<string> DebugUnmatched = new();
+        private static readonly Dictionary<string, int> DebugFolderCounts = new();
+
+        public static int UnmatchedFileCount => DebugUnmatched.Count;
 
         private static readonly string[] CreatureSlugs =
         {
@@ -39,6 +48,10 @@ namespace DragonBoxAlgebra.UI
             _box = null;
             _boxPriority = 0;
             _initialized = false;
+            DebugFilesFound.Clear();
+            DebugRegistered.Clear();
+            DebugUnmatched.Clear();
+            DebugFolderCounts.Clear();
         }
 
         public static void EnsureLoaded()
@@ -55,6 +68,74 @@ namespace DragonBoxAlgebra.UI
             LoadFolder("Sprites", LegacyFolderPriority);
             LoadFolder("CardSprites", LegacyFolderPriority);
             LoadFolder("Cards", LegacyFolderPriority);
+        }
+
+        public static void FlushLoadDebug()
+        {
+            // Called after EnsureLoaded so startup logging sees final state.
+        }
+
+        public static string GetLoadSummary()
+        {
+            var sb = new StringBuilder();
+            foreach (KeyValuePair<string, int> entry in DebugFolderCounts)
+            {
+                sb.AppendLine($"  Resources/{entry.Key}: {entry.Value} asset(s)");
+            }
+
+            if (DebugFolderCounts.Count == 0)
+            {
+                sb.AppendLine("  (no Resources folders found — images must be in Resources/CreatureSprites/)");
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        public static string GetSlotReport()
+        {
+            var sb = new StringBuilder();
+            for (int theme = 0; theme < CreatureArt.ThemeCount; theme++)
+            {
+                string name = CreatureArt.ThemeNameFor(theme);
+                Sprite light = GetThemed(theme, light: true);
+                Sprite dark = GetThemed(theme, light: false);
+                sb.AppendLine(
+                    $"  {name,-10} light={(light != null ? light.name : "MISSING"),-14} dark={(dark != null ? dark.name : "MISSING")}");
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        public static string GetFileReport()
+        {
+            if (DebugFilesFound.Count == 0)
+            {
+                return "  (none)";
+            }
+
+            var sb = new StringBuilder();
+            foreach (string file in DebugFilesFound)
+            {
+                sb.AppendLine($"  {file}");
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        public static string GetUnmatchedReport()
+        {
+            if (DebugUnmatched.Count == 0)
+            {
+                return "  (none)";
+            }
+
+            var sb = new StringBuilder();
+            foreach (string file in DebugUnmatched)
+            {
+                sb.AppendLine($"  {file}  (rename like lightFish / darkFish)");
+            }
+
+            return sb.ToString().TrimEnd();
         }
 
         public static Sprite ForCard(BoardCard card)
@@ -89,11 +170,14 @@ namespace DragonBoxAlgebra.UI
 
         private static void LoadFolder(string folder, int priority)
         {
+            int folderCount = 0;
             Sprite[] sprites = Resources.LoadAll<Sprite>(folder);
             Array.Sort(sprites, (a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
             foreach (Sprite sprite in sprites)
             {
-                RegisterByName(sprite, priority);
+                folderCount++;
+                DebugFilesFound.Add($"{folder}/{sprite.name} (sprite)");
+                RegisterByName(sprite, priority, folder);
             }
 
             Texture2D[] textures = Resources.LoadAll<Texture2D>(folder);
@@ -105,17 +189,37 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
+                bool alreadyLoadedAsSprite = false;
+                foreach (Sprite sprite in sprites)
+                {
+                    if (sprite != null && sprite.name == texture.name)
+                    {
+                        alreadyLoadedAsSprite = true;
+                        break;
+                    }
+                }
+
+                if (alreadyLoadedAsSprite)
+                {
+                    continue;
+                }
+
+                folderCount++;
+                DebugFilesFound.Add($"{folder}/{texture.name} (texture)");
+
                 Sprite created = Sprite.Create(
                     texture,
                     new Rect(0f, 0f, texture.width, texture.height),
                     new Vector2(0.5f, 0.5f),
                     100f);
                 created.name = texture.name;
-                RegisterByName(created, priority);
+                RegisterByName(created, priority, folder);
             }
+
+            DebugFolderCounts[folder] = folderCount;
         }
 
-        private static void RegisterByName(Sprite sprite, int priority)
+        private static void RegisterByName(Sprite sprite, int priority, string folder)
         {
             if (sprite == null)
             {
@@ -130,6 +234,7 @@ namespace DragonBoxAlgebra.UI
                 {
                     _box = sprite;
                     _boxPriority = priority;
+                    DebugRegistered.Add($"{folder}/{sprite.name} -> box");
                 }
 
                 return;
@@ -138,6 +243,7 @@ namespace DragonBoxAlgebra.UI
             if (TryParseThemePairName(name, out int theme, out bool light))
             {
                 RegisterThemed(theme, light, sprite, priority);
+                DebugRegistered.Add($"{folder}/{sprite.name} -> theme{theme}_{(light ? "light" : "dark")}");
                 return;
             }
 
@@ -147,8 +253,13 @@ namespace DragonBoxAlgebra.UI
                 if (creatureTheme >= 0)
                 {
                     RegisterThemed(creatureTheme, isLight, sprite, priority);
+                    DebugRegistered.Add(
+                        $"{folder}/{sprite.name} -> {CreatureArt.ThemeNameFor(creatureTheme)} {(isLight ? "light" : "dark")}");
+                    return;
                 }
             }
+
+            DebugUnmatched.Add($"{folder}/{sprite.name}");
         }
 
         private static bool TryParseThemePairName(string name, out int theme, out bool light)

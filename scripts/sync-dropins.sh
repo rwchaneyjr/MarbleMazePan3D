@@ -97,7 +97,7 @@ import_dropins() {
         dest_subdir="Gameplay" ;;
       BoardSideLayout.cs|BoardView.cs|AlgebraUI.cs|AsteriskCancelWidget.cs|BalanceHoleWidget.cs|\
       BoardDropZone.cs|CardSpriteLoader.cs|CardVisuals.cs|CardWidget.cs|CreatureArt.cs|\
-      CreatureReaction.cs|EmojiFont.cs|HandView.cs|LevelCompleteView.cs|SpriteFactory.cs|VortexEffect.cs)
+      CreatureReaction.cs|CreatureSpriteDebug.cs|EmojiFont.cs|HandView.cs|LevelCompleteView.cs|SpriteFactory.cs|VortexEffect.cs)
         dest_subdir="UI" ;;
       *) dest_subdir="UI" ;;
     esac
