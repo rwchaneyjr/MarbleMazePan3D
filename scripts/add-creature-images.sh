@@ -11,7 +11,6 @@ DEST="$REPO/Assets/DragonBoxAlgebra/Resources/CreatureSprites"
 cd "$REPO"
 mkdir -p "$SRC" "$DEST"
 
-rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/ThemeAssignment.cs.meta 2>/dev/null || true
 git fetch origin
 git checkout cursor/level-curriculum-50-3fe3
 bash scripts/sync-dropins.sh import --here
@@ -26,4 +25,8 @@ done
 
 echo ""
 echo "Copied $count image(s) to CreatureSprites."
-echo "Unity: open DragonBox.unity → each new image → Sprite (2D and UI) → Apply → Play."
+echo "Unity:"
+echo "  1. Open Assets/DragonBoxAlgebra/Scenes/DragonBox.unity"
+echo "  2. Hierarchy should show AlgebraBootstrap, Main Camera, EventSystem"
+echo "  3. Each new image → Sprite (2D and UI) → Apply"
+echo "  4. Press Play (teal board + sea-creature cards)"

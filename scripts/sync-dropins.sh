@@ -33,7 +33,7 @@ normalize_windows_path() {
 
 target_subdir_for() {
   case "$1" in
-    AlgebraBootstrap.cs) printf '%s' "" ;;
+    AlgebraBootstrap.cs|AlgebraSceneSetup.cs) printf '%s' "" ;;
     Audio/*) printf '%s' "Audio" ;;
     Core/*) printf '%s' "Core" ;;
     Gameplay/*) printf '%s' "Gameplay" ;;
@@ -86,7 +86,7 @@ import_dropins() {
     base="$(basename "$src")"
 
     case "$base" in
-      AlgebraBootstrap.cs) dest_subdir="" ;;
+      AlgebraBootstrap.cs|AlgebraSceneSetup.cs) dest_subdir="" ;;
       AudioManager.cs) dest_subdir="Audio" ;;
       AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs)
         dest_subdir="Core" ;;
