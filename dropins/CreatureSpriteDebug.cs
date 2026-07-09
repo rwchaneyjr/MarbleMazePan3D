@@ -14,6 +14,36 @@ namespace DragonBoxAlgebra.UI
     {
         public static bool Enabled = true;
 
+        public static int LoadedSpriteCount => CountLoadedSprites();
+
+        public static bool HasOldGameCode =>
+            LevelLibrary.Count > 0 && IsOldCodeLevelTitle(LevelLibrary.GetLevel(0).Title);
+
+        public static bool HasProblems =>
+            HasOldGameCode || LoadedSpriteCount < 16;
+
+        /// <summary>Short message shown on screen when images won't load.</summary>
+        public static string GetOnScreenMessage()
+        {
+            int loaded = LoadedSpriteCount;
+            if (HasOldGameCode)
+            {
+                return $"IMAGE DEBUG: Old code (Butterfly/Bat). Run: bash scripts/update.sh — sprites {loaded}/16";
+            }
+
+            if (loaded == 0)
+            {
+                return "IMAGE DEBUG: 0/16 sprites loaded. Put PNGs in Resources/CreatureSprites, set Sprite (2D and UI).";
+            }
+
+            if (loaded < 16)
+            {
+                return $"IMAGE DEBUG: Only {loaded}/16 sprites loaded. Check Console (filter: DragonBox) for missing names.";
+            }
+
+            return string.Empty;
+        }
+
         public static void LogStartup()
         {
             if (!Enabled)
@@ -69,7 +99,16 @@ namespace DragonBoxAlgebra.UI
             }
 
             lines.AppendLine("===========================================");
-            Debug.Log(lines.ToString());
+
+            string report = lines.ToString();
+            if (HasProblems)
+            {
+                Debug.LogWarning(report);
+            }
+            else
+            {
+                Debug.Log(report);
+            }
         }
 
         public static void LogLevel(AlgebraBoard board, IReadOnlyList<BoardCard> hand, LevelDefinition level)

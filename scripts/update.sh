@@ -56,6 +56,14 @@ echo "==> Syncing drop-in scripts"
 bash scripts/sync-dropins.sh import --here
 
 echo ""
+echo "==> Removing old scripts that block custom images (Butterfly/Bat code)"
+rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/ChapterLevelGenerator.cs
+rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/ChapterLevelGenerator.cs.meta
+rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/BoardFoldRules.cs
+rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/BoardFoldRules.cs.meta
+rm -f dropins/ChapterLevelGenerator.cs 2>/dev/null || true
+
+echo ""
 echo "==> Copying creature images (if any in creature-images/)"
 shopt -s nullglob
 count=0
@@ -72,9 +80,12 @@ else
 fi
 
 echo ""
-echo "Done. In Unity:"
-echo "  1. Menu: DragonBox Algebra → Open Game Scene and Setup"
-echo "  2. Menu: DragonBox Algebra → Import Creature Images (Drag and Drop)"
-echo "  3. Drag PNGs into the window, then press Play"
+echo "========== IMAGE DEBUG — next steps in Unity =========="
+echo "  1. Restart Unity (so it recompiles scripts)"
+echo "  2. Press Play"
+echo "  3. Look for YELLOW text under the level title, OR open Console and filter: DragonBox"
 echo ""
-echo "If Hierarchy is empty: DragonBox Algebra → Setup Scene (Camera + Bootstrap)"
+echo "  GOOD: Level title 'Pair on Left 1 • Fish' and sprites 16/16"
+echo "  BAD:  Level title 'Ch1 • Butterfly & Bat' → run update.sh again"
+echo "  BAD:  sprites 0/16 → images not in Resources/CreatureSprites or not Sprite type"
+echo "======================================================="
