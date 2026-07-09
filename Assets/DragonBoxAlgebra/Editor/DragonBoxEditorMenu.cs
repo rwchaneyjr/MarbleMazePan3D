@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using DragonBoxAlgebra.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -30,10 +31,18 @@ namespace DragonBoxAlgebra.Editor
             CreatureSpriteDebug.LogStartup();
         }
 
+        [MenuItem("DragonBox Algebra/Fix Duplicate Cameras / Audio Listeners", false, 2)]
+        public static void FixDuplicateCameras()
+        {
+            SceneCameraSetup.EnsureSingleMainCamera();
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+            Debug.Log("DragonBox Algebra: Removed extra cameras/audio listeners. Keep only Main Camera.");
+        }
+
         [MenuItem("DragonBox Algebra/Setup Scene (Camera + Bootstrap)", false, 1)]
         public static void SetupScene()
         {
-            EnsureMainCamera();
+            SceneCameraSetup.EnsureSingleMainCamera();
             EnsureEventSystem();
             EnsureAlgebraBootstrap();
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
@@ -52,41 +61,6 @@ namespace DragonBoxAlgebra.Editor
             go.AddComponent<AlgebraBootstrap>();
             Undo.RegisterCreatedObjectUndo(go, "Create AlgebraBootstrap");
             Selection.activeGameObject = go;
-        }
-
-        private static void EnsureMainCamera()
-        {
-            var cameras = Object.FindObjectsOfType<Camera>();
-            Camera main = Camera.main;
-
-            if (main == null && cameras.Length > 0)
-            {
-                cameras[0].gameObject.tag = "MainCamera";
-                main = cameras[0];
-            }
-
-            if (main != null)
-            {
-                foreach (var camera in cameras)
-                {
-                    if (camera != main)
-                    {
-                        Object.Destroy(camera.gameObject);
-                    }
-                }
-
-                return;
-            }
-
-            var cameraGo = new GameObject("Main Camera");
-            cameraGo.tag = "MainCamera";
-            var camera = cameraGo.AddComponent<Camera>();
-            camera.orthographic = true;
-            camera.orthographicSize = 5f;
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.12f, 0.34f, 0.42f);
-            cameraGo.AddComponent<AudioListener>();
-            Undo.RegisterCreatedObjectUndo(cameraGo, "Create Main Camera");
         }
 
         private static void EnsureEventSystem()

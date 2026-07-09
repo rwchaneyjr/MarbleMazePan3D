@@ -12,7 +12,7 @@ namespace DragonBoxAlgebra
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsureScene()
         {
-            EnsureMainCamera();
+            SceneCameraSetup.EnsureSingleMainCamera();
             EnsureEventSystem();
 
             if (Object.FindObjectOfType<AlgebraBootstrap>() != null)
@@ -23,40 +23,6 @@ namespace DragonBoxAlgebra
 
             var go = new GameObject("AlgebraBootstrap");
             go.AddComponent<AlgebraBootstrap>();
-        }
-
-        private static void EnsureMainCamera()
-        {
-            var cameras = Object.FindObjectsOfType<Camera>();
-            Camera main = Camera.main;
-
-            if (main == null && cameras.Length > 0)
-            {
-                cameras[0].gameObject.tag = "MainCamera";
-                main = cameras[0];
-            }
-
-            if (main != null)
-            {
-                foreach (var camera in cameras)
-                {
-                    if (camera != main)
-                    {
-                        Object.Destroy(camera.gameObject);
-                    }
-                }
-
-                return;
-            }
-
-            var cameraGo = new GameObject("Main Camera");
-            cameraGo.tag = "MainCamera";
-            var camera = cameraGo.AddComponent<Camera>();
-            camera.orthographic = true;
-            camera.orthographicSize = 5f;
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.12f, 0.34f, 0.42f);
-            cameraGo.AddComponent<AudioListener>();
         }
 
         private static void EnsureEventSystem()
