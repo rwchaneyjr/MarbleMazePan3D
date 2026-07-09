@@ -1,37 +1,34 @@
-Custom creature images for SymbolAlgebra / DragonBoxAlgebra
-============================================================
+Sea creature images — same animal for light AND dark
+====================================================
 
-Put your PNG or JPG files here, then in Unity set Texture Type to "Sprite (2D and UI)".
-
-Your sea-turtle style art works great. Example for theme 0 (Fish & Turtle):
-
-  dark_turtle.png     -> night / dark card (the turtle image)
-  light_fish.png      -> day / light card (optional fish partner)
-
-Naming options (use any one style):
-
-  1) Theme index (best for all 10 creature pairs)
-     theme00_light.png   theme00_dark.png   (Fish & Turtle)
-     theme01_light.png   theme01_dark.png   (Bird & Owl)
-     theme02_light.png   theme02_dark.png   (Crab & Jelly)
-     ... through theme09_
-
-  2) Creature name
-     light_fish.png      dark_turtle.png
-     light_bird.png      dark_owl.png
-     light_crab.png      dark_jelly.png
-
-  3) Legacy names still work
-     lightfish.png       darkturtle.png
-
-Box / dragon box (optional):
-  box.png
-
-Tips:
-- Square images (~512x512 or 1024x1024) look best on cards.
-- Use preserveAspect — tall art is auto-fitted inside the card.
-- If no image is found, the game falls back to built-in procedural art.
-- After adding files: return to Unity, wait for import, press Play.
-
-This folder path in your project:
+Folder:
   Assets/DragonBoxAlgebra/Resources/CreatureSprites/
+
+Keep your names like lightFish and darkFish — no need to rename to frog/snake pairs.
+
+| Your file (examples)     | Theme | Pairs with        |
+|--------------------------|-------|-------------------|
+| lightFish / darkFish     | Fish  | each other        |
+| lightTurtle / darkTurtle | Turtle| each other        |
+| lightClam / darkClam     | Clam  | each other        |
+| lightDolphin / darkDolphin | Dolphin | each other    |
+| lightEel / darkEel       | Eel   | each other        |
+| lightLobster / darkLobster | Lobster | each other    |
+| lightSeaHorse / darkSeaHorse | Sea Horse | each other |
+| lightStarfish / darkStarfish | Starfish | each other |
+
+Fix these two typos in Unity:
+  lightEelpng  →  lightEel
+  darkeeel     →  darkEel
+
+Naming rules:
+  - Start with light or dark (capital letters OK)
+  - Then the animal name: Fish, Turtle, Clam, Dolphin, Eel, Lobster, SeaHorse, Starfish
+  - Underscores OK: light_fish, dark_turtle
+
+Optional numbered style:
+  theme00_light.png + theme00_dark.png  (Fish)
+  theme01_light.png + theme01_dark.png  (Turtle)
+  ... through theme07_ (Starfish)
+
+Unity: Texture Type → Sprite (2D and UI) → Apply → Play

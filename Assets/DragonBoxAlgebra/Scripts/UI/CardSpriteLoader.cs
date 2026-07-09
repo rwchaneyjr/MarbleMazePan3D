@@ -1,13 +1,12 @@
 using System;
-using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
 using UnityEngine;
 
 namespace DragonBoxAlgebra.UI
 {
     /// <summary>
-    /// Loads custom PNG/JPG creature art from Unity Resources folders.
-    /// Drop images into Assets/DragonBoxAlgebra/Resources/CreatureSprites/
+    /// Loads custom creature art from Resources/CreatureSprites/.
+    /// Each theme is one animal: lightFish + darkFish, lightTurtle + darkTurtle, etc.
     /// </summary>
     public static class CardSpriteLoader
     {
@@ -15,18 +14,10 @@ namespace DragonBoxAlgebra.UI
         private static Sprite _box;
         private static bool _initialized;
 
-        private static readonly string[][] ThemeSlugs =
+        /// <summary>One slug per theme — light and dark use the same animal.</summary>
+        private static readonly string[] CreatureSlugs =
         {
-            new[] { "fish", "turtle" },
-            new[] { "bird", "owl" },
-            new[] { "crab", "jelly", "jellyfish" },
-            new[] { "butterfly", "bat", "wing" },
-            new[] { "star", "moon" },
-            new[] { "rabbit", "fox", "hopper" },
-            new[] { "frog", "snake" },
-            new[] { "sun", "storm", "weather" },
-            new[] { "dragon", "flame" },
-            new[] { "cat", "dog", "pet" }
+            "fish", "turtle", "clam", "dolphin", "eel", "lobster", "seahorse", "starfish"
         };
 
         public static void EnsureLoaded()
@@ -100,20 +91,17 @@ namespace DragonBoxAlgebra.UI
 
             if (TryParseThemePairName(name, out int theme, out bool light))
             {
-                RegisterThemed(theme, light, sprite, ScoreThemePairName(name));
+                RegisterThemed(theme, light, sprite, 100);
                 return;
             }
 
-            int lightScore = ScoreLightSlug(name, out int lightTheme);
-            if (lightScore > 0)
+            if (TryParseCreatureSide(name, out string creature, out bool isLight))
             {
-                RegisterThemed(lightTheme, light: true, sprite, lightScore);
-            }
-
-            int darkScore = ScoreDarkSlug(name, out int darkTheme);
-            if (darkScore > 0)
-            {
-                RegisterThemed(darkTheme, light: false, sprite, darkScore);
+                int creatureTheme = ThemeForCreature(creature);
+                if (creatureTheme >= 0)
+                {
+                    RegisterThemed(creatureTheme, isLight, sprite, 90);
+                }
             }
         }
 
@@ -157,97 +145,103 @@ namespace DragonBoxAlgebra.UI
             return false;
         }
 
-        private static int ScoreThemePairName(string name)
+        private static bool TryParseCreatureSide(string name, out string creature, out bool light)
         {
-            if (name.Contains("theme"))
+            creature = string.Empty;
+            light = false;
+
+            if (TryStripPrefix(name, "light_", out creature) || TryStripPrefix(name, "light", out creature))
             {
-                return 100;
+                light = true;
+                creature = NormalizeCreature(creature);
+                return creature.Length > 0;
             }
 
-            return 0;
+            if (TryStripPrefix(name, "dark_", out creature) || TryStripPrefix(name, "dark", out creature))
+            {
+                light = false;
+                creature = NormalizeCreature(creature);
+                return creature.Length > 0;
+            }
+
+            if (TryStripPrefix(name, "day_", out creature) || TryStripPrefix(name, "day", out creature))
+            {
+                light = true;
+                creature = NormalizeCreature(creature);
+                return creature.Length > 0;
+            }
+
+            if (TryStripPrefix(name, "night_", out creature) || TryStripPrefix(name, "night", out creature))
+            {
+                light = false;
+                creature = NormalizeCreature(creature);
+                return creature.Length > 0;
+            }
+
+            return false;
         }
 
-        private static int ScoreLightSlug(string name, out int theme)
+        private static bool TryStripPrefix(string name, string prefix, out string remainder)
         {
-            theme = -1;
-            int bestScore = 0;
-
-            for (int i = 0; i < ThemeSlugs.Length; i++)
+            if (name.StartsWith(prefix, StringComparison.Ordinal))
             {
-                int score = ScoreSlugMatch(name, ThemeSlugs[i][0], light: true);
-                if (score > bestScore)
+                remainder = name.Substring(prefix.Length);
+                return true;
+            }
+
+            remainder = string.Empty;
+            return false;
+        }
+
+        private static string NormalizeCreature(string creature)
+        {
+            if (string.IsNullOrEmpty(creature))
+            {
+                return creature;
+            }
+
+            if (creature.EndsWith("png", StringComparison.Ordinal))
+            {
+                creature = creature.Substring(0, creature.Length - 3);
+            }
+
+            if (creature == "eeel")
+            {
+                return "eel";
+            }
+
+            if (creature == "seahors")
+            {
+                return "seahorse";
+            }
+
+            return creature;
+        }
+
+        private static int ThemeForCreature(string creature)
+        {
+            if (string.IsNullOrEmpty(creature))
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < CreatureSlugs.Length; i++)
+            {
+                if (creature == CreatureSlugs[i])
                 {
-                    bestScore = score;
-                    theme = i;
+                    return i;
                 }
             }
 
-            return bestScore;
-        }
-
-        private static int ScoreDarkSlug(string name, out int theme)
-        {
-            theme = -1;
-            int bestScore = 0;
-
-            for (int i = 0; i < ThemeSlugs.Length; i++)
+            for (int i = 0; i < CreatureSlugs.Length; i++)
             {
-                for (int slugIndex = 1; slugIndex < ThemeSlugs[i].Length; slugIndex++)
+                if (creature.Contains(CreatureSlugs[i]) || CreatureSlugs[i].Contains(creature))
                 {
-                    int score = ScoreSlugMatch(name, ThemeSlugs[i][slugIndex], light: false);
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        theme = i;
-                    }
+                    return i;
                 }
             }
 
-            return bestScore;
-        }
-
-        private static int ScoreSlugMatch(string name, string slug, bool light)
-        {
-            string prefix = light ? "light" : "dark";
-            string compact = prefix + slug;
-            string underscored = prefix + "_" + slug;
-
-            if (name == compact || name == underscored)
-            {
-                return 100;
-            }
-
-            if (name.Contains(underscored))
-            {
-                return 90;
-            }
-
-            if (name.Contains(compact))
-            {
-                return 80;
-            }
-
-            if (light && name.Contains("day") && name.Contains(slug))
-            {
-                return 70;
-            }
-
-            if (!light && name.Contains("night") && name.Contains(slug))
-            {
-                return 70;
-            }
-
-            if (light && name.Contains(slug) && !name.Contains("dark") && !name.Contains("night"))
-            {
-                return 50;
-            }
-
-            if (!light && name.Contains(slug) && !name.Contains("light") && !name.Contains("day"))
-            {
-                return 50;
-            }
-
-            return 0;
+            return -1;
         }
 
         private static void RegisterThemed(int theme, bool light, Sprite sprite, int score)
@@ -256,20 +250,10 @@ namespace DragonBoxAlgebra.UI
             int col = light ? 0 : 1;
             Sprite current = ThemedSprites[row, col];
 
-            if (current == null || score > ScoreExisting(current.name.ToLowerInvariant(), row, col))
+            if (current == null || score >= 90)
             {
                 ThemedSprites[row, col] = sprite;
             }
-        }
-
-        private static int ScoreExisting(string name, int theme, int col)
-        {
-            if (TryParseThemePairName(name, out _, out _))
-            {
-                return ScoreThemePairName(name);
-            }
-
-            return col == 0 ? ScoreLightSlug(name, out _) : ScoreDarkSlug(name, out _);
         }
 
         private static int NormalizeTheme(int theme) =>

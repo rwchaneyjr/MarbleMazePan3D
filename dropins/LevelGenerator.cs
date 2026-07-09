@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
+using DragonBoxAlgebra.UI;
 
 namespace DragonBoxAlgebra.Gameplay
 {
@@ -10,11 +11,7 @@ namespace DragonBoxAlgebra.Gameplay
         private const int HandPlayFromIndex = 36;
         private const int MirroredHandFromIndex = 43;
 
-        private static readonly string[] CreatureThemeNames =
-        {
-            "Fish & Turtle", "Bird & Owl", "Crab & Jelly", "Butterfly & Bat", "Star & Moon",
-            "Rabbit & Fox", "Frog & Snake", "Sun & Storm", "Dragon & Flame", "Cat & Dog"
-        };
+        private static readonly string[] CreatureThemeNames = CreatureArt.CreatureNames;
 
         public static IReadOnlyList<LevelDefinition> GenerateAll(int seed = 20260703)
         {
@@ -31,7 +28,7 @@ namespace DragonBoxAlgebra.Gameplay
         {
             for (int i = 0; i < HandPlayFromIndex; i++)
             {
-                int theme = i % 10;
+                int theme = i % CreatureArt.ThemeCount;
                 yield return BuildMergeIntroLevel(i, theme);
             }
         }
@@ -108,7 +105,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             for (int levelIndex = HandPlayFromIndex; levelIndex < TotalLevels; levelIndex++)
             {
-                int theme = levelIndex % 10;
+                int theme = levelIndex % CreatureArt.ThemeCount;
                 bool mirrorBox = levelIndex >= MirroredHandFromIndex;
                 int sectionNumber = levelIndex - HandPlayFromIndex + 1;
                 string themeName = CreatureThemeNames[theme];
