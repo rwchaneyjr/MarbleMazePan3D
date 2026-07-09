@@ -48,8 +48,25 @@ namespace DragonBoxAlgebra.Editor
 
         private static void EnsureMainCamera()
         {
-            if (Camera.main != null)
+            var cameras = Object.FindObjectsOfType<Camera>();
+            Camera main = Camera.main;
+
+            if (main == null && cameras.Length > 0)
             {
+                cameras[0].gameObject.tag = "MainCamera";
+                main = cameras[0];
+            }
+
+            if (main != null)
+            {
+                foreach (var camera in cameras)
+                {
+                    if (camera != main)
+                    {
+                        Object.Destroy(camera.gameObject);
+                    }
+                }
+
                 return;
             }
 

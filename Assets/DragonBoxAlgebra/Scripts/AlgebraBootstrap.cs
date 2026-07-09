@@ -29,10 +29,33 @@ namespace DragonBoxAlgebra
 
             CardSpriteLoader.Reset();
             CardSpriteLoader.EnsureLoaded();
+            LogStartupDiagnostics();
 
             var controller = new AlgebraGameController();
             var ui = gameObject.AddComponent<AlgebraUI>();
             ui.Initialize(controller);
+        }
+
+        private static void LogStartupDiagnostics()
+        {
+            int loaded = 0;
+            for (int theme = 0; theme < CreatureArt.ThemeCount; theme++)
+            {
+                if (CardSpriteLoader.HasCustomArt(theme, light: true))
+                {
+                    loaded++;
+                }
+
+                if (CardSpriteLoader.HasCustomArt(theme, light: false))
+                {
+                    loaded++;
+                }
+            }
+
+            string firstTitle = LevelLibrary.Count > 0 ? LevelLibrary.GetLevel(0).Title : "(no levels)";
+            Debug.Log(
+                $"[DragonBox] Build OK — custom sprites: {loaded}/16. " +
+                $"Level 1 should be 'Pair on Left 1' (not Butterfly/Bat). Actual: '{firstTitle}'");
         }
     }
 }

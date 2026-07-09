@@ -46,6 +46,12 @@ git checkout "$BRANCH"
 git pull origin "$BRANCH"
 
 echo ""
+echo "==> Restoring game scripts, editor tools, and scene from git"
+git checkout "origin/$BRANCH" -- Assets/DragonBoxAlgebra/Scripts/
+git checkout "origin/$BRANCH" -- Assets/DragonBoxAlgebra/Editor/ 2>/dev/null || true
+git checkout "origin/$BRANCH" -- Assets/DragonBoxAlgebra/Scenes/
+
+echo ""
 echo "==> Syncing drop-in scripts"
 bash scripts/sync-dropins.sh import --here
 

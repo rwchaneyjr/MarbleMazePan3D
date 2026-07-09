@@ -95,6 +95,7 @@ namespace DragonBoxAlgebra.Editor
                 }
 
                 string fileName = Path.GetFileName(path);
+                fileName = NormalizeCreatureFileName(fileName);
                 string destAssetPath = $"{CreatureSpritesPath}/{fileName}";
                 string destFullPath = Path.GetFullPath(destAssetPath);
 
@@ -147,6 +148,22 @@ namespace DragonBoxAlgebra.Editor
         {
             string ext = Path.GetExtension(path)?.ToLowerInvariant();
             return ext is ".png" or ".jpg" or ".jpeg";
+        }
+
+        private static string NormalizeCreatureFileName(string fileName)
+        {
+            string lower = fileName.ToLowerInvariant();
+            if (lower == "lighteelpng.png")
+            {
+                return "lightEel.png";
+            }
+
+            if (lower == "darkeel.png" || lower == "darkeeel.png")
+            {
+                return "darkEel.png";
+            }
+
+            return fileName;
         }
 
         private static void ConfigureAsSprite(string assetPath)
