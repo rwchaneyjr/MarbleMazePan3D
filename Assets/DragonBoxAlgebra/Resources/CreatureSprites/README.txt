@@ -1,34 +1,32 @@
-Sea creature images — same animal for light AND dark
-====================================================
+Sea creature images — REPLACE old art with your PNG/JPG files
+=============================================================
 
-Folder:
+Folder (put your images HERE):
   Assets/DragonBoxAlgebra/Resources/CreatureSprites/
 
-Keep your names like lightFish and darkFish — no need to rename to frog/snake pairs.
+DELETE old images from these folders if you have them:
+  Assets/DragonBoxAlgebra/Resources/Sprites/
+  Assets/DragonBoxAlgebra/Resources/CardSprites/
+  Assets/DragonBoxAlgebra/Resources/Cards/
 
-| Your file (examples)     | Theme | Pairs with        |
-|--------------------------|-------|-------------------|
-| lightFish / darkFish     | Fish  | each other        |
-| lightTurtle / darkTurtle | Turtle| each other        |
-| lightClam / darkClam     | Clam  | each other        |
-| lightDolphin / darkDolphin | Dolphin | each other    |
-| lightEel / darkEel       | Eel   | each other        |
-| lightLobster / darkLobster | Lobster | each other    |
-| lightSeaHorse / darkSeaHorse | Sea Horse | each other |
-| lightStarfish / darkStarfish | Starfish | each other |
+Your names work as-is:
+  lightFish      + darkFish
+  lightTurtle    + darkTurtle
+  lightClam      + darkClam
+  lightDolphin   + darkDolphin
+  lightEel       + darkEel        (fix lightEelpng → lightEel)
+  lightLobster   + darkLobster
+  lightSeaHorse  + darkSeaHorse
+  lightStarfish  + darkStarfish
 
-Fix these two typos in Unity:
-  lightEelpng  →  lightEel
-  darkeeel     →  darkEel
+Unity import (IMPORTANT — images won't show without this):
+  1. Click the image in Project window
+  2. Inspector → Texture Type → "Sprite (2D and UI)"
+     (or "Default" also works now)
+  3. Click Apply
+  4. Press Play
 
-Naming rules:
-  - Start with light or dark (capital letters OK)
-  - Then the animal name: Fish, Turtle, Clam, Dolphin, Eel, Lobster, SeaHorse, Starfish
-  - Underscores OK: light_fish, dark_turtle
-
-Optional numbered style:
-  theme00_light.png + theme00_dark.png  (Fish)
-  theme01_light.png + theme01_dark.png  (Turtle)
-  ... through theme07_ (Starfish)
-
-Unity: Texture Type → Sprite (2D and UI) → Apply → Play
+If images still don't show:
+  - Confirm files are in CreatureSprites (not just Downloads)
+  - Run: git pull + bash scripts/sync-dropins.sh import --here
+  - Edit → Clear All PlayerPrefs, then Play again

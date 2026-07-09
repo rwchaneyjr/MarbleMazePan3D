@@ -5,20 +5,41 @@ using UnityEngine;
 namespace DragonBoxAlgebra.UI
 {
     /// <summary>
-    /// Loads custom creature art from Resources/CreatureSprites/.
-    /// Each theme is one animal: lightFish + darkFish, lightTurtle + darkTurtle, etc.
+    /// Loads custom creature art from Assets/DragonBoxAlgebra/Resources/CreatureSprites/.
+    /// lightFish + darkFish, lightTurtle + darkTurtle, etc. (same animal, not frog/snake).
     /// </summary>
     public static class CardSpriteLoader
     {
+        private const int CreatureFolderPriority = 100;
+        private const int LegacyFolderPriority = 10;
+
         private static readonly Sprite[,] ThemedSprites = new Sprite[CreatureArt.ThemeCount, 2];
+        private static readonly int[,] ThemedPriorities = new int[CreatureArt.ThemeCount, 2];
         private static Sprite _box;
+        private static int _boxPriority;
         private static bool _initialized;
 
-        /// <summary>One slug per theme — light and dark use the same animal.</summary>
         private static readonly string[] CreatureSlugs =
         {
             "fish", "turtle", "clam", "dolphin", "eel", "lobster", "seahorse", "starfish"
         };
+
+        /// <summary>Call each Play session so new/changed images are picked up.</summary>
+        public static void Reset()
+        {
+            for (int row = 0; row < CreatureArt.ThemeCount; row++)
+            {
+                for (int col = 0; col < 2; col++)
+                {
+                    ThemedSprites[row, col] = null;
+                    ThemedPriorities[row, col] = 0;
+                }
+            }
+
+            _box = null;
+            _boxPriority = 0;
+            _initialized = false;
+        }
 
         public static void EnsureLoaded()
         {
@@ -28,10 +49,12 @@ namespace DragonBoxAlgebra.UI
             }
 
             _initialized = true;
-            LoadFromResources("CreatureSprites");
-            LoadFromResources("Sprites");
-            LoadFromResources("CardSprites");
-            LoadFromResources("Cards");
+
+            // CreatureSprites wins over any legacy Resources folders.
+            LoadFolder("CreatureSprites", CreatureFolderPriority);
+            LoadFolder("Sprites", LegacyFolderPriority);
+            LoadFolder("CardSprites", LegacyFolderPriority);
+            LoadFolder("Cards", LegacyFolderPriority);
         }
 
         public static Sprite ForCard(BoardCard card)
@@ -64,17 +87,35 @@ namespace DragonBoxAlgebra.UI
             return ThemedSprites[row, col];
         }
 
-        private static void LoadFromResources(string folder)
+        private static void LoadFolder(string folder, int priority)
         {
             Sprite[] sprites = Resources.LoadAll<Sprite>(folder);
             Array.Sort(sprites, (a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
             foreach (Sprite sprite in sprites)
             {
-                RegisterByName(sprite);
+                RegisterByName(sprite, priority);
+            }
+
+            Texture2D[] textures = Resources.LoadAll<Texture2D>(folder);
+            Array.Sort(textures, (a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
+            foreach (Texture2D texture in textures)
+            {
+                if (texture == null)
+                {
+                    continue;
+                }
+
+                Sprite created = Sprite.Create(
+                    texture,
+                    new Rect(0f, 0f, texture.width, texture.height),
+                    new Vector2(0.5f, 0.5f),
+                    100f);
+                created.name = texture.name;
+                RegisterByName(created, priority);
             }
         }
 
-        private static void RegisterByName(Sprite sprite)
+        private static void RegisterByName(Sprite sprite, int priority)
         {
             if (sprite == null)
             {
@@ -85,13 +126,18 @@ namespace DragonBoxAlgebra.UI
 
             if (IsBox(name))
             {
-                _box ??= sprite;
+                if (_box == null || priority > _boxPriority)
+                {
+                    _box = sprite;
+                    _boxPriority = priority;
+                }
+
                 return;
             }
 
             if (TryParseThemePairName(name, out int theme, out bool light))
             {
-                RegisterThemed(theme, light, sprite, 100);
+                RegisterThemed(theme, light, sprite, priority);
                 return;
             }
 
@@ -100,7 +146,7 @@ namespace DragonBoxAlgebra.UI
                 int creatureTheme = ThemeForCreature(creature);
                 if (creatureTheme >= 0)
                 {
-                    RegisterThemed(creatureTheme, isLight, sprite, 90);
+                    RegisterThemed(creatureTheme, isLight, sprite, priority);
                 }
             }
         }
@@ -210,11 +256,6 @@ namespace DragonBoxAlgebra.UI
                 return "eel";
             }
 
-            if (creature == "seahors")
-            {
-                return "seahorse";
-            }
-
             return creature;
         }
 
@@ -233,27 +274,32 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
+            int bestTheme = -1;
+            int bestLength = 0;
             for (int i = 0; i < CreatureSlugs.Length; i++)
             {
-                if (creature.Contains(CreatureSlugs[i]) || CreatureSlugs[i].Contains(creature))
+                string slug = CreatureSlugs[i];
+                if (creature.Contains(slug, StringComparison.Ordinal) && slug.Length > bestLength)
                 {
-                    return i;
+                    bestTheme = i;
+                    bestLength = slug.Length;
                 }
             }
 
-            return -1;
+            return bestTheme;
         }
 
-        private static void RegisterThemed(int theme, bool light, Sprite sprite, int score)
+        private static void RegisterThemed(int theme, bool light, Sprite sprite, int priority)
         {
             int row = NormalizeTheme(theme);
             int col = light ? 0 : 1;
-            Sprite current = ThemedSprites[row, col];
-
-            if (current == null || score >= 90)
+            if (priority < ThemedPriorities[row, col])
             {
-                ThemedSprites[row, col] = sprite;
+                return;
             }
+
+            ThemedSprites[row, col] = sprite;
+            ThemedPriorities[row, col] = priority;
         }
 
         private static int NormalizeTheme(int theme) =>
