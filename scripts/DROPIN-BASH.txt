@@ -21,14 +21,18 @@ Then open Unity → wait for compile → Play.
 
 Scene: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
 
-**What changed:** 50 fixed levels (no random puzzles). Progress is saved so the
-same level loads every time you press Play. Top-left button is **Next** (not random).
+**What changed:** 50 fixed levels, saved progress, custom PNG creature art support.
 
-To restart from level 1:
-```bash
-# In Unity: Edit > Clear All PlayerPrefs
-# Or delete Library/PlayerPrefs in your project folder after closing Unity
-```
+### Add your own images (like the sea turtle)
+
+1. Copy PNG/JPG into:
+   `Assets/DragonBoxAlgebra/Resources/CreatureSprites/`
+2. Name examples:
+   - `dark_turtle.png`  (night/dark turtle card)
+   - `light_fish.png`   (day/light fish card)
+   - or `theme00_dark.png` / `theme00_light.png`
+3. In Unity: select image → Texture Type → **Sprite (2D and UI)** → Apply
+4. Press Play — custom art replaces built-in sprites when found
 
 ---
 
