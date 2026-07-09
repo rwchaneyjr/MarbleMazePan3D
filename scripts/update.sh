@@ -67,7 +67,8 @@ fi
 
 echo ""
 echo "Done. In Unity:"
-echo "  1. Open Assets/DragonBoxAlgebra/Scenes/DragonBox.unity"
-echo "  2. Hierarchy: AlgebraBootstrap, Main Camera, EventSystem"
-echo "  3. New images → Sprite (2D and UI) → Apply"
-echo "  4. Press Play"
+echo "  1. Menu: DragonBox Algebra → Open Game Scene and Setup"
+echo "  2. Menu: DragonBox Algebra → Import Creature Images (Drag and Drop)"
+echo "  3. Drag PNGs into the window, then press Play"
+echo ""
+echo "If Hierarchy is empty: DragonBox Algebra → Setup Scene (Camera + Bootstrap)"
