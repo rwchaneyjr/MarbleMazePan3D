@@ -9,6 +9,10 @@ Put your PNG files HERE (names must match):
   lightSeaHorse.png  darkSeaHorse.png
   lightStarfish.png  darkStarfish.png
 
+Optional cancel-marker art (replaces spinning * when present):
+
+  SwirlingLight.png
+
 Unity import: click each image → Texture Type → Sprite (2D and UI) → Apply
 
 Debug: Menu → DragonBox Algebra → Print Sprite Debug
