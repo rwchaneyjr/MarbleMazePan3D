@@ -41,7 +41,9 @@ namespace DragonBoxAlgebra.Gameplay
         private int _levelIndex;
         private bool _levelComplete;
         private int _activeMergeAnimations;
-        private bool UsesManualPairMerge => _levelIndex >= 36;
+        private bool UsesManualPairMerge =>
+            CurrentLevel.Chapter >= 3
+            || (CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16);
         private static readonly Random Rng = new();
 
         public int LevelIndex => _levelIndex;
