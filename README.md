@@ -16,7 +16,16 @@ A **DragonBox-style algebra puzzle game** in Unity — drag cards on a two-sided
 
 ## Project path (local)
 
-`C:\Users\rober\Desktop\SymbolAlgebra`
+`C:\Users\rober\SymbolAlgebra`
+
+### Update from GitHub (Git Bash)
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+git pull origin main
+```
+
+See `scripts/GIT-BASH-SYMBOLALGEBRA.txt` for full copy-paste commands.
 
 ## License
 

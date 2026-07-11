@@ -2,6 +2,35 @@
 
 The cloud agent **cannot push directly** to `AlgebraDragon` until Cursor is granted access to that repo.
 
+## Your PC — Git Bash (`C:\Users\rober\SymbolAlgebra`)
+
+Open **Git Bash**, then:
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+bash scripts/symbolalgebra-gitbash.sh pull
+```
+
+That pulls the latest `main` (including the Sun & Storm tile fix) into your Unity folder.
+
+Other commands:
+
+```bash
+bash scripts/symbolalgebra-gitbash.sh status   # check git status
+bash scripts/symbolalgebra-gitbash.sh push     # push to AlgebraDragon
+```
+
+If `SymbolAlgebra` is not a git repo yet:
+
+```bash
+mv /c/Users/rober/SymbolAlgebra /c/Users/rober/SymbolAlgebra.bak
+git clone --branch main https://github.com/rwchaneyjr/MarbleMazePan3D.git /c/Users/rober/SymbolAlgebra
+```
+
+Then open in Unity: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
+
+---
+
 ## Fastest way (about 1 minute) — run on your PC
 
 Open **Git Bash** or **PowerShell** and paste:
