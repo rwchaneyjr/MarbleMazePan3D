@@ -41,9 +41,16 @@ echo "==> Updating SymbolAlgebra from origin/$BRANCH"
 echo "    Folder: $REPO"
 echo ""
 
+echo "==> Removing files that block git checkout"
+rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/ThemeAssignment.cs.meta
+rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/ChapterLevelGenerator.cs
+rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/ChapterLevelGenerator.cs.meta
+rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/BoardFoldRules.cs
+rm -f Assets/DragonBoxAlgebra/Scripts/Gameplay/BoardFoldRules.cs.meta
+
 git fetch origin "$BRANCH"
-git checkout "$BRANCH"
-git pull origin "$BRANCH"
+git checkout -f "$BRANCH" 2>/dev/null || git checkout -B "$BRANCH" "origin/$BRANCH"
+git reset --hard "origin/$BRANCH"
 
 echo ""
 echo "==> Restoring game scripts, editor tools, and scene from git"
