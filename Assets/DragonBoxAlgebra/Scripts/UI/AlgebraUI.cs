@@ -11,6 +11,7 @@ namespace DragonBoxAlgebra.UI
         private Text _titleText;
         private Text _progressText;
         private Text _messageText;
+        private Text _spriteDebugText;
         private LevelCompleteView _completeView;
         private RectTransform _dragRoot;
         private Canvas _canvas;
@@ -41,6 +42,21 @@ namespace DragonBoxAlgebra.UI
             _progressText.text = $"{current}/{total}  ·  Ch{chapter}";
             _titleText.text = $"{Controller.CurrentLevel.Title}  •  {CreatureArt.ThemeName}";
             _completeView.Hide();
+            RefreshSpriteDebugBanner();
+        }
+
+        private void RefreshSpriteDebugBanner()
+        {
+            if (_spriteDebugText == null)
+            {
+                return;
+            }
+
+            _spriteDebugText.text = CreatureSpriteDebug.GetOnScreenMessage();
+            _spriteDebugText.enabled = CreatureSpriteDebug.Enabled;
+            _spriteDebugText.color = CreatureSpriteDebug.HasProblems
+                ? new Color(1f, 0.92f, 0.35f)
+                : new Color(0.55f, 1f, 0.65f);
         }
 
         private void OnMessageChanged(string message)
@@ -102,6 +118,12 @@ namespace DragonBoxAlgebra.UI
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -20f), 28, TextAnchor.MiddleCenter);
             _progressText = CreateText(background.transform, "Progress", "1/6",
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -52f), 20, TextAnchor.MiddleCenter);
+
+            _spriteDebugText = CreateText(background.transform, "SpriteDebug", "",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -76f), 13, TextAnchor.MiddleCenter);
+            _spriteDebugText.color = new Color(1f, 0.92f, 0.35f);
+            _spriteDebugText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            RefreshSpriteDebugBanner();
 
             var boardRow = CreatePanel(background.transform, "BoardRow", new Color(0f, 0f, 0f, 0.15f),
                 new Vector2(0.02f, 0.28f), new Vector2(0.98f, 0.82f), Vector2.zero, Vector2.zero);

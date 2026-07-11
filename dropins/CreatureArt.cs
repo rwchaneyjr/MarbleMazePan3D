@@ -64,6 +64,23 @@ namespace DragonBoxAlgebra.UI
             _ => "🐶"
         };
 
+        public static string PngCreatureNameFor(int theme)
+        {
+            int row = ((theme % PngCreatureNames.Length) + PngCreatureNames.Length) % PngCreatureNames.Length;
+            return PngCreatureNames[row];
+        }
+
+        public static string ExpectedLightPng(int theme) =>
+            "light" + PngCreatureNameFor(theme).Replace(" ", string.Empty);
+
+        public static string ExpectedDarkPng(int theme) =>
+            "dark" + PngCreatureNameFor(theme).Replace(" ", string.Empty);
+
+        private static readonly string[] PngCreatureNames =
+        {
+            "Fish", "Turtle", "Clam", "Dolphin", "Eel", "Lobster", "Sea Horse", "Starfish"
+        };
+
         public static string ThemeName => _themeIndex switch
         {
             0 => "Fish & Turtle",

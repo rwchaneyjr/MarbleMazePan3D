@@ -108,14 +108,15 @@ namespace DragonBoxAlgebra.UI
 
         public static Sprite CreatureSprite(BoardCard card)
         {
-            if (CreatureArt.ResolveTheme(card) == 0
-                && card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box)
+            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box)
             {
                 Sprite loaded = CardSpriteLoader.ForCard(card);
                 if (loaded != null)
                 {
                     return loaded;
                 }
+
+                CreatureSpriteDebug.LogFallback(card, "CardVisuals");
             }
 
             return card.Kind switch

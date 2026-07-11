@@ -138,6 +138,7 @@ namespace DragonBoxAlgebra.Gameplay
                         ? "Drag light onto dark on each side to make *. Tap every * before the puzzle finishes!"
                         : "Drag light onto dark on the same side. They snap together into *. Tap * to dismiss. Leave the red box alone!"
                     : HandMessage(level));
+            CreatureSpriteDebug.LogLevel(Board, _hand, level);
         }
 
         private static string HandMessage(LevelDefinition level)

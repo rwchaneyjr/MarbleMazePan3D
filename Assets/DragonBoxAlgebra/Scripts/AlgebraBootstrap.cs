@@ -27,7 +27,9 @@ namespace DragonBoxAlgebra
                 DontDestroyOnLoad(audioGo);
             }
 
+            CardSpriteLoader.Reset();
             CardSpriteLoader.EnsureLoaded();
+            CreatureSpriteDebug.LogStartup();
 
             var controller = new AlgebraGameController();
             var ui = gameObject.AddComponent<AlgebraUI>();
