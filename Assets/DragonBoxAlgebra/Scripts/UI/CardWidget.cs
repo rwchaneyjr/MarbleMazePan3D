@@ -106,6 +106,7 @@ namespace DragonBoxAlgebra.UI
         private void ApplyCreatureVisual()
         {
             Sprite icon = CardVisuals.IconSprite(Card);
+            bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
             bool showHandSlotLabel = SideName == "Hand"
                 && _controller != null
                 && _controller.Hand.Count > 1
@@ -117,12 +118,34 @@ namespace DragonBoxAlgebra.UI
                 _creatureImage.sprite = icon;
                 _creatureImage.enabled = icon != null;
                 _creatureImage.color = Color.white;
-                _creatureImage.preserveAspect = true;
+
+                var creatureRect = _creatureImage.rectTransform.parent as RectTransform;
+                if (creatureRect != null)
+                {
+                    if (usesFullIcon && isCreature)
+                    {
+                        creatureRect.offsetMin = new Vector2(3f, 3f);
+                        creatureRect.offsetMax = new Vector2(-3f, -3f);
+                    }
+                    else
+                    {
+                        creatureRect.offsetMin = new Vector2(8f, 28f);
+                        creatureRect.offsetMax = new Vector2(-8f, -8f);
+                    }
+                }
+
                 if (icon != null && _creatureImage.rectTransform != null)
                 {
-                    var inset = usesFullIcon ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
-                    _creatureImage.rectTransform.offsetMin = inset;
-                    _creatureImage.rectTransform.offsetMax = new Vector2(-inset.x, -inset.y);
+                    if (usesFullIcon && isCreature && creatureRect != null)
+                    {
+                        ApplyCoverSpriteLayout(_creatureImage, icon, creatureRect);
+                    }
+                    else
+                    {
+                        var inset = usesFullIcon ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
+                        StretchSpriteLayout(_creatureImage.rectTransform, inset);
+                        _creatureImage.preserveAspect = true;
+                    }
                 }
             }
 
@@ -133,6 +156,53 @@ namespace DragonBoxAlgebra.UI
                 _creatureText.fontSize = CardVisuals.EmojiFontSize(Card);
                 _creatureText.enabled = icon == null;
             }
+        }
+
+        private static void StretchSpriteLayout(RectTransform imageRect, Vector2 inset)
+        {
+            imageRect.anchorMin = Vector2.zero;
+            imageRect.anchorMax = Vector2.one;
+            imageRect.pivot = new Vector2(0.5f, 0.5f);
+            imageRect.anchoredPosition = Vector2.zero;
+            imageRect.offsetMin = inset;
+            imageRect.offsetMax = new Vector2(-inset.x, -inset.y);
+            imageRect.sizeDelta = Vector2.zero;
+        }
+
+        private static void ApplyCoverSpriteLayout(Image image, Sprite sprite, RectTransform container)
+        {
+            Canvas.ForceUpdateCanvases();
+            float containerWidth = container.rect.width;
+            float containerHeight = container.rect.height;
+            if (containerWidth <= 0f || containerHeight <= 0f || sprite.rect.height <= 0f)
+            {
+                StretchSpriteLayout(image.rectTransform, Vector2.zero);
+                image.preserveAspect = true;
+                return;
+            }
+
+            float spriteAspect = sprite.rect.width / sprite.rect.height;
+            float containerAspect = containerWidth / containerHeight;
+
+            float imageWidth;
+            float imageHeight;
+            if (spriteAspect > containerAspect)
+            {
+                imageHeight = containerHeight;
+                imageWidth = containerHeight * spriteAspect;
+            }
+            else
+            {
+                imageWidth = containerWidth;
+                imageHeight = containerWidth / spriteAspect;
+            }
+
+            var imageRect = image.rectTransform;
+            imageRect.anchorMin = imageRect.anchorMax = new Vector2(0.5f, 0.5f);
+            imageRect.pivot = new Vector2(0.5f, 0.5f);
+            imageRect.anchoredPosition = Vector2.zero;
+            imageRect.sizeDelta = new Vector2(imageWidth, imageHeight);
+            image.preserveAspect = true;
         }
 
         public void SetHighlight(bool on)
@@ -533,13 +603,13 @@ namespace DragonBoxAlgebra.UI
             widget._background = image;
             widget._border = borderImage;
 
-            var creatureGo = new GameObject("Creature", typeof(RectTransform), typeof(CreatureReaction));
+            var creatureGo = new GameObject("Creature", typeof(RectTransform), typeof(CreatureReaction), typeof(RectMask2D));
             creatureGo.transform.SetParent(root.transform, false);
             var creatureRect = creatureGo.GetComponent<RectTransform>();
             creatureRect.anchorMin = Vector2.zero;
             creatureRect.anchorMax = Vector2.one;
-            creatureRect.offsetMin = new Vector2(8f, 28f);
-            creatureRect.offsetMax = new Vector2(-8f, -8f);
+            creatureRect.offsetMin = new Vector2(3f, 3f);
+            creatureRect.offsetMax = new Vector2(-3f, -3f);
             widget._reaction = creatureGo.GetComponent<CreatureReaction>();
 
             var creatureImageGo = new GameObject("Sprite", typeof(RectTransform), typeof(Image));
