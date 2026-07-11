@@ -116,6 +116,7 @@ namespace DragonBoxAlgebra.UI
             {
                 _creatureImage.sprite = icon;
                 _creatureImage.enabled = icon != null;
+                _creatureImage.color = Color.white;
                 _creatureImage.preserveAspect = true;
                 if (icon != null && _creatureImage.rectTransform != null)
                 {

@@ -67,6 +67,8 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            Debug.LogWarning("[DragonBox] === SPRITE DEBUG REPORT ===");
+
             CardSpriteLoader.Reset();
             CardSpriteLoader.EnsureLoaded();
 
@@ -99,13 +101,14 @@ namespace DragonBoxAlgebra.UI
 
             lines.AppendLine("============================================================");
 
+            string report = lines.ToString();
             if (HasProblems)
             {
-                Debug.LogWarning(lines.ToString());
+                Debug.LogError(report);
             }
             else
             {
-                Debug.Log(lines.ToString());
+                Debug.LogWarning(report);
             }
         }
 

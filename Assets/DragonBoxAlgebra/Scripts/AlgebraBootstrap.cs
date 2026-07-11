@@ -9,6 +9,8 @@ namespace DragonBoxAlgebra
     {
         private void Awake()
         {
+            Debug.LogWarning("[DragonBox] === AlgebraBootstrap START (Ch1 saved copy + PNG sprites) ===");
+
             if (Camera.main == null)
             {
                 var cameraGo = new GameObject("Main Camera");
