@@ -75,6 +75,11 @@ namespace DragonBoxAlgebra.UI
 
             for (int i = 0; i < _controller.Hand.Count; i++)
             {
+                if (!_controller.ShouldDisplayHandCard(i))
+                {
+                    continue;
+                }
+
                 BoardCard card = _controller.Hand[i];
                 CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
             }

@@ -18,8 +18,11 @@ namespace DragonBoxAlgebra.Gameplay
         public int PendingHoleInsertIndex;
         public BoardCard PendingCard;
 
+        public List<int> SpentHandIndices = new();
+
         public static GameSnapshot Capture(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves,
-            BalancePending pendingBalance, IReadOnlyList<PendingCancelMarker> pendingCancels)
+            BalancePending pendingBalance, IReadOnlyList<PendingCancelMarker> pendingCancels,
+            IReadOnlyCollection<int> spentHandIndices)
         {
             var snapshot = new GameSnapshot
             {
@@ -62,11 +65,16 @@ namespace DragonBoxAlgebra.Gameplay
                 snapshot.PendingCard = pendingBalance.Card.Clone();
             }
 
+            foreach (int spentIndex in spentHandIndices)
+            {
+                snapshot.SpentHandIndices.Add(spentIndex);
+            }
+
             return snapshot;
         }
 
         public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves, out BalancePending pendingBalance,
-            List<PendingCancelMarker> pendingCancels)
+            List<PendingCancelMarker> pendingCancels, HashSet<int> spentHandIndices)
         {
             board.Left.Cards.Clear();
             board.Right.Cards.Clear();
@@ -113,6 +121,9 @@ namespace DragonBoxAlgebra.Gameplay
                     Card = PendingCard.Clone()
                 };
             }
+
+            spentHandIndices.Clear();
+            spentHandIndices.UnionWith(SpentHandIndices);
         }
     }
 }

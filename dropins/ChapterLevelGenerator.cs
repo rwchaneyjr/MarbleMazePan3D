@@ -4,15 +4,27 @@ using DragonBoxAlgebra.Core;
 namespace DragonBoxAlgebra.Gameplay
 {
     /// <summary>
-    /// DragonBox-style intro: Ch1 has 12 matching-pair tutorials; Ch2–Ch4 have 20 puzzles each (72 total).
+    /// DragonBox-style intro: Ch1 has 12 tutorials; Ch2 has 18; Ch3 has 15; Ch4 has 20 (65 total).
     /// Ch1 asterisk dismiss, Ch2 opposite drag, Ch3 balance, Ch4 multi-card moves.
     /// </summary>
     public static class ChapterLevelGenerator
     {
         public const int LevelsPerChapter = 20;
         public const int Chapter1LevelCount = 12;
+        public const int Chapter2LevelCount = 18;
+        public const int Chapter3LevelCount = 15;
+        public const int Chapter4LevelCount = 20;
         public const int ChapterCount = 4;
-        public const int TotalLevels = Chapter1LevelCount + LevelsPerChapter * (ChapterCount - 1);
+        public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
+            + Chapter4LevelCount;
+
+        private static readonly int[] ChapterLevelCounts =
+        {
+            Chapter1LevelCount,
+            Chapter2LevelCount,
+            Chapter3LevelCount,
+            Chapter4LevelCount
+        };
 
         private static readonly string[] ChapterNames =
         {
@@ -40,13 +52,18 @@ namespace DragonBoxAlgebra.Gameplay
                 return 1;
             }
 
-            if (levelIndex < Chapter1LevelCount)
+            int cursor = 0;
+            for (int chapter = 0; chapter < ChapterCount; chapter++)
             {
-                return 1;
+                if (levelIndex < cursor + ChapterLevelCounts[chapter])
+                {
+                    return chapter + 1;
+                }
+
+                cursor += ChapterLevelCounts[chapter];
             }
 
-            int afterCh1 = levelIndex - Chapter1LevelCount;
-            return afterCh1 / LevelsPerChapter + 2;
+            return ChapterCount;
         }
 
         public static int IndexWithinChapter(int levelIndex)
@@ -56,12 +73,18 @@ namespace DragonBoxAlgebra.Gameplay
                 return 0;
             }
 
-            if (levelIndex < Chapter1LevelCount)
+            int cursor = 0;
+            for (int chapter = 0; chapter < ChapterCount; chapter++)
             {
-                return levelIndex;
+                if (levelIndex < cursor + ChapterLevelCounts[chapter])
+                {
+                    return levelIndex - cursor;
+                }
+
+                cursor += ChapterLevelCounts[chapter];
             }
 
-            return (levelIndex - Chapter1LevelCount) % LevelsPerChapter;
+            return 0;
         }
 
         private static IEnumerable<LevelDefinition> GenerateChapter(int chapter)
@@ -76,13 +99,25 @@ namespace DragonBoxAlgebra.Gameplay
                 yield break;
             }
 
+            int displayNumber = 0;
             for (int i = 0; i < LevelsPerChapter; i++)
             {
+                if (chapter == 2 && ShouldSkipChapter2Slot(i))
+                {
+                    continue;
+                }
+
+                if (chapter == 3 && ShouldSkipChapter3Slot(i))
+                {
+                    continue;
+                }
+
+                displayNumber++;
                 int theme = (chapter * 3 + i) % 10;
                 yield return chapter switch
                 {
-                    2 => BuildChapter2Level(i, theme),
-                    3 => BuildChapter3Level(i, theme),
+                    2 => BuildChapter2Level(i, theme, displayNumber),
+                    3 => BuildChapter3Level(i, theme, displayNumber),
                     _ => BuildChapter4Level(i, theme)
                 };
             }
@@ -106,6 +141,12 @@ namespace DragonBoxAlgebra.Gameplay
 
         private static bool ShouldSkipChapter1Slot(int index) =>
             index is >= 6 and <= 9 or >= 16 and <= 19;
+
+        private static bool ShouldSkipChapter2Slot(int index) =>
+            index is 18 or 19;
+
+        private static bool ShouldSkipChapter3Slot(int index) =>
+            index is 0 or 8 or 9 or 10 or 11;
 
         /// <summary>Ch1: drag day/night together on one side → *; box alone on the other.</summary>
         private static LevelDefinition BuildChapter1Level(int index, int theme, int displayNumber)
@@ -139,12 +180,14 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>Ch2: levels 1–16 dual pairs on both sides; later levels use hand opposite.</summary>
-        private static LevelDefinition BuildChapter2Level(int index, int theme)
+        private static LevelDefinition BuildChapter2Level(int index, int theme, int displayNumber)
         {
+            string title = $"Ch2 • {ChapterNames[1]} {displayNumber}";
+
             if (index < 16)
             {
                 return MakeDualPairDragLevel(
-                    $"Ch2 • {ChapterNames[1]} {index + 1}",
+                    title,
                     chapter: 2,
                     theme,
                     index,
@@ -154,7 +197,7 @@ namespace DragonBoxAlgebra.Gameplay
             if (index < 18)
             {
                 return Make(
-                    $"Ch2 • {ChapterNames[1]} {index + 1}",
+                    title,
                     chapter: 2,
                     theme,
                     left: new[] { CardKind.Box, CardKind.DayCreature },
@@ -165,7 +208,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return Make(
-                $"Ch2 • {ChapterNames[1]} {index + 1}",
+                title,
                 chapter: 2,
                 theme,
                 left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
@@ -176,12 +219,14 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>Ch3: place hand tile → ? on other side → balance.</summary>
-        private static LevelDefinition BuildChapter3Level(int index, int theme)
+        private static LevelDefinition BuildChapter3Level(int index, int theme, int displayNumber)
         {
+            string title = $"Ch3 • {ChapterNames[2]} {displayNumber}";
+
             if (index < 12)
             {
                 return Make(
-                    $"Ch3 • {ChapterNames[2]} {index + 1}",
+                    title,
                     chapter: 3,
                     theme,
                     left: new[] { CardKind.Box, CardKind.NightCreature },
@@ -194,7 +239,7 @@ namespace DragonBoxAlgebra.Gameplay
             if (index < 17)
             {
                 return Make(
-                    $"Ch3 • {ChapterNames[2]} {index + 1}",
+                    title,
                     chapter: 3,
                     theme,
                     left: System.Array.Empty<CardKind>(),
@@ -205,7 +250,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return Make(
-                $"Ch3 • {ChapterNames[2]} {index + 1}",
+                title,
                 chapter: 3,
                 theme,
                 left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },

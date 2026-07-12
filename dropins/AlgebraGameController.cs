@@ -35,6 +35,7 @@ namespace DragonBoxAlgebra.Gameplay
         private readonly List<BoardCard> _hand = new();
         private readonly List<BoardCard> _handTemplates = new();
         private readonly List<PendingCancelMarker> _pendingCancels = new();
+        private readonly HashSet<int> _spentHandIndices = new();
         private readonly Stack<GameSnapshot> _undoStack = new();
         private GameSnapshot _initialSnapshot;
         private BalancePending _pendingBalance;
@@ -49,6 +50,28 @@ namespace DragonBoxAlgebra.Gameplay
         public int LevelIndex => _levelIndex;
         public int LevelCount => LevelLibrary.Levels.Count;
         public LevelDefinition CurrentLevel => LevelLibrary.Levels[_levelIndex];
+
+        public bool UsesPlayableHandDisplay => CurrentLevel.Chapter >= 4;
+
+        public bool ShouldDisplayHandCard(int handIndex)
+        {
+            if (!UsesPlayableHandDisplay)
+            {
+                return true;
+            }
+
+            if (_spentHandIndices.Contains(handIndex))
+            {
+                return false;
+            }
+
+            if (_pendingBalance != null)
+            {
+                return handIndex == _pendingBalance.HandIndex;
+            }
+
+            return true;
+        }
 
         public bool IsCardPendingCancel(string cardId)
         {
@@ -119,8 +142,10 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = false;
             _pendingBalance = null;
             _pendingCancels.Clear();
+            _spentHandIndices.Clear();
             _activeMergeAnimations = 0;
-            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
+            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
+                _spentHandIndices);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
             if (_hand.Count == 0 && !level.DragToMergePairs)
@@ -128,7 +153,8 @@ namespace DragonBoxAlgebra.Gameplay
                 ActivatePreplacedOppositePairs();
             }
             ResolveCombines();
-            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels);
+            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
+                _spentHandIndices);
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
@@ -199,7 +225,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels);
+            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
             _undoStack.Clear();
             _levelComplete = false;
             BoardChanged?.Invoke();
@@ -214,7 +240,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels);
+            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
             _levelComplete = false;
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
@@ -516,6 +542,11 @@ namespace DragonBoxAlgebra.Gameplay
 
             MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
+            if (UsesPlayableHandDisplay)
+            {
+                HandChanged?.Invoke();
+            }
+
             return true;
         }
 
@@ -553,6 +584,11 @@ namespace DragonBoxAlgebra.Gameplay
             int placedBoardIndex = _pendingBalance.PlacedIndex;
             _pendingBalance = null;
             SyncHandFromTemplates();
+            if (UsesPlayableHandDisplay)
+            {
+                _spentHandIndices.Add(handIndex);
+            }
+
             HandChanged?.Invoke();
 
             if (!UsesManualPairMerge)
@@ -641,7 +677,8 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void PushUndo()
         {
-            _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels));
+            _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
+                _spentHandIndices));
         }
 
         private void ActivateOppositePairOrCancelDice(string sideName, int cardIndex)
