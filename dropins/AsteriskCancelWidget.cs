@@ -11,20 +11,13 @@ namespace DragonBoxAlgebra.UI
     {
         private const float MergeDuration = 1.15f;
         private const float MergeHalfOffset = 28f;
-        private const float SwirlClickableAlpha = 0.2f;
-        private const string SwirlingLightResourcePath = "CreatureSprites/SwirlingLight";
 
         private AlgebraGameController _controller;
         private int _markerIndex;
         private RectTransform _symbolRect;
         private CanvasGroup _symbolGroup;
-        private Image _symbolImage;
-        private Text _symbolFallbackText;
         private bool _readyToClick;
         private bool _mergeInProgress;
-        private Coroutine _symbolAnimation;
-
-        private static Sprite _swirlingLightSprite;
 
         private void OnDestroy()
         {
@@ -44,7 +37,7 @@ namespace DragonBoxAlgebra.UI
             Build(tileWidth, tileHeight);
             _symbolGroup.alpha = 1f;
             _symbolRect.localScale = Vector3.one;
-            StartSymbolAnimation();
+            StartCoroutine(SpinSymbol());
         }
 
         public void InitializeMergePair(AlgebraGameController controller, int markerIndex,
@@ -73,18 +66,6 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private static Sprite GetSwirlingLightSprite()
-        {
-            if (_swirlingLightSprite == null)
-            {
-                _swirlingLightSprite = Resources.Load<Sprite>(SwirlingLightResourcePath);
-            }
-
-            return _swirlingLightSprite;
-        }
-
-        private static bool UsesSwirlingLight => GetSwirlingLightSprite() != null;
-
         private void Build(float tileWidth, float tileHeight)
         {
             var rect = gameObject.GetComponent<RectTransform>() ?? gameObject.AddComponent<RectTransform>();
@@ -99,9 +80,7 @@ namespace DragonBoxAlgebra.UI
             var image = gameObject.AddComponent<Image>();
             image.sprite = SpriteFactory.RoundedCard;
             image.type = Image.Type.Sliced;
-            image.color = UsesSwirlingLight
-                ? new Color(0.04f, 0.05f, 0.14f, 0.94f)
-                : new Color(0.98f, 0.84f, 0.14f, 0.92f);
+            image.color = new Color(0.98f, 0.84f, 0.14f, 0.92f);
             image.raycastTarget = true;
 
             var borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
@@ -115,54 +94,26 @@ namespace DragonBoxAlgebra.UI
             borderImage.sprite = SpriteFactory.RoundedCard;
             borderImage.type = Image.Type.Sliced;
             borderImage.raycastTarget = false;
-            borderImage.color = UsesSwirlingLight
-                ? new Color(0.35f, 0.55f, 1f, 0.95f)
-                : new Color(0.72f, 0.48f, 0.04f, 1f);
+            borderImage.color = new Color(0.72f, 0.48f, 0.04f, 1f);
 
-            var symbolGo = new GameObject("SwirlSymbol", typeof(RectTransform), typeof(CanvasGroup));
+            var symbolGo = new GameObject("Asterisk", typeof(RectTransform), typeof(Text), typeof(CanvasGroup));
             symbolGo.transform.SetParent(transform, false);
             _symbolRect = symbolGo.GetComponent<RectTransform>();
             _symbolRect.anchorMin = Vector2.zero;
             _symbolRect.anchorMax = Vector2.one;
-            _symbolRect.offsetMin = UsesSwirlingLight ? new Vector2(6f, 6f) : Vector2.zero;
-            _symbolRect.offsetMax = UsesSwirlingLight ? new Vector2(-6f, -6f) : Vector2.zero;
+            _symbolRect.offsetMin = Vector2.zero;
+            _symbolRect.offsetMax = Vector2.zero;
             _symbolGroup = symbolGo.GetComponent<CanvasGroup>();
             _symbolGroup.alpha = 0f;
 
-            Sprite swirl = GetSwirlingLightSprite();
-            if (swirl != null)
-            {
-                var imageGo = new GameObject("SwirlingLight", typeof(RectTransform), typeof(Image));
-                imageGo.transform.SetParent(symbolGo.transform, false);
-                var imageRect = imageGo.GetComponent<RectTransform>();
-                imageRect.anchorMin = Vector2.zero;
-                imageRect.anchorMax = Vector2.one;
-                imageRect.offsetMin = Vector2.zero;
-                imageRect.offsetMax = Vector2.zero;
-                _symbolImage = imageGo.GetComponent<Image>();
-                _symbolImage.sprite = swirl;
-                _symbolImage.preserveAspect = true;
-                _symbolImage.raycastTarget = false;
-                _symbolImage.color = Color.white;
-            }
-            else
-            {
-                var textGo = new GameObject("Asterisk", typeof(RectTransform), typeof(Text));
-                textGo.transform.SetParent(symbolGo.transform, false);
-                var textRect = textGo.GetComponent<RectTransform>();
-                textRect.anchorMin = Vector2.zero;
-                textRect.anchorMax = Vector2.one;
-                textRect.offsetMin = Vector2.zero;
-                textRect.offsetMax = Vector2.zero;
-                _symbolFallbackText = textGo.GetComponent<Text>();
-                _symbolFallbackText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                _symbolFallbackText.alignment = TextAnchor.MiddleCenter;
-                _symbolFallbackText.fontSize = 88;
-                _symbolFallbackText.fontStyle = FontStyle.Bold;
-                _symbolFallbackText.color = Color.black;
-                _symbolFallbackText.text = "*";
-                _symbolFallbackText.raycastTarget = false;
-            }
+            var symbolText = symbolGo.GetComponent<Text>();
+            symbolText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            symbolText.alignment = TextAnchor.MiddleCenter;
+            symbolText.fontSize = 88;
+            symbolText.fontStyle = FontStyle.Bold;
+            symbolText.color = Color.black;
+            symbolText.text = "*";
+            symbolText.raycastTarget = false;
         }
 
         private void BuildMergePair(BoardCard lightCard, BoardCard darkCard)
@@ -229,12 +180,13 @@ namespace DragonBoxAlgebra.UI
 
                 if (lightRect != null)
                 {
+                    lightRect.anchoredPosition = Vector2.Lerp(lightStart, Vector2.zero, t);
                     lightRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.35f, t);
                 }
 
                 if (darkRect != null)
                 {
-                    darkRect.anchoredPosition = Vector2.Lerp(darkStart, lightStart, t);
+                    darkRect.anchoredPosition = Vector2.Lerp(darkStart, Vector2.zero, t);
                     darkRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.35f, t);
                 }
 
@@ -252,12 +204,7 @@ namespace DragonBoxAlgebra.UI
 
                 if (_symbolGroup != null)
                 {
-                    float symbolAlpha = Mathf.Lerp(0f, 1f, t);
-                    _symbolGroup.alpha = symbolAlpha;
-                    if (!_readyToClick && symbolAlpha >= SwirlClickableAlpha)
-                    {
-                        _readyToClick = true;
-                    }
+                    _symbolGroup.alpha = Mathf.Lerp(0f, 1f, t);
                 }
 
                 if (_symbolRect != null)
@@ -286,47 +233,10 @@ namespace DragonBoxAlgebra.UI
             _readyToClick = true;
             _mergeInProgress = false;
             _controller?.NotifyMergeAnimationCompleted();
-            StartSymbolAnimation();
+            StartCoroutine(SpinSymbol());
         }
 
-        private void StartSymbolAnimation()
-        {
-            if (_symbolAnimation != null)
-            {
-                StopCoroutine(_symbolAnimation);
-            }
-
-            _symbolAnimation = StartCoroutine(UsesSwirlingLight ? AnimateSwirlingLight() : SpinAsteriskFallback());
-        }
-
-        private IEnumerator AnimateSwirlingLight()
-        {
-            float pulsePhase = 0f;
-            while (_symbolRect != null)
-            {
-                _symbolRect.Rotate(0f, 0f, -165f * Time.deltaTime);
-
-                pulsePhase += Time.deltaTime * 2.8f;
-                float pulse = 0.5f + 0.5f * Mathf.Sin(pulsePhase);
-                float scale = Mathf.Lerp(0.9f, 1.1f, pulse);
-                _symbolRect.localScale = Vector3.one * scale;
-
-                if (_symbolGroup != null)
-                {
-                    _symbolGroup.alpha = Mathf.Lerp(0.78f, 1f, pulse);
-                }
-
-                if (_symbolImage != null)
-                {
-                    float glow = Mathf.Lerp(0.88f, 1.18f, pulse);
-                    _symbolImage.color = new Color(glow, glow, glow * 1.08f, 1f);
-                }
-
-                yield return null;
-            }
-        }
-
-        private IEnumerator SpinAsteriskFallback()
+        private IEnumerator SpinSymbol()
         {
             while (_symbolRect != null)
             {

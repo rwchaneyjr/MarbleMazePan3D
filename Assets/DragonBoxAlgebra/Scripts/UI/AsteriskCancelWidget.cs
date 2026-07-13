@@ -11,7 +11,6 @@ namespace DragonBoxAlgebra.UI
     {
         private const float MergeDuration = 1.15f;
         private const float MergeHalfOffset = 28f;
-        private const float SwirlClickableAlpha = 0.2f;
         private const string SwirlingLightResourcePath = "CreatureSprites/SwirlingLight";
 
         private AlgebraGameController _controller;
@@ -229,12 +228,13 @@ namespace DragonBoxAlgebra.UI
 
                 if (lightRect != null)
                 {
+                    lightRect.anchoredPosition = Vector2.Lerp(lightStart, Vector2.zero, t);
                     lightRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.35f, t);
                 }
 
                 if (darkRect != null)
                 {
-                    darkRect.anchoredPosition = Vector2.Lerp(darkStart, lightStart, t);
+                    darkRect.anchoredPosition = Vector2.Lerp(darkStart, Vector2.zero, t);
                     darkRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.35f, t);
                 }
 
@@ -252,12 +252,7 @@ namespace DragonBoxAlgebra.UI
 
                 if (_symbolGroup != null)
                 {
-                    float symbolAlpha = Mathf.Lerp(0f, 1f, t);
-                    _symbolGroup.alpha = symbolAlpha;
-                    if (!_readyToClick && symbolAlpha >= SwirlClickableAlpha)
-                    {
-                        _readyToClick = true;
-                    }
+                    _symbolGroup.alpha = Mathf.Lerp(0f, 1f, t);
                 }
 
                 if (_symbolRect != null)
