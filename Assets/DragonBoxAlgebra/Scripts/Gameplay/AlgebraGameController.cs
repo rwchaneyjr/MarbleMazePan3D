@@ -641,7 +641,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (_activeMergeAnimations > 0)
+            if (_activeMergeAnimations > 0 && _pendingCancels.Count == 0)
             {
                 MessageChanged?.Invoke("Wait for every * to finish forming.");
                 return;
