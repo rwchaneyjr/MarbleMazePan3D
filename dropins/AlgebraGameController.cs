@@ -634,6 +634,8 @@ namespace DragonBoxAlgebra.Gameplay
                 && _activeMergeAnimations == 0;
         }
 
+        public bool HasRemainingSwirls => _pendingCancels.Count > 0;
+
         private void CheckWin()
         {
             if (_pendingBalance != null)
@@ -641,15 +643,16 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (_activeMergeAnimations > 0)
+            if (_pendingCancels.Count > 0)
             {
-                MessageChanged?.Invoke("Wait for every * to finish forming.");
+                MessageChanged?.Invoke(_pendingCancels.Count > 1
+                    ? "Tap each swirl to dismiss — clear them in any order."
+                    : "Tap the swirl to dismiss it.");
                 return;
             }
 
-            if (_pendingCancels.Count > 0)
+            if (_activeMergeAnimations > 0)
             {
-                MessageChanged?.Invoke("Click all spinning * tiles first.");
                 return;
             }
 
