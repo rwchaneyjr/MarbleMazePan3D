@@ -665,7 +665,7 @@ namespace DragonBoxAlgebra.UI
 
             if (SideName == "Hand")
             {
-                return Card.IsPlayableFromHand && _controller.ShouldDisplayHandCard(Index);
+                return Card.IsPlayableFromHand && _controller.IsHandSlotPlayable(Index);
             }
 
             return Card.IsDraggableFromBoard;

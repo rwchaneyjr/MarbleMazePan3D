@@ -4,8 +4,8 @@ using DragonBoxAlgebra.Core;
 namespace DragonBoxAlgebra.Gameplay
 {
     /// <summary>
-    /// DragonBox-style intro: Ch1–Ch4 through level 63; Ch5 adds 17; Ch6 adds 20 (100 total).
-    /// Ch6: two hand variables, two+ variables per side, x alone wins.
+    /// DragonBox-style intro: Ch1–Ch4 through level 62; Ch5 (63–80) variable images + red box;
+    /// Ch6 (81–100) x + variables, two in hand.
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -13,8 +13,8 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter1LevelCount = 12;
         public const int Chapter2LevelCount = 16;
         public const int Chapter3LevelCount = 15;
-        public const int Chapter4LevelCount = 20;
-        public const int Chapter5LevelCount = 17;
+        public const int Chapter4LevelCount = 19;
+        public const int Chapter5LevelCount = 18;
         public const int Chapter6LevelCount = 20;
         public const int ChapterCount = 6;
         public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
@@ -30,7 +30,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter6StartLevel = Chapter5StartLevel + Chapter5LevelCount;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-ch6-100-v2";
+        public const string CurriculumVersion = "2026-07-l63-images-l81-x";
 
         /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
         public const int OppositeExtraTileStartLevel = 40;
@@ -55,8 +55,8 @@ namespace DragonBoxAlgebra.Gameplay
             "Opposite Cards",
             "Balance Sides",
             "Move Cards",
-            "Letter Variables",
-            "Multi Variables"
+            "Variable Images",
+            "x and Variables"
         };
 
         public static IReadOnlyList<LevelDefinition> GenerateAll()
@@ -122,120 +122,149 @@ namespace DragonBoxAlgebra.Gameplay
             return 0;
         }
 
+        private static readonly char[] VariablePairLetters = { 'a', 'b', 'c', 'r' };
+
         private static IEnumerable<LevelDefinition> GenerateChapter5()
         {
             for (int i = 0; i < Chapter5LevelCount; i++)
             {
                 int displayNumber = i + 1;
+                int globalLevel = Chapter5StartLevel + displayNumber - 1;
                 int theme = (5 * 3 + i) % 10;
-                yield return BuildChapter5Level(i, theme, displayNumber);
+                yield return BuildChapter5Level(globalLevel, theme, displayNumber);
             }
         }
 
         /// <summary>
-        /// Ch5 (levels 64–80): x replaces the red box; a/b/c/r are +/- pairs that merge into swirls.
+        /// Ch5 (63–80): red box goal + variable image sprites (a/b/c/r); two negatives in hand.
         /// </summary>
-        private static LevelDefinition BuildChapter5Level(int index, int theme, int displayNumber)
+        private static LevelDefinition BuildChapter5Level(int globalLevel, int theme, int displayNumber)
         {
-            char pairLetter = Chapter5PairLetterForDisplay(displayNumber);
-            string title = $"Ch5 • {ChapterNames[4]} {displayNumber} (x + {pairLetter})";
+            (char first, char second) = RandomDistinctPairLetters(globalLevel * 7919 + 31);
+            (int firstCount, int secondCount) = RandomPositiveCounts(globalLevel * 7919 + 47);
+            string title =
+                $"Ch5 • {ChapterNames[4]} {displayNumber} ({first}" +
+                (first == second ? "×2" : $", {second}") + " images)";
 
             if (displayNumber is 7 or 8)
             {
-                return MakeCh5MergedWinLevel(title, theme, pairLetter, xOnLeft: displayNumber == 7);
+                return MakeCh5MergedBoxLevel(title, theme, first, second, boxOnLeft: displayNumber == 7);
             }
 
-            bool xOnLeft = displayNumber <= 6
+            bool boxOnLeft = displayNumber <= 6
                 ? displayNumber % 2 == 1
                 : displayNumber % 2 == 0;
-            return MakeCh5BalanceLevel(title, theme, pairLetter, xOnLeft);
+            return MakeCh5ImageVariableLevel(title, theme, first, second, firstCount, secondCount, boxOnLeft);
         }
 
-        /// <summary>Pair letter introduced gradually; x is always the isolation goal.</summary>
-        private static char Chapter5PairLetterForDisplay(int displayNumber) => displayNumber switch
-        {
-            <= 10 => 'a',
-            11 or 12 => 'b',
-            13 or 14 => 'c',
-            15 or 16 => 'r',
-            17 => 'a',
-            _ => 'a'
-        };
-
-        private static LevelDefinition MakeCh5BalanceLevel(string title, int theme, char pairLetter,
-            bool xOnLeft)
+        private static LevelDefinition MakeCh5ImageVariableLevel(string title, int theme, char firstLetter,
+            char secondLetter, int firstCount, int secondCount, bool boxOnLeft)
         {
             var level = new LevelDefinition
             {
                 Title = title,
                 Chapter = 5,
                 CreatureTheme = theme,
-                ParMoves = 3,
-                ParCards = 1
+                ParMoves = 6,
+                ParCards = 2
             };
 
-            if (xOnLeft)
+            if (boxOnLeft)
             {
-                level.LeftCards.AddRange(new[] { CardKind.DayCreature, CardKind.DayCreature });
-                level.LeftVariableLetters.AddRange(new[] { VariableGoalRules.GoalLetter, pairLetter });
-                level.RightCards.Add(CardKind.DayCreature);
-                level.RightVariableLetters.Add(pairLetter);
+                AddBoxTile(level.LeftCards, level.LeftVariableLetters);
+                AddPositiveVariables(level.LeftCards, level.LeftVariableLetters, firstLetter, firstCount);
+                AddPositiveVariables(level.LeftCards, level.LeftVariableLetters, secondLetter, secondCount);
+                AddPositiveVariables(level.RightCards, level.RightVariableLetters, firstLetter, firstCount);
+                AddPositiveVariables(level.RightCards, level.RightVariableLetters, secondLetter, secondCount);
             }
             else
             {
-                level.LeftCards.Add(CardKind.DayCreature);
-                level.LeftVariableLetters.Add(pairLetter);
-                level.RightCards.AddRange(new[] { CardKind.DayCreature, CardKind.DayCreature });
-                level.RightVariableLetters.AddRange(new[] { pairLetter, VariableGoalRules.GoalLetter });
+                AddPositiveVariables(level.LeftCards, level.LeftVariableLetters, firstLetter, firstCount);
+                AddPositiveVariables(level.LeftCards, level.LeftVariableLetters, secondLetter, secondCount);
+                AddBoxTile(level.RightCards, level.RightVariableLetters);
+                AddPositiveVariables(level.RightCards, level.RightVariableLetters, firstLetter, firstCount);
+                AddPositiveVariables(level.RightCards, level.RightVariableLetters, secondLetter, secondCount);
             }
 
-            level.HandCards.Add(CardKind.NightCreature);
-            level.HandVariableLetters.Add(pairLetter);
+            level.HandCards.AddRange(new[] { CardKind.NightCreature, CardKind.NightCreature });
+            level.HandVariableLetters.AddRange(new[] { firstLetter, secondLetter });
             level.LeftValues = ValuesFor(level.LeftCards);
             level.RightValues = ValuesFor(level.RightCards);
             level.HandValues = ValuesFor(level.HandCards);
             return level;
         }
 
-        private static LevelDefinition MakeCh5MergedWinLevel(string title, int theme, char pairLetter,
-            bool xOnLeft)
+        private static LevelDefinition MakeCh5MergedBoxLevel(string title, int theme, char firstLetter,
+            char secondLetter, bool boxOnLeft)
         {
             var level = new LevelDefinition
             {
                 Title = title,
                 Chapter = 5,
                 CreatureTheme = theme,
-                ParMoves = 1,
+                ParMoves = firstLetter == secondLetter ? 1 : 2,
                 ParCards = 0
             };
 
-            if (xOnLeft)
+            var boxSideCards = new List<CardKind>();
+            var boxSideLetters = new List<char>();
+            AddBoxTile(boxSideCards, boxSideLetters);
+            AddPairOnSide(boxSideCards, boxSideLetters, firstLetter);
+            if (secondLetter != firstLetter)
             {
-                level.LeftCards.AddRange(new[]
-                {
-                    CardKind.DayCreature, CardKind.DayCreature, CardKind.NightCreature
-                });
-                level.LeftVariableLetters.AddRange(new[]
-                {
-                    VariableGoalRules.GoalLetter, pairLetter, pairLetter
-                });
+                AddPairOnSide(boxSideCards, boxSideLetters, secondLetter);
+            }
+
+            if (boxOnLeft)
+            {
+                level.LeftCards.AddRange(boxSideCards);
+                level.LeftVariableLetters.AddRange(boxSideLetters);
             }
             else
             {
-                level.RightCards.AddRange(new[]
-                {
-                    CardKind.DayCreature, CardKind.DayCreature, CardKind.NightCreature
-                });
-                level.RightVariableLetters.AddRange(new[]
-                {
-                    VariableGoalRules.GoalLetter, pairLetter, pairLetter
-                });
+                level.RightCards.AddRange(boxSideCards);
+                level.RightVariableLetters.AddRange(boxSideLetters);
             }
 
             level.LeftValues = ValuesFor(level.LeftCards);
             level.RightValues = ValuesFor(level.RightCards);
             level.HandValues = ValuesFor(level.HandCards);
             return level;
+        }
+
+        private static (char first, char second) RandomDistinctPairLetters(int seed)
+        {
+            var rng = new System.Random(seed);
+            int firstIndex = rng.Next(VariablePairLetters.Length);
+            int secondIndex = rng.Next(VariablePairLetters.Length - 1);
+            if (secondIndex >= firstIndex)
+            {
+                secondIndex++;
+            }
+
+            return (VariablePairLetters[firstIndex], VariablePairLetters[secondIndex]);
+        }
+
+        private static (int firstCount, int secondCount) RandomPositiveCounts(int seed)
+        {
+            var rng = new System.Random(seed);
+            return (rng.Next(1, 3), rng.Next(1, 3));
+        }
+
+        private static void AddBoxTile(List<CardKind> cards, List<char> letters)
+        {
+            cards.Add(CardKind.Box);
+            letters.Add('\0');
+        }
+
+        private static void AddPositiveVariables(List<CardKind> cards, List<char> letters, char pairLetter,
+            int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                cards.Add(CardKind.DayCreature);
+                letters.Add(pairLetter);
+            }
         }
 
         private static IEnumerable<LevelDefinition> GenerateChapter6()
@@ -249,11 +278,13 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Ch6 (81–100): x goal, 2+ variables per side, 2 variables in hand (played in order).
+        /// Ch6 (81–100): x goal + variable images; two negatives in hand; x alone wins.
         /// </summary>
         private static LevelDefinition BuildChapter6Level(int index, int theme, int displayNumber)
         {
-            (char first, char second) = Chapter6PairLettersForDisplay(displayNumber);
+            int globalLevel = Chapter6StartLevel + displayNumber - 1;
+            (char first, char second) = RandomDistinctPairLetters(globalLevel * 7919 + 31);
+            (int firstCount, int secondCount) = RandomPositiveCounts(globalLevel * 7919 + 47);
             string title =
                 $"Ch6 • {ChapterNames[5]} {displayNumber} (x + {first}" +
                 (first == second ? "×2" : $", {second}") + ")";
@@ -266,27 +297,14 @@ namespace DragonBoxAlgebra.Gameplay
             bool xOnLeft = displayNumber <= 6
                 ? displayNumber % 2 == 1
                 : displayNumber % 2 == 0;
-            return MakeCh6MultiHandBalanceLevel(title, theme, first, second, xOnLeft);
+            return MakeCh6MultiHandBalanceLevel(title, theme, first, second, firstCount, secondCount, xOnLeft);
         }
 
-        private static (char first, char second) Chapter6PairLettersForDisplay(int displayNumber) =>
-            displayNumber switch
-            {
-                <= 6 => ('a', 'a'),
-                <= 10 => ('a', 'b'),
-                <= 14 => ('b', 'c'),
-                <= 18 => ('c', 'r'),
-                _ => ('a', 'r')
-            };
-
         /// <summary>
-        /// Ch6 puzzle (levels 81–100): x side has x + two positive variables (image sprites);
-        /// other side has the same two positives; hand holds both negatives.
-        /// Play each negative → ? on other side → fill hole → positive + negative cancel to *.
-        /// Repeat until x is alone on one side.
+        /// x side: x + positive variable images; other side: matching positives; hand: both negatives.
         /// </summary>
         private static LevelDefinition MakeCh6MultiHandBalanceLevel(string title, int theme, char firstLetter,
-            char secondLetter, bool xOnLeft)
+            char secondLetter, int firstCount, int secondCount, bool xOnLeft)
         {
             var level = new LevelDefinition
             {
@@ -299,29 +317,21 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (xOnLeft)
             {
-                level.LeftCards.AddRange(new[]
-                {
-                    CardKind.DayCreature, CardKind.DayCreature, CardKind.DayCreature
-                });
-                level.LeftVariableLetters.AddRange(new[]
-                {
-                    VariableGoalRules.GoalLetter, firstLetter, secondLetter
-                });
-                level.RightCards.AddRange(new[] { CardKind.DayCreature, CardKind.DayCreature });
-                level.RightVariableLetters.AddRange(new[] { firstLetter, secondLetter });
+                level.LeftCards.Add(CardKind.DayCreature);
+                level.LeftVariableLetters.Add(VariableGoalRules.GoalLetter);
+                AddPositiveVariables(level.LeftCards, level.LeftVariableLetters, firstLetter, firstCount);
+                AddPositiveVariables(level.LeftCards, level.LeftVariableLetters, secondLetter, secondCount);
+                AddPositiveVariables(level.RightCards, level.RightVariableLetters, firstLetter, firstCount);
+                AddPositiveVariables(level.RightCards, level.RightVariableLetters, secondLetter, secondCount);
             }
             else
             {
-                level.LeftCards.AddRange(new[] { CardKind.DayCreature, CardKind.DayCreature });
-                level.LeftVariableLetters.AddRange(new[] { firstLetter, secondLetter });
-                level.RightCards.AddRange(new[]
-                {
-                    CardKind.DayCreature, CardKind.DayCreature, CardKind.DayCreature
-                });
-                level.RightVariableLetters.AddRange(new[]
-                {
-                    firstLetter, secondLetter, VariableGoalRules.GoalLetter
-                });
+                AddPositiveVariables(level.LeftCards, level.LeftVariableLetters, firstLetter, firstCount);
+                AddPositiveVariables(level.LeftCards, level.LeftVariableLetters, secondLetter, secondCount);
+                level.RightCards.Add(CardKind.DayCreature);
+                level.RightVariableLetters.Add(VariableGoalRules.GoalLetter);
+                AddPositiveVariables(level.RightCards, level.RightVariableLetters, firstLetter, firstCount);
+                AddPositiveVariables(level.RightCards, level.RightVariableLetters, secondLetter, secondCount);
             }
 
             level.HandCards.AddRange(new[] { CardKind.NightCreature, CardKind.NightCreature });
@@ -405,6 +415,11 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
+                if (chapter == 4 && ShouldSkipChapter4Slot(i))
+                {
+                    continue;
+                }
+
                 displayNumber++;
                 int theme = (chapter * 3 + i) % 10;
                 yield return chapter switch
@@ -440,6 +455,8 @@ namespace DragonBoxAlgebra.Gameplay
 
         private static bool ShouldSkipChapter3Slot(int index) =>
             index is 0 or 8 or 9 or 10 or 11;
+
+        private static bool ShouldSkipChapter4Slot(int index) => index == 19;
 
         /// <summary>Ch1: drag day/night together on one side → *; box alone on the other.</summary>
         private static LevelDefinition BuildChapter1Level(int index, int theme, int displayNumber)

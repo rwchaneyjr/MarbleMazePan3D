@@ -71,8 +71,25 @@ namespace DragonBoxAlgebra.Gameplay
         public bool UsesPlayableHandDisplay =>
             LevelIndex + 1 >= ChapterLevelGenerator.Chapter4StartLevel;
 
-        public bool ShouldKeepHandCardInPanel(int handIndex) =>
-            UsesPlayableHandDisplay && IsHandSlotPlayable(handIndex);
+        public bool UsesDualHandPanelDisplay =>
+            CurrentLevel.Chapter >= 5 && CurrentLevel.HandCards.Count >= 2;
+
+        public bool ShouldKeepHandCardInPanel(int handIndex)
+        {
+            if (!UsesPlayableHandDisplay)
+            {
+                return false;
+            }
+
+            if (UsesDualHandPanelDisplay)
+            {
+                return handIndex >= 0
+                    && handIndex < _hand.Count
+                    && !_spentHandIndices.Contains(handIndex);
+            }
+
+            return IsHandSlotPlayable(handIndex);
+        }
 
         public bool KeepHandSlotVisibleDuringDrag() =>
             UsesPlayableHandDisplay && HasPendingBalance;
@@ -147,6 +164,11 @@ namespace DragonBoxAlgebra.Gameplay
             if (!UsesPlayableHandDisplay)
             {
                 return true;
+            }
+
+            if (UsesDualHandPanelDisplay)
+            {
+                return !_spentHandIndices.Contains(handIndex);
             }
 
             return IsHandSlotPlayable(handIndex);
@@ -300,6 +322,13 @@ namespace DragonBoxAlgebra.Gameplay
                     return "Two variables in hand — play each negative one at a time: drag to a side, " +
                            "fill the ? with the same variable, then positive + negative cancel into *. " +
                            "Clear every * until x stands alone.";
+                }
+
+                if (level.Chapter >= 5)
+                {
+                    return "Two variable images in hand — play each negative one at a time: drag to a side, " +
+                           "fill the ?, then positive + negative cancel into *. " +
+                           "Clear every * until the red box stands alone.";
                 }
 
                 return "Two tiles in hand — play each one: drag to a side, then drag the same tile to the ?. " +
@@ -902,7 +931,7 @@ namespace DragonBoxAlgebra.Gameplay
             opposite.Cards.Clear();
         }
 
-        public bool UsesVariableXGoalWin => CurrentLevel.Chapter >= 5;
+        public bool UsesVariableXGoalWin => CurrentLevel.Chapter >= 6;
 
         public bool UsesExtraOppositeTileLevel =>
             _levelIndex + 1 >= ChapterLevelGenerator.OppositeExtraTileStartLevel
