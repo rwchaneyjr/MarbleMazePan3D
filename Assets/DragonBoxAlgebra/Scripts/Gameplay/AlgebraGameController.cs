@@ -46,6 +46,10 @@ namespace DragonBoxAlgebra.Gameplay
         private bool UsesManualPairMerge =>
             CurrentLevel.Chapter >= 3
             || (CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16);
+
+        /// <summary>Hand/balance chapters: win only when the opposite side is empty (not box-alone-with-cards-left).</summary>
+        private bool RequiresEmptyOppositeSideForWin =>
+            CurrentLevel.Chapter >= 3 || CurrentLevel.HandCards.Count > 0;
         private static readonly Random Rng = new();
 
         public int LevelIndex => _levelIndex;
@@ -753,10 +757,19 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            bool puzzleComplete = WinChecker.IsReadyForSidesTogether(Board)
-                || (UsesManualPairMerge
+            if (Moves.Moves <= 0)
+            {
+                return;
+            }
+
+            bool puzzleComplete = WinChecker.IsReadyForSidesTogether(Board);
+            if (!puzzleComplete && !RequiresEmptyOppositeSideForWin)
+            {
+                puzzleComplete = UsesManualPairMerge
                     ? WinChecker.IsBoxAloneOnItsSide(Board)
-                    : WinChecker.IsBoxAlone(Board));
+                    : WinChecker.IsBoxAlone(Board);
+            }
+
             if (!puzzleComplete)
             {
                 return;

@@ -20,17 +20,7 @@ namespace DragonBoxAlgebra.Gameplay
         private static bool ShouldKeepFolding(AlgebraBoard board)
         {
             int rightCreatures = CountCreatures(board.Right);
-            if (rightCreatures > MaxRightCreatures)
-            {
-                return HasFoldablePair(board);
-            }
-
-            if (rightCreatures == 2)
-            {
-                return HasFoldablePair(board);
-            }
-
-            return false;
+            return rightCreatures > MaxRightCreatures && HasFoldablePair(board);
         }
 
         private static bool HasFoldablePair(AlgebraBoard board) =>
