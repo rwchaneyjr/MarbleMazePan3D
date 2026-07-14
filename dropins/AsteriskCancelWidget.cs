@@ -253,7 +253,12 @@ namespace DragonBoxAlgebra.UI
 
                 if (_symbolGroup != null)
                 {
-                    _symbolGroup.alpha = Mathf.Lerp(0f, 1f, t);
+                    float symbolAlpha = Mathf.Lerp(0f, 1f, t);
+                    _symbolGroup.alpha = symbolAlpha;
+                    if (!_readyToClick && symbolAlpha >= SwirlClickableAlpha)
+                    {
+                        _readyToClick = true;
+                    }
                 }
 
                 if (_symbolRect != null)

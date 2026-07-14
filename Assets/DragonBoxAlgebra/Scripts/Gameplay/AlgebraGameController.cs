@@ -48,6 +48,15 @@ namespace DragonBoxAlgebra.Gameplay
             CurrentLevel.Chapter >= 3
             || (CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16);
 
+        private bool UsesVariablePositiveNegative => CurrentLevel.Chapter >= 5;
+
+        private string LightTerm => UsesVariablePositiveNegative ? "positive" : "light";
+        private string DarkTerm => UsesVariablePositiveNegative ? "negative" : "dark";
+        private string OppositePairTerm => UsesVariablePositiveNegative ? "positive and negative" : "light and dark";
+
+        private static string Capitalize(string value) =>
+            string.IsNullOrEmpty(value) ? value : char.ToUpper(value[0]) + value.Substring(1);
+
         /// <summary>Ch2 levels 17+: drag hand tile onto opposite creature (not balance).</summary>
         public bool UsesOppositeHandPlay =>
             CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16;
@@ -257,30 +266,31 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
                 ? level.Chapter == 1
-                    ? "Watch light and dark merge into *. Tap the spinning * to dismiss. Leave the red box alone!"
+                    ? $"Watch {LightTerm} and {DarkTerm} merge into *. Tap the spinning * to dismiss. Leave the red box alone!"
                     : "Click the spinning * to dismiss the creatures. Leave the red box alone!"
                 : UsesOppositeHandPlay
-                    ? "Drag the hand tile onto the opposite creature on the board. Tap * to dismiss. Leave the red box alone!"
+                    ? $"Drag the hand tile onto the opposite creature on the board. Tap * to dismiss. Leave the red box alone!"
                     : level.DragToMergePairs
                         ? level.LeftCards.Count >= 2 && level.RightCards.Count >= 2
-                            ? "Drag light onto dark on each side to make *. Tap every * before the puzzle finishes!"
-                            : "Drag light onto dark on the same side. They snap together into *. Tap * to dismiss. Leave the red box alone!"
+                            ? $"Drag {LightTerm} onto {DarkTerm} on each side to make *. Tap every * before the puzzle finishes!"
+                            : $"Drag {LightTerm} onto {DarkTerm} on the same side. They snap together into *. Tap * to dismiss. Leave the red box alone!"
                         : HandMessage(level));
             CreatureSpriteDebug.LogLevel(Board, _hand, level);
         }
 
-        private static string HandMessage(LevelDefinition level)
+        private string HandMessage(LevelDefinition level)
         {
             int count = level.HandCards.Count;
+            string pairPhrase = level.Chapter >= 5 ? "Positive + negative" : "Light + dark";
             if (count == 0)
             {
-                return "Drag light onto dark on the same side. Tap * to dismiss. Leave the red box alone!";
+                return $"Drag {LightTerm} onto {DarkTerm} on the same side. Tap * to dismiss. Leave the red box alone!";
             }
 
             if (count <= 1)
             {
                 return "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                       "Light + dark on the same side become one *. Pairs never cross the middle.";
+                       $"{pairPhrase} on the same side become one *. Pairs never cross the middle.";
             }
 
             if (count == 2)
@@ -290,7 +300,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return "Three tiles in hand — play each one: drag to a side, then drag the same tile to the ?. " +
-                   "Light + dark on the same side become one *.";
+                   $"{pairPhrase} on the same side become one *.";
         }
 
         public void LoadNextLevel()
@@ -379,8 +389,12 @@ namespace DragonBoxAlgebra.Gameplay
 
             HandChanged?.Invoke();
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
-                ? "Flipped to yellow (light). Click again for dark."
-                : "Flipped to dark. Click again for yellow (light).");
+                ? UsesVariablePositiveNegative
+                    ? "Flipped to positive. Click again for negative."
+                    : "Flipped to yellow (light). Click again for dark."
+                : UsesVariablePositiveNegative
+                    ? "Flipped to negative. Click again for positive."
+                    : "Flipped to dark. Click again for yellow (light).");
             return true;
         }
 
@@ -413,8 +427,8 @@ namespace DragonBoxAlgebra.Gameplay
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
                     MessageChanged?.Invoke(_pendingBalance != null
-                        ? "Light met dark — click *. The ? hole stays until you fill it."
-                        : "Light met dark — click the spinning * to dismiss.");
+                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — click *. The ? hole stays until you fill it."
+                        : $"{Capitalize(LightTerm)} met {DarkTerm} — click the spinning * to dismiss.");
                 }
                 else
                 {
@@ -798,7 +812,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke(UsesManualPairMerge
-                ? "Balanced! Drag light onto dark on the same side to make *."
+                ? $"Balanced! Drag {LightTerm} onto {DarkTerm} on the same side to make *."
                 : "Balanced!");
             PruneInvalidCancelMarkers();
             ResolveCombines();

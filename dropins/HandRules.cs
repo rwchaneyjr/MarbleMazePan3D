@@ -34,12 +34,16 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        private static int FlipFamilyKey(BoardCard card) => card.Kind switch
+        private static int FlipFamilyKey(BoardCard card)
         {
-            CardKind.DayCreature => 100 + card.Value,
-            CardKind.NightCreature => 200 + card.Value,
-            CardKind.PositiveConstant or CardKind.NegativeConstant => 300 + card.Value,
-            _ => 1000 + (int)card.Kind
-        };
+            int letterOffset = (char.ToLowerInvariant(card.ResolvedVariableLetter) - 'a') * 10;
+            return card.Kind switch
+            {
+                CardKind.DayCreature => 100 + letterOffset + card.Value,
+                CardKind.NightCreature => 200 + letterOffset + card.Value,
+                CardKind.PositiveConstant or CardKind.NegativeConstant => 300 + card.Value,
+                _ => 1000 + (int)card.Kind
+            };
+        }
     }
 }
