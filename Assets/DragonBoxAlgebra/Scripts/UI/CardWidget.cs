@@ -116,10 +116,11 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            bool completed = _controller.IsHandBalanceComplete(Index);
             bool waitingTurn = _controller.UsesDualHandPanelDisplay
-                && _controller.ShouldDisplayHandCard(Index)
+                && !completed
                 && !_controller.IsHandSlotPlayable(Index);
-            _canvasGroup.alpha = waitingTurn ? 0.55f : 1f;
+            _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
         }
 
         private void ApplyCreatureVisual()
@@ -321,7 +322,10 @@ namespace DragonBoxAlgebra.UI
                 eventData.pressEventCamera, out Vector2 localPoint);
             _dragOffset = (Vector2)_dragGhost._rect.localPosition - localPoint;
 
-            ApplyHandSlotDimming();
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 0.55f;
+            }
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -432,8 +436,6 @@ namespace DragonBoxAlgebra.UI
 
         private void EndDualHandGhostDrag(PointerEventData eventData)
         {
-            _controller.SetDualHandDragActive(false);
-
             if (!_handPlayHandled)
             {
                 if (ExceededFlipDragThreshold(eventData))
@@ -454,6 +456,7 @@ namespace DragonBoxAlgebra.UI
 
             Card = _controller.GetHandDisplayCard(Index);
             RefreshVisual();
+            _controller.SetDualHandDragActive(false);
             _controller.RefreshHandPresentation();
         }
 

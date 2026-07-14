@@ -135,7 +135,8 @@ namespace DragonBoxAlgebra.UI
                 }
 
                 BoardCard card = _controller.GetHandDisplayCard(i);
-                CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
+                CardWidget widget = CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
+                widget.RefreshVisual();
             }
         }
 

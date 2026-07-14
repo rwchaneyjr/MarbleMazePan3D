@@ -83,13 +83,14 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (UsesDualHandPanelDisplay)
             {
-                return handIndex >= 0
-                    && handIndex < _hand.Count
-                    && !_spentHandIndices.Contains(handIndex);
+                return handIndex >= 0 && handIndex < _hand.Count;
             }
 
             return IsHandSlotPlayable(handIndex);
         }
+
+        public bool IsHandBalanceComplete(int handIndex) =>
+            handIndex >= 0 && _spentHandIndices.Contains(handIndex);
 
         public bool KeepHandSlotVisibleDuringDrag() =>
             UsesDualHandPanelDisplay || (UsesPlayableHandDisplay && HasPendingBalance);
@@ -160,6 +161,11 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            if (UsesDualHandPanelDisplay)
+            {
+                return true;
+            }
+
             if (_spentHandIndices.Contains(handIndex))
             {
                 return false;
@@ -168,11 +174,6 @@ namespace DragonBoxAlgebra.Gameplay
             if (!UsesPlayableHandDisplay)
             {
                 return true;
-            }
-
-            if (UsesDualHandPanelDisplay)
-            {
-                return !_spentHandIndices.Contains(handIndex);
             }
 
             return IsHandSlotPlayable(handIndex);
