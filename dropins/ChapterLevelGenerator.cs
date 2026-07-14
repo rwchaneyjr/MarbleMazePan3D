@@ -136,7 +136,7 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Ch5 (63–80): red box goal + variable image sprites (a/b/c/r); one negative in hand per board tile.
+        /// Ch5 (63–80): red box goal + variable image sprites (a/b/c/r); one of each variable per side, two negatives in hand.
         /// </summary>
         private static LevelDefinition BuildChapter5Level(int globalLevel, int theme, int displayNumber)
         {
@@ -160,14 +160,13 @@ namespace DragonBoxAlgebra.Gameplay
         private static LevelDefinition MakeCh5ImageVariableLevel(string title, int theme, char firstLetter,
             char secondLetter, int firstCount, int secondCount, bool boxOnLeft)
         {
-            int handCount = firstCount + secondCount;
             var level = new LevelDefinition
             {
                 Title = title,
                 Chapter = 5,
                 CreatureTheme = theme,
-                ParMoves = ParMovesForHandCount(handCount),
-                ParCards = handCount
+                ParMoves = 6,
+                ParCards = 2
             };
 
             if (boxOnLeft)
@@ -187,8 +186,8 @@ namespace DragonBoxAlgebra.Gameplay
                 AddPositiveVariables(level.RightCards, level.RightVariableLetters, secondLetter, secondCount);
             }
 
-            AddNegativeHandCards(level, firstLetter, firstCount);
-            AddNegativeHandCards(level, secondLetter, secondCount);
+            level.HandCards.AddRange(new[] { CardKind.NightCreature, CardKind.NightCreature });
+            level.HandVariableLetters.AddRange(new[] { firstLetter, secondLetter });
             level.LeftValues = ValuesFor(level.LeftCards);
             level.RightValues = ValuesFor(level.RightCards);
             level.HandValues = ValuesFor(level.HandCards);
@@ -246,11 +245,7 @@ namespace DragonBoxAlgebra.Gameplay
             return (VariablePairLetters[firstIndex], VariablePairLetters[secondIndex]);
         }
 
-        private static (int firstCount, int secondCount) RandomPositiveCounts(int seed)
-        {
-            var rng = new System.Random(seed);
-            return (rng.Next(1, 3), rng.Next(1, 3));
-        }
+        private static (int firstCount, int secondCount) RandomPositiveCounts(int seed) => (1, 1);
 
         private static void AddBoxTile(List<CardKind> cards, List<char> letters)
         {
@@ -267,17 +262,6 @@ namespace DragonBoxAlgebra.Gameplay
                 letters.Add(pairLetter);
             }
         }
-
-        private static void AddNegativeHandCards(LevelDefinition level, char letter, int count)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                level.HandCards.Add(CardKind.NightCreature);
-                level.HandVariableLetters.Add(letter);
-            }
-        }
-
-        private static int ParMovesForHandCount(int handCount) => 2 + handCount * 2;
 
         private static IEnumerable<LevelDefinition> GenerateChapter6()
         {
@@ -313,19 +297,18 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// x side: x + positive variable images; other side: matching positives; hand: one negative per board tile.
+        /// x side: x + positive variable images; other side: matching positives; hand: one negative per variable.
         /// </summary>
         private static LevelDefinition MakeCh6MultiHandBalanceLevel(string title, int theme, char firstLetter,
             char secondLetter, int firstCount, int secondCount, bool xOnLeft)
         {
-            int handCount = firstCount + secondCount;
             var level = new LevelDefinition
             {
                 Title = title,
                 Chapter = 6,
                 CreatureTheme = theme,
-                ParMoves = ParMovesForHandCount(handCount),
-                ParCards = handCount
+                ParMoves = 6,
+                ParCards = 2
             };
 
             if (xOnLeft)
@@ -347,8 +330,8 @@ namespace DragonBoxAlgebra.Gameplay
                 AddPositiveVariables(level.RightCards, level.RightVariableLetters, secondLetter, secondCount);
             }
 
-            AddNegativeHandCards(level, firstLetter, firstCount);
-            AddNegativeHandCards(level, secondLetter, secondCount);
+            level.HandCards.AddRange(new[] { CardKind.NightCreature, CardKind.NightCreature });
+            level.HandVariableLetters.AddRange(new[] { firstLetter, secondLetter });
             level.LeftValues = ValuesFor(level.LeftCards);
             level.RightValues = ValuesFor(level.RightCards);
             level.HandValues = ValuesFor(level.HandCards);
