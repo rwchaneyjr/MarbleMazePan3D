@@ -44,7 +44,10 @@ namespace DragonBoxAlgebra.Gameplay
             for (int i = 0; i < HandCards.Count; i++)
             {
                 int value = HandValues != null && i < HandValues.Count ? HandValues[i] : 1;
-                hand.Add(new BoardCard(HandCards[i], value));
+                int visualTheme = HandCards[i] is CardKind.DayCreature or CardKind.NightCreature
+                    ? CreatureTheme
+                    : -1;
+                hand.Add(new BoardCard(HandCards[i], value, 1, visualTheme));
             }
 
             return hand;

@@ -211,9 +211,9 @@ namespace DragonBoxAlgebra.Gameplay
                 HandRules.DedupeFlipFamilies(_hand);
             }
 
-            if (_hand.Count > 1)
+            if (_hand.Count > 0)
             {
-                HandVisualRules.EnsureDistinctHandVisuals(_hand, level.CreatureTheme);
+                HandVisualRules.ApplyLevelThemeToHand(_hand, level.CreatureTheme);
             }
 
             CaptureHandTemplates();
