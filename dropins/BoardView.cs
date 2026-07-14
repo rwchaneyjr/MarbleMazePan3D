@@ -93,6 +93,24 @@ namespace DragonBoxAlgebra.UI
             _rightPanel.anchorMax = _rightAnchorMaxDefault;
         }
 
+        public string SideAtScreenPosition(Vector2 screenPosition)
+        {
+            Camera cam = _canvas != null ? _canvas.worldCamera : null;
+            if (_rightPanel != null
+                && RectTransformUtility.RectangleContainsScreenPoint(_rightPanel, screenPosition, cam))
+            {
+                return "Right";
+            }
+
+            if (_leftPanel != null
+                && RectTransformUtility.RectangleContainsScreenPoint(_leftPanel, screenPosition, cam))
+            {
+                return "Left";
+            }
+
+            return screenPosition.x >= Screen.width * 0.5f ? "Right" : "Left";
+        }
+
         private void OnWinSequenceStarted(int stars, int moves)
         {
             if (_winSequenceCoroutine != null)

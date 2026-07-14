@@ -33,6 +33,7 @@ namespace DragonBoxAlgebra.UI
         private bool _dropHandled;
         private bool _handPlayHandled;
         private Vector2 _dragPressScreenPosition;
+        private CanvasGroup _canvasGroup;
 
         private const float FlipDragThresholdPixels = 12f;
 
@@ -311,6 +312,11 @@ namespace DragonBoxAlgebra.UI
             {
                 if (!_handPlayHandled)
                 {
+                    if (_canvasGroup != null)
+                    {
+                        _canvasGroup.blocksRaycasts = false;
+                    }
+
                     if (ExceededFlipDragThreshold(eventData))
                     {
                         TryPlayHandDrop(eventData);
@@ -433,8 +439,21 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private static string SideUnderPointer(PointerEventData eventData) =>
-            eventData != null && eventData.position.x >= Screen.width * 0.5f ? "Right" : "Left";
+        private string SideUnderPointer(PointerEventData eventData)
+        {
+            if (eventData == null)
+            {
+                return null;
+            }
+
+            var boardView = FindObjectOfType<BoardView>();
+            if (boardView != null)
+            {
+                return boardView.SideAtScreenPosition(eventData.position);
+            }
+
+            return eventData.position.x >= Screen.width * 0.5f ? "Right" : "Left";
+        }
 
         public void OnDrop(PointerEventData eventData)
         {
@@ -770,8 +789,8 @@ namespace DragonBoxAlgebra.UI
             layoutElement.preferredHeight = tileHeight;
 
             widget.Bind(card, index, sideName, controller, canvas, dragRoot);
-
-            root.GetComponent<CanvasGroup>().blocksRaycasts = true;
+            widget._canvasGroup = root.GetComponent<CanvasGroup>();
+            widget._canvasGroup.blocksRaycasts = true;
             return widget;
         }
 
