@@ -35,7 +35,7 @@ namespace DragonBoxAlgebra.UI
                 return $"SPRITE DEBUG {loaded}/16 | Missing PNGs — Console filter: DragonBox";
             }
 
-            return $"SPRITE DEBUG {loaded}/16 OK | Ch1 saved copy | {levelTitle}";
+            return $"SPRITE DEBUG {loaded}/16 OK | {LevelLibrary.Levels.Count} levels | {levelTitle}";
         }
 
         public static void LogFallback(BoardCard card, string source)

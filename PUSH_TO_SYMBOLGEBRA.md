@@ -37,17 +37,26 @@ git commit -m "Update SymbolAlgebra"
 git push origin main
 ```
 
-**Pull latest game code from MarbleMazePan3D, then push to SymbolAlgebra:**
+**Pull latest game code (100 levels, Ch6) from MarbleMazePan3D:**
+
+```bash
+cd /c/Users/rober/Desktop/SymbolAlgebra
+bash scripts/pull-100-levels.sh symbolalgebra
+```
+
+Or manually:
 
 ```bash
 cd /c/Users/rober/Desktop/SymbolAlgebra
 git remote add source https://github.com/rwchaneyjr/MarbleMazePan3D.git
-git fetch source cursor/algebra-dragon-setup-1ad2
-git merge source/cursor/algebra-dragon-setup-1ad2 -m "Sync latest from MarbleMazePan3D"
-git push origin main
+git fetch source cursor/ch5-gradual-from-save-3fe3
+git merge source/cursor/ch5-gradual-from-save-3fe3 -m "Sync 100 levels from MarbleMazePan3D"
+bash scripts/sync-dropins.sh import --here
 ```
 
-(`git remote add source ...` only needed once; skip if `source` already exists.)
+(`git remote add source ...` only needed once.)
+
+**Verify in Unity Console on Play:** `100/100 levels (2026-07-ch6-100)` — if you see `80/80`, the old `ChapterLevelGenerator.cs` is still in use. Delete `Assets/DragonBoxAlgebra/Scripts/UI/ChapterLevelGenerator.cs` if it exists (stale copy).
 
 ---
 

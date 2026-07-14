@@ -9,7 +9,10 @@ namespace DragonBoxAlgebra
     {
         private void Awake()
         {
-            Debug.LogWarning("[DragonBox] === AlgebraBootstrap START (Ch1 saved copy + PNG sprites) ===");
+            Debug.LogWarning("[DragonBox] === AlgebraBootstrap START ===");
+            Debug.LogWarning(
+                $"[DragonBox] Curriculum {ChapterLevelGenerator.CurriculumVersion} — " +
+                $"{LevelLibrary.Levels.Count}/{ChapterLevelGenerator.TotalLevels} levels");
 
             if (Camera.main == null)
             {

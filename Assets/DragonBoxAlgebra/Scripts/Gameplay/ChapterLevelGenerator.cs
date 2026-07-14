@@ -29,6 +29,9 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>First global level number (1-based) for Chapter 6 / Multi Variables.</summary>
         public const int Chapter6StartLevel = Chapter5StartLevel + Chapter5LevelCount;
 
+        /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
+        public const string CurriculumVersion = "2026-07-ch6-100";
+
         /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
         public const int OppositeExtraTileStartLevel = 40;
         public const int OppositeExtraTileEndLevel = Chapter4StartLevel + Chapter4LevelCount - 1;
