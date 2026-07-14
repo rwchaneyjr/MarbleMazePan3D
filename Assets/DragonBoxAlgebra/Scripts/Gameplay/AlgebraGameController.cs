@@ -748,6 +748,36 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool HasRemainingSwirls => _pendingCancels.Count > 0;
 
+        public bool HasSwirlsOnSide(string sideName)
+        {
+            foreach (PendingCancelMarker marker in _pendingCancels)
+            {
+                if (marker.SideName == sideName)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Red box alone on one side — slide that side to center unless the other side has a swirl.</summary>
+        public bool TryGetBoxSlideToCenterSide(out string boxSide)
+        {
+            boxSide = WinChecker.GetSideWithBoxAlone(Board);
+            if (boxSide == null)
+            {
+                return false;
+            }
+
+            if (HasSwirlsOnSide(WinChecker.OppositeSide(boxSide)))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private void CheckWin()
         {
             if (_pendingBalance != null)

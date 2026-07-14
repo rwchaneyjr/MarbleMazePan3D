@@ -54,6 +54,24 @@ namespace DragonBoxAlgebra.Core
             return false;
         }
 
+        /// <summary>Returns Left/Right when that side has only the red box; otherwise null.</summary>
+        public static string GetSideWithBoxAlone(AlgebraBoard board)
+        {
+            if (board.Left.Cards.Count == 1 && board.Left.Cards[0].Kind == CardKind.Box)
+            {
+                return "Left";
+            }
+
+            if (board.Right.Cards.Count == 1 && board.Right.Cards[0].Kind == CardKind.Box)
+            {
+                return "Right";
+            }
+
+            return null;
+        }
+
+        public static string OppositeSide(string sideName) => sideName == "Left" ? "Right" : "Left";
+
         public static bool HasPendingOpposites(AlgebraBoard board)
         {
             return CombineRules.TryAutoCombine(board.Left, out _)
