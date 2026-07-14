@@ -21,6 +21,7 @@ namespace DragonBoxAlgebra.UI
             _canvas = canvas;
             _dragRoot = dragRoot;
             _controller.HandChanged += RefreshHandInPlace;
+            _controller.WinSequenceStarted += OnWinSequenceStarted;
             Refresh();
         }
 
@@ -29,7 +30,13 @@ namespace DragonBoxAlgebra.UI
             if (_controller != null)
             {
                 _controller.HandChanged -= RefreshHandInPlace;
+                _controller.WinSequenceStarted -= OnWinSequenceStarted;
             }
+        }
+
+        private void OnWinSequenceStarted(int stars, int moves)
+        {
+            Refresh();
         }
 
         private void RefreshHandInPlace()
