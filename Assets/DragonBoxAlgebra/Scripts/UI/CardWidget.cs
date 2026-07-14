@@ -552,6 +552,17 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
+            if (_controller.UsesOppositeHandPlay)
+            {
+                if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+
+                return;
+            }
+
             if (_controller.TryPlayFromHand(Index, target.SideName))
             {
                 MarkHandPlayHandled();

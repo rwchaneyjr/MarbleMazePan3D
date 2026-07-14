@@ -47,6 +47,10 @@ namespace DragonBoxAlgebra.Gameplay
             CurrentLevel.Chapter >= 3
             || (CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16);
 
+        /// <summary>Ch2 levels 17+: drag hand tile onto opposite creature (not balance).</summary>
+        public bool UsesOppositeHandPlay =>
+            CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16;
+
         /// <summary>Hand/balance chapters: win only when the opposite side is empty (not box-alone-with-cards-left).</summary>
         private bool RequiresEmptyOppositeSideForWin =>
             CurrentLevel.Chapter >= 3 || CurrentLevel.HandCards.Count > 0;
@@ -117,6 +121,16 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool ShouldDisplayHandCard(int handIndex)
         {
+            if (handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return false;
+            }
+
+            if (_spentHandIndices.Contains(handIndex))
+            {
+                return false;
+            }
+
             if (!UsesPlayableHandDisplay)
             {
                 return true;
@@ -242,11 +256,13 @@ namespace DragonBoxAlgebra.Gameplay
                 ? level.Chapter == 1
                     ? "Watch light and dark merge into *. Tap the spinning * to dismiss. Leave the red box alone!"
                     : "Click the spinning * to dismiss the creatures. Leave the red box alone!"
-                : level.DragToMergePairs
-                    ? level.LeftCards.Count >= 2 && level.RightCards.Count >= 2
-                        ? "Drag light onto dark on each side to make *. Tap every * before the puzzle finishes!"
-                        : "Drag light onto dark on the same side. They snap together into *. Tap * to dismiss. Leave the red box alone!"
-                    : HandMessage(level));
+                : UsesOppositeHandPlay
+                    ? "Drag the hand tile onto the opposite creature on the board. Tap * to dismiss. Leave the red box alone!"
+                    : level.DragToMergePairs
+                        ? level.LeftCards.Count >= 2 && level.RightCards.Count >= 2
+                            ? "Drag light onto dark on each side to make *. Tap every * before the puzzle finishes!"
+                            : "Drag light onto dark on the same side. They snap together into *. Tap * to dismiss. Leave the red box alone!"
+                        : HandMessage(level));
             CreatureSpriteDebug.LogLevel(Board, _hand, level);
         }
 
@@ -507,6 +523,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return TryCompleteBalance(handIndex, targetSide, template);
             }
 
+            if (UsesOppositeHandPlay)
+            {
+                MessageChanged?.Invoke("Drag onto the opposite light or dark creature — not an empty side.");
+                return false;
+            }
+
             return TryStartBalance(handIndex, targetSide, template);
         }
 
@@ -553,14 +575,14 @@ namespace DragonBoxAlgebra.Gameplay
                 side.Cards.Add(handCard.CloneForPlacement());
                 BoardCard placed = side.Cards[side.Cards.Count - 1];
                 TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
-                SyncHandFromTemplates();
-                Moves.RegisterBalancedPlay();
+                _spentHandIndices.Add(handIndex);
+                Moves.RegisterCombine();
                 MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
             }
             else
             {
                 CombineRules.RemoveCardById(side, targetCard.Id);
-                SyncHandFromTemplates();
+                _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
                 CombineOccurred?.Invoke(new CombineEvent
                 {
