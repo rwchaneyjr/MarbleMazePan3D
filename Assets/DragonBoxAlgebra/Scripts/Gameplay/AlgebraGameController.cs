@@ -88,7 +88,6 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool IsCardPendingCancelOnSide(string cardId, string sideName)
         {
-            BoardSide side = Board.GetSide(sideName);
             foreach (PendingCancelMarker marker in _pendingCancels)
             {
                 if (marker.SideName != sideName)
@@ -96,12 +95,7 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
-                if (marker.CardIdA != cardId && marker.CardIdB != cardId)
-                {
-                    continue;
-                }
-
-                if (SideContainsBothCards(side, marker.CardIdA, marker.CardIdB))
+                if (marker.CardIdA == cardId || marker.CardIdB == cardId)
                 {
                     return true;
                 }
