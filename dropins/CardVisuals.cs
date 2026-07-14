@@ -41,8 +41,8 @@ namespace DragonBoxAlgebra.UI
         public static string Label(BoardCard card) => card.Kind switch
         {
             CardKind.Box => "BOX",
-            CardKind.DayCreature => $"DAY x{card.Value}",
-            CardKind.NightCreature => $"NIGHT x{card.Value}",
+            CardKind.DayCreature => $"POS {VariableLabel(card)}",
+            CardKind.NightCreature => $"NEG {VariableLabel(card)}",
             CardKind.PositiveConstant => $"+{card.Value}",
             CardKind.NegativeConstant => $"-{card.Value}",
             CardKind.One => "ONE",
@@ -149,13 +149,26 @@ namespace DragonBoxAlgebra.UI
         public static string AlgebraLabel(BoardCard card) => card.Kind switch
         {
             CardKind.Box => "x",
-            CardKind.DayCreature => card.Value == 1 ? "x" : $"{card.Value}x",
-            CardKind.NightCreature => card.Value == 1 ? "-x" : $"-{card.Value}x",
+            CardKind.DayCreature => FormatVariableAlgebra(card, positive: true),
+            CardKind.NightCreature => FormatVariableAlgebra(card, positive: false),
             CardKind.PositiveConstant => $"+{card.Value}",
             CardKind.NegativeConstant => $"-{card.Value}",
             CardKind.One => "1",
             CardKind.DivideTool => "÷",
             _ => "?"
         };
+
+        public static string VariableLabel(BoardCard card)
+        {
+            char letter = card.ResolvedVariableLetter;
+            return card.Value == 1 ? letter.ToString() : $"{card.Value}{letter}";
+        }
+
+        private static string FormatVariableAlgebra(BoardCard card, bool positive)
+        {
+            char letter = card.ResolvedVariableLetter;
+            string core = card.Value == 1 ? letter.ToString() : $"{card.Value}{letter}";
+            return positive ? core : (card.Value == 1 ? $"-{letter}" : $"-{card.Value}{letter}");
+        }
     }
 }

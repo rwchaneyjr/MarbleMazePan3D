@@ -20,6 +20,8 @@ namespace DragonBoxAlgebra.UI
         private static readonly int[,] ThemedPriorities = new int[SpritePairCount, 2];
         private static Sprite _box;
         private static int _boxPriority;
+        private static readonly Dictionary<long, Sprite> VariableSprites = new();
+        private static readonly Dictionary<long, int> VariablePriorities = new();
         private static bool _initialized;
 
         private static readonly List<string> DebugFilesFound = new();
@@ -48,6 +50,8 @@ namespace DragonBoxAlgebra.UI
 
             _box = null;
             _boxPriority = 0;
+            VariableSprites.Clear();
+            VariablePriorities.Clear();
             _initialized = false;
             DebugFilesFound.Clear();
             DebugRegistered.Clear();
@@ -144,6 +148,15 @@ namespace DragonBoxAlgebra.UI
             EnsureLoaded();
             int theme = ResolveTheme(card);
 
+            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature)
+            {
+                Sprite variable = GetVariableSprite(card.ResolvedVariableLetter, card.Kind == CardKind.DayCreature);
+                if (variable != null)
+                {
+                    return variable;
+                }
+            }
+
             return card.Kind switch
             {
                 CardKind.DayCreature => GetThemed(theme, light: true),
@@ -151,6 +164,33 @@ namespace DragonBoxAlgebra.UI
                 CardKind.Box => _box,
                 _ => null
             };
+        }
+
+        public static bool HasVariableArt(char letter, bool positive)
+        {
+            EnsureLoaded();
+            return GetVariableSprite(letter, positive) != null;
+        }
+
+        private static long VariableKey(char letter, bool positive) =>
+            ((long)char.ToLowerInvariant(letter) << 1) | (positive ? 1L : 0L);
+
+        private static Sprite GetVariableSprite(char letter, bool positive)
+        {
+            VariableSprites.TryGetValue(VariableKey(letter, positive), out Sprite sprite);
+            return sprite;
+        }
+
+        private static void RegisterVariable(char letter, bool positive, Sprite sprite, int priority)
+        {
+            long key = VariableKey(letter, positive);
+            if (VariablePriorities.TryGetValue(key, out int existing) && priority < existing)
+            {
+                return;
+            }
+
+            VariableSprites[key] = sprite;
+            VariablePriorities[key] = priority;
         }
 
         public static bool HasCustomArt(int theme, bool light)
@@ -241,6 +281,14 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            if (TryParseVariableName(name, out char letter, out bool positive))
+            {
+                RegisterVariable(letter, positive, sprite, priority);
+                DebugRegistered.Add(
+                    $"{folder}/{sprite.name} -> variable {letter} {(positive ? "positive" : "negative")}");
+                return;
+            }
+
             if (TryParseThemePairName(name, out int theme, out bool light))
             {
                 RegisterThemed(theme, light, sprite, priority);
@@ -261,6 +309,58 @@ namespace DragonBoxAlgebra.UI
             }
 
             DebugUnmatched.Add($"{folder}/{sprite.name}");
+        }
+
+        private static bool TryParseVariableName(string name, out char letter, out bool positive)
+        {
+            letter = '\0';
+            positive = true;
+
+            if (string.IsNullOrEmpty(name))
+            {
+                return false;
+            }
+
+            if (name.Length == 1 && char.IsLetter(name[0]))
+            {
+                letter = char.ToLowerInvariant(name[0]);
+                positive = true;
+                return letter is 'a' or 'b' or 'c' or 'r' or 'x';
+            }
+
+            if (name.Length == 2 && name[0] == '-' && char.IsLetter(name[1]))
+            {
+                letter = char.ToLowerInvariant(name[1]);
+                positive = false;
+                return letter is 'a' or 'b' or 'c' or 'r' or 'x';
+            }
+
+            if (TryStripPrefix(name, "positive_", out string posRemainder)
+                || TryStripPrefix(name, "positive", out posRemainder))
+            {
+                posRemainder = posRemainder.TrimStart('_');
+                if (posRemainder.Length == 1 && char.IsLetter(posRemainder[0]))
+                {
+                    letter = char.ToLowerInvariant(posRemainder[0]);
+                    positive = true;
+                    return letter is 'a' or 'b' or 'c' or 'r' or 'x';
+                }
+            }
+
+            if (TryStripPrefix(name, "negative_", out string negRemainder)
+                || TryStripPrefix(name, "negative", out negRemainder)
+                || TryStripPrefix(name, "neg_", out negRemainder))
+            {
+                negRemainder = negRemainder.TrimStart('_');
+                if (negRemainder.Length == 1 && char.IsLetter(negRemainder[0]))
+                {
+                    letter = char.ToLowerInvariant(negRemainder[0]);
+                    positive = false;
+                    return letter is 'a' or 'b' or 'c' or 'r' or 'x';
+                }
+            }
+
+            return false;
         }
 
         private static bool TryParseThemePairName(string name, out int theme, out bool light)

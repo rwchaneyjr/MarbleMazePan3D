@@ -14,8 +14,10 @@ namespace DragonBoxAlgebra.Gameplay
         {
             BoardCard flipped = card.Kind switch
             {
-                CardKind.DayCreature => new BoardCard(CardKind.NightCreature, card.Value, card.StackCount),
-                CardKind.NightCreature => new BoardCard(CardKind.DayCreature, card.Value, card.StackCount),
+                CardKind.DayCreature => new BoardCard(CardKind.NightCreature, card.Value, card.StackCount,
+                    card.VisualTheme, card.VariableLetter),
+                CardKind.NightCreature => new BoardCard(CardKind.DayCreature, card.Value, card.StackCount,
+                    card.VisualTheme, card.VariableLetter),
                 CardKind.PositiveConstant => new BoardCard(CardKind.NegativeConstant, card.Value, card.StackCount),
                 CardKind.NegativeConstant => new BoardCard(CardKind.PositiveConstant, card.Value, card.StackCount),
                 _ => card

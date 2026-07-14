@@ -4,8 +4,9 @@ using DragonBoxAlgebra.Core;
 namespace DragonBoxAlgebra.Gameplay
 {
     /// <summary>
-    /// DragonBox-style intro: Ch1 has 12 tutorials; Ch2 has 16; Ch3 has 15; Ch4 has 20 (63 total).
-    /// Ch1 asterisk dismiss, Ch2 opposite drag, Ch3 balance, Ch4 multi-card moves.
+    /// DragonBox-style intro: Ch1 has 12 tutorials; Ch2 has 16; Ch3 has 15; Ch4 has 20; Ch5 has 17 (80 total).
+    /// Ch1 asterisk dismiss, Ch2 opposite drag, Ch3 balance, Ch4 multi-card moves, Ch5 letter variables.
+    /// Levels 1–63 are unchanged from the saved working copy; Ch5 adds 64–80 after that.
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -14,16 +15,20 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter2LevelCount = 16;
         public const int Chapter3LevelCount = 15;
         public const int Chapter4LevelCount = 20;
-        public const int ChapterCount = 4;
+        public const int Chapter5LevelCount = 17;
+        public const int ChapterCount = 5;
         public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
-            + Chapter4LevelCount;
+            + Chapter4LevelCount + Chapter5LevelCount;
 
         /// <summary>First global level number (1-based) for Chapter 4 / Move Cards.</summary>
         public const int Chapter4StartLevel = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount + 1;
 
+        /// <summary>First global level number (1-based) for Chapter 5 / Letter Variables.</summary>
+        public const int Chapter5StartLevel = Chapter4StartLevel + Chapter4LevelCount;
+
         /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
         public const int OppositeExtraTileStartLevel = 40;
-        public const int OppositeExtraTileEndLevel = TotalLevels;
+        public const int OppositeExtraTileEndLevel = Chapter4StartLevel + Chapter4LevelCount - 1;
 
         private const int OppositeExtraTileStartIndex = OppositeExtraTileStartLevel - 1;
         private const int OppositeExtraTileEndIndex = OppositeExtraTileEndLevel - 1;
@@ -33,7 +38,8 @@ namespace DragonBoxAlgebra.Gameplay
             Chapter1LevelCount,
             Chapter2LevelCount,
             Chapter3LevelCount,
-            Chapter4LevelCount
+            Chapter4LevelCount,
+            Chapter5LevelCount
         };
 
         private static readonly string[] ChapterNames =
@@ -41,7 +47,8 @@ namespace DragonBoxAlgebra.Gameplay
             "Matching Pairs",
             "Opposite Cards",
             "Balance Sides",
-            "Move Cards"
+            "Move Cards",
+            "Letter Variables"
         };
 
         public static IReadOnlyList<LevelDefinition> GenerateAll()
@@ -51,6 +58,7 @@ namespace DragonBoxAlgebra.Gameplay
             levels.AddRange(GenerateChapter(2));
             levels.AddRange(GenerateChapter(3));
             levels.AddRange(GenerateChapter(4));
+            levels.AddRange(GenerateChapter5());
 
             for (int i = OppositeExtraTileStartIndex;
                  i <= OppositeExtraTileEndIndex && i < levels.Count;
@@ -103,6 +111,100 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return 0;
+        }
+
+        private static IEnumerable<LevelDefinition> GenerateChapter5()
+        {
+            for (int i = 0; i < Chapter5LevelCount; i++)
+            {
+                int displayNumber = i + 1;
+                int theme = (5 * 3 + i) % 10;
+                yield return BuildChapter5Level(i, theme, displayNumber);
+            }
+        }
+
+        /// <summary>
+        /// Ch5 (levels 64–80): balance puzzles like Ch3 #30–40, using positive/negative variable tiles.
+        /// Letter x for #1–10, then a, b, c, r introduced two levels each at the end.
+        /// </summary>
+        private static LevelDefinition BuildChapter5Level(int index, int theme, int displayNumber)
+        {
+            char letter = Chapter5LetterForDisplay(displayNumber);
+            string title = $"Ch5 • {ChapterNames[4]} {displayNumber} ({letter})";
+
+            if (displayNumber is 7 or 8)
+            {
+                return MakeVariableMergedWinLevel(title, theme, letter, boxOnLeft: displayNumber == 7);
+            }
+
+            bool boxOnLeft = displayNumber <= 6
+                ? displayNumber % 2 == 1
+                : displayNumber % 2 == 0;
+            return MakeVariableBalanceIntroLevel(title, theme, letter, boxOnLeft);
+        }
+
+        /// <summary>Gradual variable introduction across the 17 new levels.</summary>
+        private static char Chapter5LetterForDisplay(int displayNumber) => displayNumber switch
+        {
+            <= 10 => 'x',
+            11 or 12 => 'a',
+            13 or 14 => 'b',
+            15 => 'c',
+            16 => 'r',
+            17 => 'x',
+            _ => 'x'
+        };
+
+        private static LevelDefinition MakeVariableBalanceIntroLevel(string title, int theme, char letter,
+            bool boxOnLeft, int parMoves = 3)
+        {
+            LevelDefinition level = boxOnLeft
+                ? Make(
+                    title,
+                    chapter: 5,
+                    theme,
+                    left: new[] { CardKind.Box, CardKind.DayCreature },
+                    right: new[] { CardKind.DayCreature },
+                    hand: new[] { CardKind.NightCreature },
+                    parMoves: parMoves,
+                    parCards: 1)
+                : Make(
+                    title,
+                    chapter: 5,
+                    theme,
+                    left: new[] { CardKind.DayCreature },
+                    right: new[] { CardKind.Box, CardKind.DayCreature },
+                    hand: new[] { CardKind.NightCreature },
+                    parMoves: parMoves,
+                    parCards: 1);
+            level.VariableLetter = letter;
+            return level;
+        }
+
+        private static LevelDefinition MakeVariableMergedWinLevel(string title, int theme, char letter,
+            bool boxOnLeft)
+        {
+            LevelDefinition level = boxOnLeft
+                ? Make(
+                    title,
+                    chapter: 5,
+                    theme,
+                    left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
+                    right: System.Array.Empty<CardKind>(),
+                    hand: System.Array.Empty<CardKind>(),
+                    parMoves: 1,
+                    parCards: 0)
+                : Make(
+                    title,
+                    chapter: 5,
+                    theme,
+                    left: System.Array.Empty<CardKind>(),
+                    right: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
+                    hand: System.Array.Empty<CardKind>(),
+                    parMoves: 1,
+                    parCards: 0);
+            level.VariableLetter = letter;
+            return level;
         }
 
         private static IEnumerable<LevelDefinition> GenerateChapter(int chapter)

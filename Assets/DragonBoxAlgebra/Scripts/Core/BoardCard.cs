@@ -10,15 +10,21 @@ namespace DragonBoxAlgebra.Core
         public int Value;
         public int StackCount;
         public int VisualTheme;
+        /// <summary>Algebra variable letter for creature tiles (a, b, c, r, x). '\0' = x.</summary>
+        public char VariableLetter;
 
-        public BoardCard(CardKind kind, int value = 1, int stackCount = 1, int visualTheme = -1)
+        public BoardCard(CardKind kind, int value = 1, int stackCount = 1, int visualTheme = -1,
+            char variableLetter = '\0')
         {
             Id = Guid.NewGuid().ToString("N");
             Kind = kind;
             Value = value;
             StackCount = stackCount;
             VisualTheme = visualTheme;
+            VariableLetter = variableLetter;
         }
+
+        public char ResolvedVariableLetter => VariableLetter != '\0' ? VariableLetter : 'x';
 
         public BoardCard Clone()
         {
@@ -28,7 +34,8 @@ namespace DragonBoxAlgebra.Core
                 Kind = Kind,
                 Value = Value,
                 StackCount = StackCount,
-                VisualTheme = VisualTheme
+                VisualTheme = VisualTheme,
+                VariableLetter = VariableLetter
             };
         }
 
@@ -40,7 +47,8 @@ namespace DragonBoxAlgebra.Core
                 Kind = Kind,
                 Value = Value,
                 StackCount = StackCount,
-                VisualTheme = VisualTheme
+                VisualTheme = VisualTheme,
+                VariableLetter = VariableLetter
             };
         }
 

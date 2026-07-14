@@ -110,8 +110,13 @@ namespace DragonBoxAlgebra.Core
 
         public static bool IsCreatureOppositePair(BoardCard a, BoardCard b)
         {
-            return (a.Kind == CardKind.DayCreature && b.Kind == CardKind.NightCreature && a.Value == b.Value)
-                || (a.Kind == CardKind.NightCreature && b.Kind == CardKind.DayCreature && a.Value == b.Value);
+            if (!((a.Kind == CardKind.DayCreature && b.Kind == CardKind.NightCreature && a.Value == b.Value)
+                  || (a.Kind == CardKind.NightCreature && b.Kind == CardKind.DayCreature && a.Value == b.Value)))
+            {
+                return false;
+            }
+
+            return a.ResolvedVariableLetter == b.ResolvedVariableLetter;
         }
 
         public static bool IsDiceOppositePair(BoardCard a, BoardCard b)
