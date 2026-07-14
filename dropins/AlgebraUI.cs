@@ -39,7 +39,19 @@ namespace DragonBoxAlgebra.UI
         private void OnLevelLoaded(int current, int total)
         {
             int chapter = ChapterLevelGenerator.ChapterForLevelIndex(current - 1);
-            _progressText.text = $"{current}/{total}  ·  Ch{chapter}";
+            int expected = ChapterLevelGenerator.TotalLevels;
+            if (total < expected)
+            {
+                _progressText.text =
+                    $"{current}/{total} OLD — need {expected}!  ·  Ch{chapter}";
+                _progressText.color = new Color(1f, 0.45f, 0.45f);
+            }
+            else
+            {
+                _progressText.text = $"{current}/{total}  ·  Ch{chapter}";
+                _progressText.color = Color.white;
+            }
+
             _titleText.text = $"{Controller.CurrentLevel.Title}  •  {CreatureArt.ThemeName}";
             _completeView.Hide();
             RefreshSpriteDebugBanner();

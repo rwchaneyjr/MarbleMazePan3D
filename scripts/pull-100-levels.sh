@@ -44,7 +44,7 @@ pull_marblemazepan3d() {
   cleanup_stale_generator "$REPO_ROOT"
   echo ""
   echo "Done. Open Unity in this repo and press Play."
-  echo "Console should show: 100/100 levels (2026-07-ch6-100)"
+  echo "Console should show: 100/100 levels (2026-07-ch6-100-v2)"
 }
 
 pull_symbolalgebra() {
