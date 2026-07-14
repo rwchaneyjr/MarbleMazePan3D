@@ -98,6 +98,12 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            if (_controller.UsesDualHandPanelDisplay)
+            {
+                SyncDualHandPanel(preserveDragRoot);
+                return;
+            }
+
             if (!preserveDragRoot)
             {
                 ClearHandWidgets(_dragRoot);
@@ -121,6 +127,61 @@ namespace DragonBoxAlgebra.UI
                 BoardCard card = _controller.GetHandDisplayCard(i);
                 CardWidget widget = CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
                 widget.SetHandCard(card);
+            }
+        }
+
+        private void SyncDualHandPanel(bool preserveDragRoot)
+        {
+            if (!preserveDragRoot)
+            {
+                ClearHandWidgets(_dragRoot);
+            }
+
+            var existing = new Dictionary<int, CardWidget>();
+            for (int i = 0; i < _panel.childCount; i++)
+            {
+                Transform child = _panel.GetChild(i);
+                if (child.GetComponent<BoardDropZone>() != null)
+                {
+                    continue;
+                }
+
+                CardWidget widget = child.GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand")
+                {
+                    existing[widget.Index] = widget;
+                }
+            }
+
+            EnsureHandLayout();
+
+            for (int i = 0; i < _controller.Hand.Count; i++)
+            {
+                if (!_controller.ShouldDisplayHandCard(i))
+                {
+                    if (existing.TryGetValue(i, out CardWidget remove))
+                    {
+                        Object.DestroyImmediate(remove.gameObject);
+                    }
+
+                    continue;
+                }
+
+                if (preserveDragRoot && IsHandIndexOnDragRoot(i))
+                {
+                    continue;
+                }
+
+                BoardCard card = _controller.GetHandDisplayCard(i);
+                if (existing.TryGetValue(i, out CardWidget widget))
+                {
+                    widget.SetHandCard(card);
+                }
+                else
+                {
+                    CardWidget created = CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
+                    created.SetHandCard(card);
+                }
             }
         }
 

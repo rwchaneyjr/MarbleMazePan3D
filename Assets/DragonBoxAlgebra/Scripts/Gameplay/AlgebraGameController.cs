@@ -75,7 +75,10 @@ namespace DragonBoxAlgebra.Gameplay
             _hand.Count >= 2 && CurrentLevel.Chapter >= 5;
 
         public bool ShouldKeepHandCardInPanel(int handIndex) =>
-            UsesPlayableHandDisplay && IsHandSlotPlayable(handIndex);
+            UsesPlayableHandDisplay
+            && handIndex >= 0
+            && handIndex < _hand.Count
+            && (!UsesDualHandPanelDisplay || !_spentHandIndices.Contains(handIndex));
 
         public bool IsHandBalanceComplete(int handIndex) =>
             handIndex >= 0 && _spentHandIndices.Contains(handIndex);
@@ -781,7 +784,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
-            if (UsesPlayableHandDisplay)
+            if (UsesPlayableHandDisplay && !UsesDualHandPanelDisplay)
             {
                 HandChanged?.Invoke();
             }
