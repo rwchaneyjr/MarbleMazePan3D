@@ -52,6 +52,12 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            if (_controller.UsesDualHandPanelDisplay)
+            {
+                SyncDualHandPanel();
+                return;
+            }
+
             bool preserveDragRoot = HasHandWidgetOnDragRoot() && _controller.KeepHandSlotVisibleDuringDrag();
             if (HasHandWidgetOnDragRoot() && !preserveDragRoot)
             {
@@ -59,6 +65,70 @@ namespace DragonBoxAlgebra.UI
             }
 
             Refresh(preserveDragRoot);
+        }
+
+        private void SyncDualHandPanel()
+        {
+            if (_controller.IsLevelComplete)
+            {
+                ClearHandOnly();
+                return;
+            }
+
+            ClearHandWidgets(_dragRoot);
+
+            var existing = new Dictionary<int, CardWidget>();
+            for (int i = 0; i < _panel.childCount; i++)
+            {
+                Transform child = _panel.GetChild(i);
+                if (child.GetComponent<BoardDropZone>() != null)
+                {
+                    continue;
+                }
+
+                CardWidget widget = child.GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand")
+                {
+                    existing[widget.Index] = widget;
+                }
+            }
+
+            EnsureHandLayout();
+            var keep = new HashSet<int>();
+
+            for (int i = 0; i < _controller.Hand.Count; i++)
+            {
+                if (!_controller.ShouldDisplayHandCard(i))
+                {
+                    continue;
+                }
+
+                keep.Add(i);
+                BoardCard card = _controller.GetHandDisplayCard(i);
+                if (existing.TryGetValue(i, out CardWidget widget))
+                {
+                    widget.SetHandCard(card);
+                }
+                else
+                {
+                    CardWidget created = CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
+                    created.SetHandCard(card);
+                }
+            }
+
+            var remove = new List<GameObject>();
+            foreach (KeyValuePair<int, CardWidget> pair in existing)
+            {
+                if (!keep.Contains(pair.Key))
+                {
+                    remove.Add(pair.Value.gameObject);
+                }
+            }
+
+            foreach (GameObject go in remove)
+            {
+                Object.DestroyImmediate(go);
+            }
         }
 
         private bool HasHandWidgetOnDragRoot()
@@ -109,18 +179,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             ClearHandPanel(_panel);
-
-            var layout = _panel.GetComponent<HorizontalLayoutGroup>();
-            if (layout == null)
-            {
-                layout = _panel.gameObject.AddComponent<HorizontalLayoutGroup>();
-                layout.spacing = 12f;
-                layout.childAlignment = TextAnchor.MiddleCenter;
-                layout.childControlWidth = false;
-                layout.childControlHeight = false;
-                layout.childForceExpandWidth = false;
-                layout.childForceExpandHeight = false;
-            }
+            EnsureHandLayout();
 
             for (int i = 0; i < _controller.Hand.Count; i++)
             {
@@ -136,7 +195,22 @@ namespace DragonBoxAlgebra.UI
 
                 BoardCard card = _controller.GetHandDisplayCard(i);
                 CardWidget widget = CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
-                widget.RefreshVisual();
+                widget.SetHandCard(card);
+            }
+        }
+
+        private void EnsureHandLayout()
+        {
+            var layout = _panel.GetComponent<HorizontalLayoutGroup>();
+            if (layout == null)
+            {
+                layout = _panel.gameObject.AddComponent<HorizontalLayoutGroup>();
+                layout.spacing = 12f;
+                layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.childControlWidth = false;
+                layout.childControlHeight = false;
+                layout.childForceExpandWidth = false;
+                layout.childForceExpandHeight = false;
             }
         }
 

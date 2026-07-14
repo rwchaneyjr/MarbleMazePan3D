@@ -72,7 +72,7 @@ namespace DragonBoxAlgebra.Gameplay
             LevelIndex + 1 >= ChapterLevelGenerator.Chapter4StartLevel;
 
         public bool UsesDualHandPanelDisplay =>
-            CurrentLevel.Chapter >= 5 && CurrentLevel.HandCards.Count >= 2;
+            _hand.Count >= 2 && CurrentLevel.Chapter >= 5;
 
         public bool ShouldKeepHandCardInPanel(int handIndex)
         {
@@ -161,17 +161,17 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            if (UsesDualHandPanelDisplay)
+            {
+                return true;
+            }
+
             if (_spentHandIndices.Contains(handIndex))
             {
                 return false;
             }
 
             if (!UsesPlayableHandDisplay)
-            {
-                return true;
-            }
-
-            if (UsesDualHandPanelDisplay)
             {
                 return true;
             }
@@ -797,7 +797,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
-            if (UsesPlayableHandDisplay)
+            if (UsesPlayableHandDisplay && !UsesDualHandPanelDisplay)
             {
                 HandChanged?.Invoke();
             }

@@ -70,6 +70,12 @@ namespace DragonBoxAlgebra.UI
             RefreshVisual();
         }
 
+        public void SetHandCard(BoardCard card)
+        {
+            Card = card;
+            RefreshVisual();
+        }
+
         public void RefreshVisual()
         {
             if (_background != null)
@@ -324,7 +330,8 @@ namespace DragonBoxAlgebra.UI
 
             if (_canvasGroup != null)
             {
-                _canvasGroup.alpha = 0.55f;
+                _canvasGroup.alpha = 1f;
+                _canvasGroup.blocksRaycasts = false;
             }
         }
 
@@ -450,7 +457,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             Card = _controller.GetHandDisplayCard(Index);
-            RefreshVisual();
+            SetHandCard(Card);
             _controller.SetDualHandDragActive(false);
             _controller.RefreshHandPresentation();
         }
