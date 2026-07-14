@@ -764,6 +764,12 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Red box alone on one side — slide that side to center unless the other side has a swirl.</summary>
         public bool TryGetBoxSlideToCenterSide(out string boxSide)
         {
+            boxSide = null;
+            if (Moves.Moves <= 0)
+            {
+                return false;
+            }
+
             boxSide = WinChecker.GetSideWithBoxAlone(Board);
             if (boxSide == null)
             {

@@ -762,6 +762,12 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool TryGetBoxSlideToCenterSide(out string boxSide)
         {
+            boxSide = null;
+            if (Moves.Moves <= 0)
+            {
+                return false;
+            }
+
             boxSide = WinChecker.GetSideWithBoxAlone(Board);
             if (boxSide == null)
             {
