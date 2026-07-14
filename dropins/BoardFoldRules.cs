@@ -19,6 +19,11 @@ namespace DragonBoxAlgebra.Gameplay
 
         private static bool ShouldKeepFolding(AlgebraBoard board)
         {
+            if (WinChecker.IsRedBoxAloneWinState(board))
+            {
+                return false;
+            }
+
             int rightCreatures = CountCreatures(board.Right);
             return rightCreatures > MaxRightCreatures && HasFoldablePair(board);
         }

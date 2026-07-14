@@ -266,6 +266,11 @@ namespace DragonBoxAlgebra.Gameplay
         private static string HandMessage(LevelDefinition level)
         {
             int count = level.HandCards.Count;
+            if (count == 0)
+            {
+                return "Drag light onto dark on the same side. Tap * to dismiss. Leave the red box alone!";
+            }
+
             if (count <= 1)
             {
                 return "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
@@ -566,6 +571,29 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return true;
+        }
+
+        public bool TryPlayHandOntoOppositeOnSide(int handIndex, string sideName)
+        {
+            if (!UsesOppositeHandPlay)
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (CanPlayHandOntoBoardCard(handIndex, sideName, i)
+                    && TryPlayHandOntoOpposite(handIndex, sideName, i))
+                {
+                    return true;
+                }
+            }
+
+            MessageChanged?.Invoke(side.Cards.Count == 0
+                ? "That side is empty — drag onto the side with the opposite creature."
+                : "Drag onto the opposite light or dark creature.");
+            return false;
         }
 
         public bool TryPlayHandOntoOpposite(int handIndex, string sideName, int targetBoardIndex)

@@ -199,15 +199,25 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (index < 18)
             {
-                return Make(
-                    title,
-                    chapter: 2,
-                    theme,
-                    left: new[] { CardKind.Box, CardKind.DayCreature },
-                    right: System.Array.Empty<CardKind>(),
-                    hand: new[] { CardKind.NightCreature },
-                    parMoves: 2,
-                    parCards: 1);
+                return index == 16
+                    ? Make(
+                        title,
+                        chapter: 2,
+                        theme,
+                        left: new[] { CardKind.Box, CardKind.DayCreature },
+                        right: System.Array.Empty<CardKind>(),
+                        hand: new[] { CardKind.NightCreature },
+                        parMoves: 2,
+                        parCards: 1)
+                    : Make(
+                        title,
+                        chapter: 2,
+                        theme,
+                        left: System.Array.Empty<CardKind>(),
+                        right: new[] { CardKind.Box, CardKind.DayCreature },
+                        hand: new[] { CardKind.NightCreature },
+                        parMoves: 2,
+                        parCards: 1);
             }
 
             return Make(
@@ -221,52 +231,82 @@ namespace DragonBoxAlgebra.Gameplay
                 parCards: 1);
         }
 
-        /// <summary>Ch3: place hand tile → ? on other side → balance.</summary>
+        /// <summary>Ch3: balance hand tile → ? → merge * on each side.</summary>
         private static LevelDefinition BuildChapter3Level(int index, int theme, int displayNumber)
         {
             string title = $"Ch3 • {ChapterNames[2]} {displayNumber}";
 
-            if (index < 12)
+            // Levels 31–37: intro balance — box + day, day on other side, night in hand.
+            if (index is >= 1 and <= 7)
             {
-                return Make(
+                return MakeBalanceIntroLevel(title, theme, displayNumber, boxOnLeft: index % 2 == 1);
+            }
+
+            // Levels 38–42: same pattern, box alternates.
+            if (index is >= 12 and <= 16)
+            {
+                return MakeBalanceIntroLevel(title, theme, displayNumber, boxOnLeft: index % 2 == 0);
+            }
+
+            // Levels 43–45: board already has opposite pair — merge to win.
+            if (index < 19)
+            {
+                return index % 2 == 1
+                    ? Make(
+                        title,
+                        chapter: 3,
+                        theme,
+                        left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
+                        right: System.Array.Empty<CardKind>(),
+                        hand: System.Array.Empty<CardKind>(),
+                        parMoves: 1,
+                        parCards: 0)
+                    : Make(
+                        title,
+                        chapter: 3,
+                        theme,
+                        left: System.Array.Empty<CardKind>(),
+                        right: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
+                        hand: System.Array.Empty<CardKind>(),
+                        parMoves: 1,
+                        parCards: 0);
+            }
+
+            return MakeBalanceIntroLevel(title, theme, displayNumber, boxOnLeft: true);
+        }
+
+        /// <summary>
+        /// Solvable balance puzzle: place night, fill ?, then cancel day+night on each side.
+        /// Box on left: drag night to left. Box on right: drag night to left (creates ? on right).
+        /// </summary>
+        private static LevelDefinition MakeBalanceIntroLevel(string title, int theme, int displayNumber,
+            bool boxOnLeft, int parMoves = 3)
+        {
+            return boxOnLeft
+                ? Make(
                     title,
                     chapter: 3,
                     theme,
-                    left: new[] { CardKind.Box, CardKind.NightCreature },
-                    right: System.Array.Empty<CardKind>(),
+                    left: new[] { CardKind.Box, CardKind.DayCreature },
+                    right: new[] { CardKind.DayCreature },
                     hand: new[] { CardKind.NightCreature },
-                    parMoves: 2,
-                    parCards: 1);
-            }
-
-            if (index < 17)
-            {
-                return Make(
+                    parMoves: parMoves,
+                    parCards: 1)
+                : Make(
                     title,
                     chapter: 3,
                     theme,
-                    left: System.Array.Empty<CardKind>(),
+                    left: new[] { CardKind.DayCreature },
                     right: new[] { CardKind.Box, CardKind.DayCreature },
-                    hand: new[] { CardKind.DayCreature },
-                    parMoves: 2,
+                    hand: new[] { CardKind.NightCreature },
+                    parMoves: parMoves,
                     parCards: 1);
-            }
-
-            return Make(
-                title,
-                chapter: 3,
-                theme,
-                left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.NightCreature },
-                right: System.Array.Empty<CardKind>(),
-                hand: new[] { CardKind.DayCreature },
-                parMoves: 3,
-                parCards: 1);
         }
 
         /// <summary>Ch4: two or three hand tiles, tiles on both sides.</summary>
         private static LevelDefinition BuildChapter4Level(int index, int theme)
         {
-            // Levels 46–49: intro layout (single dark tile on right).
+            // Levels 46–49: intro — keep a creature on each side after fold.
             if (index < 4)
             {
                 return Make(
@@ -274,7 +314,7 @@ namespace DragonBoxAlgebra.Gameplay
                     chapter: 4,
                     theme,
                     left: new[] { CardKind.Box, CardKind.DayCreature },
-                    right: new[] { CardKind.NightCreature },
+                    right: new[] { CardKind.DayCreature, CardKind.NightCreature },
                     hand: new[] { CardKind.NightCreature, CardKind.DayCreature },
                     parMoves: 3,
                     parCards: 2);

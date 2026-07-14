@@ -24,6 +24,24 @@ namespace DragonBoxAlgebra.UI
 
             if (ui.Controller.HasPendingBalance)
             {
+                if (ui.Controller.PendingBalance.HoleSide == SideName
+                    && ui.Controller.TryPlayFromHand(dragged.Index, SideName))
+                {
+                    dragged.MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+
+                return;
+            }
+
+            if (ui.Controller.UsesOppositeHandPlay)
+            {
+                if (ui.Controller.TryPlayHandOntoOppositeOnSide(dragged.Index, SideName))
+                {
+                    dragged.MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+
                 return;
             }
 

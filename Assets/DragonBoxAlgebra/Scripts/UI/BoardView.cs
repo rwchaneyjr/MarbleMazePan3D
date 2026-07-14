@@ -12,6 +12,10 @@ namespace DragonBoxAlgebra.UI
         private const float WinPreDelay = 0.4f;
         private const float WinSlideDuration = 1.15f;
         private const float WinPostDelay = 0.35f;
+        private static readonly Vector2 TogetherLeftAnchorMin = new(0.25f, 0f);
+        private static readonly Vector2 TogetherLeftAnchorMax = new(0.5f, 1f);
+        private static readonly Vector2 TogetherRightAnchorMin = new(0.5f, 0f);
+        private static readonly Vector2 TogetherRightAnchorMax = new(0.75f, 1f);
         private const float DefaultTileWidth = 110f;
         private const float DefaultTileHeight = 120f;
         private const float DefaultTileSpacing = 16f;
@@ -109,37 +113,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             yield return new WaitForSeconds(WinPreDelay);
-
-            bool animateLeft = SideHasVisibleCards("Left");
-            bool animateRight = SideHasVisibleCards("Right");
-
-            Vector2 leftTargetMin = animateLeft
-                ? new Vector2(0.36f, _leftAnchorMinDefault.y)
-                : _leftAnchorMinDefault;
-            Vector2 leftTargetMax = animateLeft
-                ? new Vector2(0.49f, _leftAnchorMaxDefault.y)
-                : _leftAnchorMaxDefault;
-            Vector2 rightTargetMin = animateRight
-                ? new Vector2(0.51f, _rightAnchorMinDefault.y)
-                : _rightAnchorMinDefault;
-            Vector2 rightTargetMax = animateRight
-                ? new Vector2(0.64f, _rightAnchorMaxDefault.y)
-                : _rightAnchorMaxDefault;
-
-            float elapsed = 0f;
-            while (elapsed < WinSlideDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / WinSlideDuration));
-
-                _leftPanel.anchorMin = Vector2.Lerp(_leftAnchorMinDefault, leftTargetMin, animateLeft ? t : 0f);
-                _leftPanel.anchorMax = Vector2.Lerp(_leftAnchorMaxDefault, leftTargetMax, animateLeft ? t : 0f);
-                _rightPanel.anchorMin = Vector2.Lerp(_rightAnchorMinDefault, rightTargetMin, animateRight ? t : 0f);
-                _rightPanel.anchorMax = Vector2.Lerp(_rightAnchorMaxDefault, rightTargetMax, animateRight ? t : 0f);
-
-                yield return null;
-            }
-
+            yield return AnimateSidesTogether(WinSlideDuration);
             yield return new WaitForSeconds(WinPostDelay);
 
             _playingWinSequence = false;
@@ -147,18 +121,32 @@ namespace DragonBoxAlgebra.UI
             _controller.CompleteWinPresentation(stars, moves);
         }
 
-        private bool SideHasVisibleCards(string sideName)
+        private IEnumerator AnimateSidesTogether(float duration)
         {
-            BoardSide side = sideName == "Left" ? _controller.Board.Left : _controller.Board.Right;
-            foreach (BoardCard card in side.Cards)
+            Vector2 leftTargetMin = new Vector2(TogetherLeftAnchorMin.x, _leftAnchorMinDefault.y);
+            Vector2 leftTargetMax = new Vector2(TogetherLeftAnchorMax.x, _leftAnchorMaxDefault.y);
+            Vector2 rightTargetMin = new Vector2(TogetherRightAnchorMin.x, _rightAnchorMinDefault.y);
+            Vector2 rightTargetMax = new Vector2(TogetherRightAnchorMax.x, _rightAnchorMaxDefault.y);
+
+            float elapsed = 0f;
+            while (elapsed < duration)
             {
-                if (!_controller.IsCardPendingCancelOnSide(card.Id, sideName))
-                {
-                    return true;
-                }
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
+
+                _leftPanel.anchorMin = Vector2.Lerp(_leftAnchorMinDefault, leftTargetMin, t);
+                _leftPanel.anchorMax = Vector2.Lerp(_leftAnchorMaxDefault, leftTargetMax, t);
+                _rightPanel.anchorMin = Vector2.Lerp(_rightAnchorMinDefault, rightTargetMin, t);
+                _rightPanel.anchorMax = Vector2.Lerp(_rightAnchorMaxDefault, rightTargetMax, t);
+
+                Canvas.ForceUpdateCanvases();
+                yield return null;
             }
 
-            return false;
+            _leftPanel.anchorMin = leftTargetMin;
+            _leftPanel.anchorMax = leftTargetMax;
+            _rightPanel.anchorMin = rightTargetMin;
+            _rightPanel.anchorMax = rightTargetMax;
         }
 
         private void OnCombine(CombineEvent evt)
