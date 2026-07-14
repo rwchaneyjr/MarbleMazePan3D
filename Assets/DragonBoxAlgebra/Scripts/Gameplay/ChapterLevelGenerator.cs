@@ -30,7 +30,14 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter6StartLevel = Chapter5StartLevel + Chapter5LevelCount;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-l63-images-l81-x";
+        public const string CurriculumVersion = "2026-07-l65-balanced-l90-triple";
+
+        /// <summary>From global level 65: alternate 1 vs 2 tiles per variable (equal mix).</summary>
+        public const int VariableCountCurveStartLevel = 65;
+
+        /// <summary>Some levels 90–100 use 3 tiles per variable per side.</summary>
+        public const int TripleVariableCountStartLevel = 90;
+        public const int TripleVariableCountEndLevel = 100;
 
         /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
         public const int OppositeExtraTileStartLevel = 40;
@@ -141,7 +148,7 @@ namespace DragonBoxAlgebra.Gameplay
         private static LevelDefinition BuildChapter5Level(int globalLevel, int theme, int displayNumber)
         {
             (char first, char second) = RandomDistinctPairLetters(globalLevel * 7919 + 31);
-            (int firstCount, int secondCount) = RandomPositiveCounts(globalLevel * 7919 + 47);
+            (int firstCount, int secondCount) = PositiveCountsForGlobalLevel(globalLevel, globalLevel * 7919 + 47);
             string title =
                 $"Ch5 • {ChapterNames[4]} {displayNumber} ({first}" +
                 (first == second ? "×2" : $", {second}") + " images)";
@@ -251,6 +258,31 @@ namespace DragonBoxAlgebra.Gameplay
             return (rng.Next(1, 3), rng.Next(1, 3));
         }
 
+        /// <summary>
+        /// Levels 63–64: random 1–2 per variable. From 65: equal mix of 1 and 2 per variable.
+        /// Levels 90, 93, 96, 99: three of each variable per side.
+        /// </summary>
+        private static (int firstCount, int secondCount) PositiveCountsForGlobalLevel(int globalLevel, int seed)
+        {
+            if (globalLevel >= TripleVariableCountStartLevel
+                && globalLevel <= TripleVariableCountEndLevel
+                && IsTripleVariableCountLevel(globalLevel))
+            {
+                return (3, 3);
+            }
+
+            if (globalLevel >= VariableCountCurveStartLevel)
+            {
+                int count = (globalLevel - VariableCountCurveStartLevel) % 2 == 0 ? 1 : 2;
+                return (count, count);
+            }
+
+            return RandomPositiveCounts(seed);
+        }
+
+        private static bool IsTripleVariableCountLevel(int globalLevel) =>
+            (globalLevel - TripleVariableCountStartLevel) % 3 == 0;
+
         private static void AddBoxTile(List<CardKind> cards, List<char> letters)
         {
             cards.Add(CardKind.Box);
@@ -284,7 +316,7 @@ namespace DragonBoxAlgebra.Gameplay
         {
             int globalLevel = Chapter6StartLevel + displayNumber - 1;
             (char first, char second) = RandomDistinctPairLetters(globalLevel * 7919 + 31);
-            (int firstCount, int secondCount) = RandomPositiveCounts(globalLevel * 7919 + 47);
+            (int firstCount, int secondCount) = PositiveCountsForGlobalLevel(globalLevel, globalLevel * 7919 + 47);
             string title =
                 $"Ch6 • {ChapterNames[5]} {displayNumber} (x + {first}" +
                 (first == second ? "×2" : $", {second}") + ")";
