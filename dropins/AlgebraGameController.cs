@@ -74,6 +74,9 @@ namespace DragonBoxAlgebra.Gameplay
         public bool UsesDualHandPanelDisplay =>
             _hand.Count >= 2 && CurrentLevel.Chapter >= 5;
 
+        private bool UsesReusableVariableHandCards =>
+            UsesDualHandPanelDisplay && CurrentLevel.Chapter >= 5;
+
         public bool ShouldKeepHandCardInPanel(int handIndex) =>
             UsesPlayableHandDisplay
             && handIndex >= 0
@@ -529,6 +532,12 @@ namespace DragonBoxAlgebra.Gameplay
                 Moves.RegisterCombine();
                 MessageChanged?.Invoke("Pair dismissed.");
                 BoardChanged?.Invoke();
+                if (UsesReusableVariableHandCards)
+                {
+                    RefreshHandSpentStateForReusableCards();
+                    HandChanged?.Invoke();
+                }
+
                 CheckWin();
                 return true;
             }
@@ -555,6 +564,12 @@ namespace DragonBoxAlgebra.Gameplay
 
             MessageChanged?.Invoke("Pair dismissed.");
             BoardChanged?.Invoke();
+            if (UsesReusableVariableHandCards)
+            {
+                RefreshHandSpentStateForReusableCards();
+                HandChanged?.Invoke();
+            }
+
             CheckWin();
             return true;
         }
@@ -840,7 +855,15 @@ namespace DragonBoxAlgebra.Gameplay
             _pendingBalance = null;
             if (UsesPlayableHandDisplay)
             {
-                _spentHandIndices.Add(handIndex);
+                if (UsesReusableVariableHandCards)
+                {
+                    RefreshHandSpentStateForReusableCards();
+                }
+                else
+                {
+                    _spentHandIndices.Add(handIndex);
+                }
+
                 _activeHandSlot = -1;
                 SyncHandTemplateForCard(_hand[handIndex]);
             }
@@ -1239,6 +1262,64 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return hasA && hasB;
+        }
+
+        private void RefreshHandSpentStateForReusableCards()
+        {
+            for (int i = 0; i < _hand.Count; i++)
+            {
+                if (_hand[i].VariableLetter == '\0')
+                {
+                    continue;
+                }
+
+                if (HandLetterStillNeededOnBoard(i))
+                {
+                    _spentHandIndices.Remove(i);
+                }
+                else
+                {
+                    _spentHandIndices.Add(i);
+                }
+            }
+        }
+
+        private bool HandLetterStillNeededOnBoard(int handIndex)
+        {
+            if (handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return false;
+            }
+
+            char letter = _hand[handIndex].VariableLetter;
+            if (letter == '\0')
+            {
+                return false;
+            }
+
+            return CountPositiveVariablesOnBoard(letter) > 0;
+        }
+
+        private int CountPositiveVariablesOnBoard(char letter)
+        {
+            int count = 0;
+            foreach (BoardCard card in Board.Left.Cards)
+            {
+                if (card.Kind == CardKind.DayCreature && card.VariableLetter == letter)
+                {
+                    count++;
+                }
+            }
+
+            foreach (BoardCard card in Board.Right.Cards)
+            {
+                if (card.Kind == CardKind.DayCreature && card.VariableLetter == letter)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private void PopUndoWithoutApply()

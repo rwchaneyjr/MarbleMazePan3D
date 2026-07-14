@@ -136,7 +136,7 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Ch5 (63–80): red box goal + variable image sprites (a/b/c/r); one of each variable per side, two negatives in hand.
+        /// Ch5 (63–80): red box goal + variable images; one negative per letter in hand (reusable until cleared).
         /// </summary>
         private static LevelDefinition BuildChapter5Level(int globalLevel, int theme, int displayNumber)
         {
@@ -245,7 +245,11 @@ namespace DragonBoxAlgebra.Gameplay
             return (VariablePairLetters[firstIndex], VariablePairLetters[secondIndex]);
         }
 
-        private static (int firstCount, int secondCount) RandomPositiveCounts(int seed) => (1, 1);
+        private static (int firstCount, int secondCount) RandomPositiveCounts(int seed)
+        {
+            var rng = new System.Random(seed);
+            return (rng.Next(1, 3), rng.Next(1, 3));
+        }
 
         private static void AddBoxTile(List<CardKind> cards, List<char> letters)
         {
@@ -297,7 +301,7 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// x side: x + positive variable images; other side: matching positives; hand: one negative per variable.
+        /// x side: x + positive variable images; hand: one reusable negative per variable letter.
         /// </summary>
         private static LevelDefinition MakeCh6MultiHandBalanceLevel(string title, int theme, char firstLetter,
             char secondLetter, int firstCount, int secondCount, bool xOnLeft)
