@@ -58,7 +58,7 @@ gameplay_dropin() {
 
 core_dropin() {
   case "$1" in
-    AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs)
+    AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs|VariableGoalRules.cs)
       return 0
       ;;
     *)
@@ -74,7 +74,8 @@ audio_dropin() {
 cleanup_stale_imports() {
   local scripts_dir="$1"
   local stale
-  for stale in HandVisualRules.cs ThemeAssignment.cs ChapterLevelGenerator.cs DragMergeLevelGenerator.cs; do
+  for stale in HandVisualRules.cs ThemeAssignment.cs ChapterLevelGenerator.cs DragMergeLevelGenerator.cs \
+    VariableGoalRules.cs WinChecker.cs CombineRules.cs BoardCard.cs BoardSide.cs CardKind.cs AlgebraBoard.cs; do
     rm -f "$scripts_dir/UI/$stale" "$scripts_dir/UI/${stale}.meta"
   done
   rm -f "$scripts_dir/UI/BoardSideLayout.cs" "$scripts_dir/UI/BoardSideLayout.cs.meta"

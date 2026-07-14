@@ -32,6 +32,8 @@ normalize_windows_path() {
 cleanup_stale_generator() {
   local scripts_dir="$1/Assets/DragonBoxAlgebra/Scripts"
   rm -f "$scripts_dir/UI/ChapterLevelGenerator.cs" "$scripts_dir/UI/ChapterLevelGenerator.cs.meta"
+  rm -f "$scripts_dir/UI/VariableGoalRules.cs" "$scripts_dir/UI/VariableGoalRules.cs.meta"
+  rm -f "$scripts_dir/UI/WinChecker.cs" "$scripts_dir/UI/WinChecker.cs.meta"
 }
 
 pull_marblemazepan3d() {
