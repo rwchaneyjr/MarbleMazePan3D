@@ -23,14 +23,32 @@ namespace DragonBoxAlgebra.Core
         /// <summary>True when the red box is the only tile on its side (the other side may have cards).</summary>
         public static bool IsBoxAloneOnItsSide(AlgebraBoard board)
         {
-            int leftBoxes = board.Left.Cards.Count(c => c.Kind == CardKind.Box);
-            int rightBoxes = board.Right.Cards.Count(c => c.Kind == CardKind.Box);
-            if (leftBoxes + rightBoxes != 1)
+            int leftGoals = board.Left.Cards.Count(c => VariableGoalRules.IsIsolationGoal(c));
+            int rightGoals = board.Right.Cards.Count(c => VariableGoalRules.IsIsolationGoal(c));
+            if (leftGoals + rightGoals != 1)
             {
                 return false;
             }
 
-            if (leftBoxes == 1)
+            if (leftGoals == 1)
+            {
+                return board.Left.Cards.Count == 1;
+            }
+
+            return board.Right.Cards.Count == 1;
+        }
+
+        /// <summary>Positive x alone on its side (Ch5 goal tile).</summary>
+        public static bool IsVariableXAloneOnItsSide(AlgebraBoard board)
+        {
+            int leftX = board.Left.Cards.Count(c => VariableGoalRules.IsVariableXGoal(c));
+            int rightX = board.Right.Cards.Count(c => VariableGoalRules.IsVariableXGoal(c));
+            if (leftX + rightX != 1)
+            {
+                return false;
+            }
+
+            if (leftX == 1)
             {
                 return board.Left.Cards.Count == 1;
             }
@@ -43,12 +61,28 @@ namespace DragonBoxAlgebra.Core
         {
             if (board.Right.Cards.Count == 0)
             {
-                return board.Left.Cards.Count == 1 && board.Left.Cards[0].Kind == CardKind.Box;
+                return board.Left.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(board.Left.Cards[0]);
             }
 
             if (board.Left.Cards.Count == 0)
             {
-                return board.Right.Cards.Count == 1 && board.Right.Cards[0].Kind == CardKind.Box;
+                return board.Right.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(board.Right.Cards[0]);
+            }
+
+            return false;
+        }
+
+        /// <summary>Ch5: positive x alone on one side, opposite side empty.</summary>
+        public static bool IsVariableXReadyForSidesTogether(AlgebraBoard board)
+        {
+            if (board.Right.Cards.Count == 0)
+            {
+                return board.Left.Cards.Count == 1 && VariableGoalRules.IsVariableXGoal(board.Left.Cards[0]);
+            }
+
+            if (board.Left.Cards.Count == 0)
+            {
+                return board.Right.Cards.Count == 1 && VariableGoalRules.IsVariableXGoal(board.Right.Cards[0]);
             }
 
             return false;
@@ -62,7 +96,7 @@ namespace DragonBoxAlgebra.Core
         /// and the player has made at least one move (no win on load).
         /// </summary>
         public static bool CanWin(AlgebraBoard board, int moves, bool hasPendingBalance, int pendingCancelCount,
-            int activeMergeAnimations, bool allowOppositeCreatures = false)
+            int activeMergeAnimations, bool allowOppositeCreatures = false, bool useVariableXGoal = false)
         {
             if (hasPendingBalance || pendingCancelCount > 0 || activeMergeAnimations > 0)
             {
@@ -72,6 +106,11 @@ namespace DragonBoxAlgebra.Core
             if (moves <= 0)
             {
                 return false;
+            }
+
+            if (useVariableXGoal)
+            {
+                return IsVariableXReadyForSidesTogether(board);
             }
 
             return allowOppositeCreatures

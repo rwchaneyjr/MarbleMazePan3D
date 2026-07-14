@@ -60,6 +60,8 @@ namespace DragonBoxAlgebra.Gameplay
         private static string Capitalize(string value) =>
             string.IsNullOrEmpty(value) ? value : char.ToUpper(value[0]) + value.Substring(1);
 
+        private string GoalAlonePhrase => UsesVariableXGoalWin ? "Leave x alone!" : "Leave the red box alone!";
+
         private static readonly Random Rng = new();
 
         public int LevelIndex => _levelIndex;
@@ -225,8 +227,7 @@ namespace DragonBoxAlgebra.Gameplay
             LevelDefinition level = CurrentLevel;
             CreatureArt.SetTheme(level.CreatureTheme);
 
-            Board.Reset(level.BuildSide(level.LeftCards, level.LeftValues, level.LeftCreatureTheme),
-                level.BuildSide(level.RightCards, level.RightValues, level.RightCreatureTheme));
+            Board.Reset(level.BuildLeftSide(), level.BuildRightSide());
 
             if (UsesManualPairMerge)
             {
@@ -859,7 +860,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             if (!WinChecker.CanWin(Board, Moves.Moves, _pendingBalance != null, _pendingCancels.Count,
-                    _activeMergeAnimations, UsesExtraOppositeTileLevel))
+                    _activeMergeAnimations, UsesExtraOppositeTileLevel, UsesVariableXGoalWin))
             {
                 return;
             }
@@ -872,7 +873,9 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            MessageChanged?.Invoke("You win! The red box is alone.");
+            MessageChanged?.Invoke(UsesVariableXGoalWin
+                ? "You win! x is alone."
+                : "You win! The red box is alone.");
             WinSequenceStarted?.Invoke(stars, moves);
             HandChanged?.Invoke();
         }
@@ -892,6 +895,8 @@ namespace DragonBoxAlgebra.Gameplay
             opposite.Cards.Clear();
         }
 
+        public bool UsesVariableXGoalWin => CurrentLevel.Chapter >= 5;
+
         public bool UsesExtraOppositeTileLevel =>
             _levelIndex + 1 >= ChapterLevelGenerator.OppositeExtraTileStartLevel
             && _levelIndex + 1 <= ChapterLevelGenerator.OppositeExtraTileEndLevel;
@@ -901,14 +906,14 @@ namespace DragonBoxAlgebra.Gameplay
             boxSide = null;
             oppositeSide = null;
 
-            if (Board.Left.Cards.Count == 1 && Board.Left.Cards[0].Kind == CardKind.Box)
+            if (Board.Left.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(Board.Left.Cards[0]))
             {
                 boxSide = "Left";
                 oppositeSide = "Right";
                 return true;
             }
 
-            if (Board.Right.Cards.Count == 1 && Board.Right.Cards[0].Kind == CardKind.Box)
+            if (Board.Right.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(Board.Right.Cards[0]))
             {
                 boxSide = "Right";
                 oppositeSide = "Left";
@@ -921,13 +926,13 @@ namespace DragonBoxAlgebra.Gameplay
         private bool TryGetOppositeSideOfBox(out BoardSide opposite)
         {
             opposite = null;
-            if (Board.Left.Cards.Count == 1 && Board.Left.Cards[0].Kind == CardKind.Box)
+            if (Board.Left.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(Board.Left.Cards[0]))
             {
                 opposite = Board.Right;
                 return true;
             }
 
-            if (Board.Right.Cards.Count == 1 && Board.Right.Cards[0].Kind == CardKind.Box)
+            if (Board.Right.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(Board.Right.Cards[0]))
             {
                 opposite = Board.Left;
                 return true;

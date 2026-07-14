@@ -58,7 +58,11 @@ namespace DragonBoxAlgebra.Core
         public bool IsConstant =>
             Kind is CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.One;
 
-        public bool IsDraggableFromBoard => Kind != CardKind.Box;
+        public bool IsVariableXGoal => VariableGoalRules.IsVariableXGoal(this);
+
+        public bool IsIsolationGoal => VariableGoalRules.IsIsolationGoal(this);
+
+        public bool IsDraggableFromBoard => !IsIsolationGoal;
 
         public bool IsPlayableFromHand => Kind is CardKind.DayCreature or CardKind.NightCreature
             or CardKind.PositiveConstant or CardKind.NegativeConstant;

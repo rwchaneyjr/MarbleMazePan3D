@@ -41,6 +41,7 @@ namespace DragonBoxAlgebra.UI
         public static string Label(BoardCard card) => card.Kind switch
         {
             CardKind.Box => "BOX",
+            CardKind.DayCreature when card.IsVariableXGoal => "x",
             CardKind.DayCreature => UsesVariableLetter(card)
                 ? $"POS {VariableLabel(card)}"
                 : $"DAY x{card.Value}",
@@ -86,6 +87,11 @@ namespace DragonBoxAlgebra.UI
 
         public static Color FaceBackground(BoardCard card, string sideName)
         {
+            if (card.IsVariableXGoal)
+            {
+                return Background(CardKind.Box);
+            }
+
             if (sideName == "Hand"
                 && card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
             {
@@ -99,6 +105,11 @@ namespace DragonBoxAlgebra.UI
 
         public static Color FaceBorder(BoardCard card, string sideName)
         {
+            if (card.IsVariableXGoal)
+            {
+                return Border(CardKind.Box);
+            }
+
             if (sideName == "Hand"
                 && card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
             {
@@ -153,6 +164,7 @@ namespace DragonBoxAlgebra.UI
         public static string AlgebraLabel(BoardCard card) => card.Kind switch
         {
             CardKind.Box => "x",
+            CardKind.DayCreature when card.IsVariableXGoal => "x",
             CardKind.DayCreature => UsesVariableLetter(card)
                 ? FormatVariableAlgebra(card, positive: true)
                 : card.Value == 1 ? "x" : $"{card.Value}x",

@@ -18,13 +18,15 @@ namespace DragonBoxAlgebra.Gameplay
         public List<int> RightValues = new();
         public List<CardKind> HandCards = new();
         public List<int> HandValues = new();
+        public List<char> LeftVariableLetters = new();
+        public List<char> RightVariableLetters = new();
+        public List<char> HandVariableLetters = new();
         public int ParMoves = 6;
         public int ParCards = 2;
         public bool DragToMergePairs;
-        /// <summary>Letter variable for Ch5+ only. '\0' = creatures use light/dark art (levels 1–63).</summary>
-        public char VariableLetter = '\0';
 
-        public BoardSide BuildSide(List<CardKind> kinds, List<int> values, int sideTheme = -1)
+        public BoardSide BuildSide(List<CardKind> kinds, List<int> values, int sideTheme = -1,
+            List<char> variableLetters = null)
         {
             var side = new BoardSide();
             int resolvedTheme = sideTheme >= 0 ? sideTheme : CreatureTheme;
@@ -34,10 +36,7 @@ namespace DragonBoxAlgebra.Gameplay
                 int visualTheme = kinds[i] is CardKind.DayCreature or CardKind.NightCreature
                     ? resolvedTheme
                     : -1;
-                char variableLetter = VariableLetter != '\0'
-                    && kinds[i] is CardKind.DayCreature or CardKind.NightCreature
-                    ? VariableLetter
-                    : '\0';
+                char variableLetter = LetterForCard(kinds[i], i, variableLetters);
                 side.Cards.Add(new BoardCard(kinds[i], value, 1, visualTheme, variableLetter));
             }
 
@@ -53,14 +52,32 @@ namespace DragonBoxAlgebra.Gameplay
                 int visualTheme = HandCards[i] is CardKind.DayCreature or CardKind.NightCreature
                     ? CreatureTheme
                     : -1;
-                char variableLetter = VariableLetter != '\0'
-                    && HandCards[i] is CardKind.DayCreature or CardKind.NightCreature
-                    ? VariableLetter
-                    : '\0';
+                char variableLetter = LetterForCard(HandCards[i], i, HandVariableLetters);
                 hand.Add(new BoardCard(HandCards[i], value, 1, visualTheme, variableLetter));
             }
 
             return hand;
+        }
+
+        public BoardSide BuildLeftSide() =>
+            BuildSide(LeftCards, LeftValues, LeftCreatureTheme, LeftVariableLetters);
+
+        public BoardSide BuildRightSide() =>
+            BuildSide(RightCards, RightValues, RightCreatureTheme, RightVariableLetters);
+
+        private static char LetterForCard(CardKind kind, int index, List<char> letters)
+        {
+            if (kind is not (CardKind.DayCreature or CardKind.NightCreature))
+            {
+                return '\0';
+            }
+
+            if (letters != null && index < letters.Count && letters[index] != '\0')
+            {
+                return letters[index];
+            }
+
+            return '\0';
         }
     }
 }

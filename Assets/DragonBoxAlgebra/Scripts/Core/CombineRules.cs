@@ -8,7 +8,8 @@ namespace DragonBoxAlgebra.Core
 
         public static CombineActionType? GetCombineAction(BoardCard a, BoardCard b)
         {
-            if (a.Kind == CardKind.Box || b.Kind == CardKind.Box)
+            if (a.Kind == CardKind.Box || b.Kind == CardKind.Box
+                || VariableGoalRules.IsVariableXGoal(a) || VariableGoalRules.IsVariableXGoal(b))
             {
                 return null;
             }
