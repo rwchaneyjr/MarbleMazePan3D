@@ -62,7 +62,7 @@ namespace DragonBoxAlgebra.Core
         /// and the player has made at least one move (no win on load).
         /// </summary>
         public static bool CanWin(AlgebraBoard board, int moves, bool hasPendingBalance, int pendingCancelCount,
-            int activeMergeAnimations)
+            int activeMergeAnimations, bool allowOppositeCreatures = false)
         {
             if (hasPendingBalance || pendingCancelCount > 0 || activeMergeAnimations > 0)
             {
@@ -74,7 +74,9 @@ namespace DragonBoxAlgebra.Core
                 return false;
             }
 
-            return IsRedBoxAloneWinState(board);
+            return allowOppositeCreatures
+                ? IsBoxAloneOnItsSide(board)
+                : IsRedBoxAloneWinState(board);
         }
 
         public static bool HasPendingOpposites(AlgebraBoard board)
