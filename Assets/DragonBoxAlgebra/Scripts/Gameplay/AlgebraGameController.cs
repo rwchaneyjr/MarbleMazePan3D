@@ -51,13 +51,24 @@ namespace DragonBoxAlgebra.Gameplay
         public int LevelCount => LevelLibrary.Levels.Count;
         public LevelDefinition CurrentLevel => LevelLibrary.Levels[_levelIndex];
 
-        public bool UsesPlayableHandDisplay => CurrentLevel.Chapter >= 4;
+        public bool UsesPlayableHandDisplay =>
+            LevelIndex + 1 >= ChapterLevelGenerator.Chapter4StartLevel;
 
         public bool ShouldDisplayHandCard(int handIndex)
         {
             if (!UsesPlayableHandDisplay)
             {
                 return true;
+            }
+
+            if (handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return false;
+            }
+
+            if (!_hand[handIndex].IsPlayableFromHand)
+            {
+                return false;
             }
 
             if (_spentHandIndices.Contains(handIndex))
@@ -70,7 +81,25 @@ namespace DragonBoxAlgebra.Gameplay
                 return handIndex == _pendingBalance.HandIndex;
             }
 
-            return true;
+            return handIndex == NextUnspentHandIndex();
+        }
+
+        private int NextUnspentHandIndex()
+        {
+            for (int i = 0; i < _hand.Count; i++)
+            {
+                if (_spentHandIndices.Contains(i))
+                {
+                    continue;
+                }
+
+                if (_hand[i].IsPlayableFromHand)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         public bool IsCardPendingCancel(string cardId)

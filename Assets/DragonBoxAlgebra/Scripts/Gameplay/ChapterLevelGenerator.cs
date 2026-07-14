@@ -18,6 +18,9 @@ namespace DragonBoxAlgebra.Gameplay
         public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
             + Chapter4LevelCount;
 
+        /// <summary>First global level number (1-based) for Chapter 4 / Move Cards.</summary>
+        public const int Chapter4StartLevel = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount + 1;
+
         private static readonly int[] ChapterLevelCounts =
         {
             Chapter1LevelCount,

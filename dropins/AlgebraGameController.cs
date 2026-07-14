@@ -51,13 +51,24 @@ namespace DragonBoxAlgebra.Gameplay
         public int LevelCount => LevelLibrary.Levels.Count;
         public LevelDefinition CurrentLevel => LevelLibrary.Levels[_levelIndex];
 
-        public bool UsesPlayableHandDisplay => CurrentLevel.Chapter >= 4;
+        public bool UsesPlayableHandDisplay =>
+            LevelIndex + 1 >= ChapterLevelGenerator.Chapter4StartLevel;
 
         public bool ShouldDisplayHandCard(int handIndex)
         {
             if (!UsesPlayableHandDisplay)
             {
                 return true;
+            }
+
+            if (handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return false;
+            }
+
+            if (!_hand[handIndex].IsPlayableFromHand)
+            {
+                return false;
             }
 
             if (_spentHandIndices.Contains(handIndex))
@@ -70,7 +81,25 @@ namespace DragonBoxAlgebra.Gameplay
                 return handIndex == _pendingBalance.HandIndex;
             }
 
-            return true;
+            return handIndex == NextUnspentHandIndex();
+        }
+
+        private int NextUnspentHandIndex()
+        {
+            for (int i = 0; i < _hand.Count; i++)
+            {
+                if (_spentHandIndices.Contains(i))
+                {
+                    continue;
+                }
+
+                if (_hand[i].IsPlayableFromHand)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         public bool IsCardPendingCancel(string cardId)
@@ -88,7 +117,6 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool IsCardPendingCancelOnSide(string cardId, string sideName)
         {
-            BoardSide side = Board.GetSide(sideName);
             foreach (PendingCancelMarker marker in _pendingCancels)
             {
                 if (marker.SideName != sideName)
@@ -96,12 +124,7 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
-                if (marker.CardIdA != cardId && marker.CardIdB != cardId)
-                {
-                    continue;
-                }
-
-                if (SideContainsBothCards(side, marker.CardIdA, marker.CardIdB))
+                if (marker.CardIdA == cardId || marker.CardIdB == cardId)
                 {
                     return true;
                 }
@@ -660,9 +683,10 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            bool puzzleComplete = UsesManualPairMerge
-                ? WinChecker.IsBoxAloneOnItsSide(Board)
-                : WinChecker.IsBoxAlone(Board);
+            bool puzzleComplete = WinChecker.IsReadyForSidesTogether(Board)
+                || (UsesManualPairMerge
+                    ? WinChecker.IsBoxAloneOnItsSide(Board)
+                    : WinChecker.IsBoxAlone(Board));
             if (!puzzleComplete)
             {
                 return;
@@ -671,9 +695,11 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            MessageChanged?.Invoke(UsesManualPairMerge
+            MessageChanged?.Invoke(WinChecker.IsReadyForSidesTogether(Board)
                 ? "You win! The sides come together."
-                : "You win! The red box is alone.");
+                : UsesManualPairMerge
+                    ? "You win! The sides come together."
+                    : "You win! The red box is alone.");
             WinSequenceStarted?.Invoke(stars, moves);
         }
 
