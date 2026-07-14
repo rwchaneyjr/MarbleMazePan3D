@@ -57,6 +57,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool ShouldKeepHandCardInPanel(int handIndex) =>
             UsesPlayableHandDisplay
+            && !IsPlayableHandHiddenForPuzzleState()
             && !_spentHandIndices.Contains(handIndex)
             && handIndex == VisibleHandSlotIndex();
 
@@ -88,6 +89,11 @@ namespace DragonBoxAlgebra.Gameplay
                 return true;
             }
 
+            if (_levelComplete || IsPlayableHandHiddenForPuzzleState())
+            {
+                return false;
+            }
+
             if (handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;
@@ -104,6 +110,29 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return handIndex == VisibleHandSlotIndex();
+        }
+
+        private bool IsPlayableHandHiddenForPuzzleState()
+        {
+            if (!UsesPlayableHandDisplay)
+            {
+                return false;
+            }
+
+            if (NextUnspentHandIndex() < 0)
+            {
+                return true;
+            }
+
+            if (_pendingBalance != null || _pendingCancels.Count > 0 || _activeMergeAnimations > 0)
+            {
+                return false;
+            }
+
+            return WinChecker.IsReadyForSidesTogether(Board)
+                || (UsesManualPairMerge
+                    ? WinChecker.IsBoxAloneOnItsSide(Board)
+                    : WinChecker.IsBoxAlone(Board));
         }
 
         private int VisibleHandSlotIndex()
@@ -748,6 +777,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             _levelComplete = true;
+            HandChanged?.Invoke();
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
             MessageChanged?.Invoke(WinChecker.IsReadyForSidesTogether(Board)
