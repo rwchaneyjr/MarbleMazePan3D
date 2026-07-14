@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Restore "working sprites and swirl" snapshot:
-#   CreatureSprites PNG loading, sprite cover layout, SwirlingLight cancel marker,
-#   trimmed Ch1 intro (12 levels).
+# Restore working branch with level 29-65 win fix (commit 0cfae36):
+#   Solvable Ch2/Ch3/Ch4 layouts, hand drag fixes, sides-together win animation.
+#   Also: PNG creature sprites, SwirlingLight cancel marker, Ch1 x12.
 #
 # Usage:
 #   cd /c/Users/rober/SymbolAlgebra
@@ -43,7 +43,7 @@ git checkout -B "$BRANCH" "origin/$BRANCH"
 git reset --hard "origin/$BRANCH"
 
 echo ""
-echo "Includes: PNG creature sprites, card cover layout, SwirlingLight merge marker, Ch1 x12"
+echo "Includes: level 29-65 win fix (0cfae36), sprites, SwirlingLight, Ch1 x12"
 echo ""
 echo "If Console shows package error on Play:"
 echo "  Open Packages/manifest.json"
