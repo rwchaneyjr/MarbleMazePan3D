@@ -38,6 +38,22 @@ namespace DragonBoxAlgebra.Core
             return board.Right.Cards.Count == 1;
         }
 
+        /// <summary>Box on one side only; the opposite side is completely empty.</summary>
+        public static bool IsReadyForSidesTogether(AlgebraBoard board)
+        {
+            if (board.Right.Cards.Count == 0)
+            {
+                return board.Left.Cards.Count == 1 && board.Left.Cards[0].Kind == CardKind.Box;
+            }
+
+            if (board.Left.Cards.Count == 0)
+            {
+                return board.Right.Cards.Count == 1 && board.Right.Cards[0].Kind == CardKind.Box;
+            }
+
+            return false;
+        }
+
         public static bool HasPendingOpposites(AlgebraBoard board)
         {
             return CombineRules.TryAutoCombine(board.Left, out _)

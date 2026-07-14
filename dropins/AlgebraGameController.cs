@@ -625,6 +625,10 @@ namespace DragonBoxAlgebra.Gameplay
         public void NotifyMergeAnimationCompleted()
         {
             _activeMergeAnimations = Math.Max(0, _activeMergeAnimations - 1);
+            if (_pendingCancels.Count == 0)
+            {
+                CheckWin();
+            }
         }
 
         public bool CanPresentWin()

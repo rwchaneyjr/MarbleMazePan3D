@@ -625,6 +625,10 @@ namespace DragonBoxAlgebra.Gameplay
         public void NotifyMergeAnimationCompleted()
         {
             _activeMergeAnimations = Math.Max(0, _activeMergeAnimations - 1);
+            if (_pendingCancels.Count == 0)
+            {
+                CheckWin();
+            }
         }
 
         public bool CanPresentWin()
@@ -656,9 +660,10 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            bool puzzleComplete = UsesManualPairMerge
-                ? WinChecker.IsBoxAloneOnItsSide(Board)
-                : WinChecker.IsBoxAlone(Board);
+            bool puzzleComplete = WinChecker.IsReadyForSidesTogether(Board)
+                || (UsesManualPairMerge
+                    ? WinChecker.IsBoxAloneOnItsSide(Board)
+                    : WinChecker.IsBoxAlone(Board));
             if (!puzzleComplete)
             {
                 return;
@@ -667,9 +672,11 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            MessageChanged?.Invoke(UsesManualPairMerge
+            MessageChanged?.Invoke(WinChecker.IsReadyForSidesTogether(Board)
                 ? "You win! The sides come together."
-                : "You win! The red box is alone.");
+                : UsesManualPairMerge
+                    ? "You win! The sides come together."
+                    : "You win! The red box is alone.");
             WinSequenceStarted?.Invoke(stars, moves);
         }
 
