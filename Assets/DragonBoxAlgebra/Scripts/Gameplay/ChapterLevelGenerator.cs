@@ -266,7 +266,8 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Ch4: two or three hand tiles, tiles on both sides.</summary>
         private static LevelDefinition BuildChapter4Level(int index, int theme)
         {
-            if (index < 10)
+            // Levels 46–49: intro layout (single dark tile on right).
+            if (index < 4)
             {
                 return Make(
                     $"Ch4 • {ChapterNames[3]} {index + 1}",
@@ -279,6 +280,20 @@ namespace DragonBoxAlgebra.Gameplay
                     parCards: 2);
             }
 
+            // Levels 50+: include light+dark on the right so those tiles are playable (merge/balance).
+            if (index < 10)
+            {
+                return Make(
+                    $"Ch4 • {ChapterNames[3]} {index + 1}",
+                    chapter: 4,
+                    theme,
+                    left: new[] { CardKind.Box, CardKind.DayCreature },
+                    right: new[] { CardKind.DayCreature, CardKind.NightCreature },
+                    hand: new[] { CardKind.NightCreature, CardKind.DayCreature },
+                    parMoves: 3,
+                    parCards: 2);
+            }
+
             if (index < 16)
             {
                 return Make(
@@ -286,7 +301,7 @@ namespace DragonBoxAlgebra.Gameplay
                     chapter: 4,
                     theme,
                     left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
-                    right: new[] { CardKind.NightCreature },
+                    right: new[] { CardKind.DayCreature, CardKind.NightCreature },
                     hand: new[] { CardKind.NightCreature, CardKind.NightCreature },
                     parMoves: 4,
                     parCards: 2);
@@ -299,7 +314,7 @@ namespace DragonBoxAlgebra.Gameplay
                     chapter: 4,
                     theme,
                     left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
-                    right: new[] { CardKind.NightCreature, CardKind.NightCreature },
+                    right: new[] { CardKind.DayCreature, CardKind.NightCreature, CardKind.NightCreature },
                     hand: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.DayCreature },
                     parMoves: 5,
                     parCards: 3);
@@ -310,7 +325,7 @@ namespace DragonBoxAlgebra.Gameplay
                 chapter: 4,
                 theme,
                 left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
-                right: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.NightCreature },
+                right: new[] { CardKind.DayCreature, CardKind.NightCreature, CardKind.NightCreature },
                 hand: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.DayCreature },
                 parMoves: 5,
                 parCards: 3);
