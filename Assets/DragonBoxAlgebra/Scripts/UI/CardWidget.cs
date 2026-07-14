@@ -335,23 +335,18 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (_dragGhost != null)
-            {
-                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
-                        eventData.pressEventCamera, out Vector2 localPoint))
-                {
-                    _didDrag = true;
-                    _dragGhost._rect.localPosition = localPoint + _dragOffset;
-                }
-
-                return;
-            }
-
             if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                     eventData.pressEventCamera, out Vector2 localPoint))
             {
                 _didDrag = true;
-                _rect.localPosition = localPoint + _dragOffset;
+                if (_dragGhost != null)
+                {
+                    _dragGhost._rect.localPosition = localPoint + _dragOffset;
+                }
+                else
+                {
+                    _rect.localPosition = localPoint + _dragOffset;
+                }
             }
         }
 
