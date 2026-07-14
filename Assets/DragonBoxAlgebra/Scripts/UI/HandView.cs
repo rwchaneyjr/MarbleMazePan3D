@@ -34,7 +34,7 @@ namespace DragonBoxAlgebra.UI
 
         private void RefreshHandInPlace()
         {
-            if (HasHandWidgetOnDragRoot())
+            if (HasHandWidgetOnDragRoot() && !_controller.KeepHandSlotVisibleDuringDrag())
             {
                 return;
             }
@@ -80,7 +80,7 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                BoardCard card = _controller.Hand[i];
+                BoardCard card = _controller.GetHandDisplayCard(i);
                 CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
             }
         }

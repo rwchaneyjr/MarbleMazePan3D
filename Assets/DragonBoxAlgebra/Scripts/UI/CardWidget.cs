@@ -315,6 +315,16 @@ namespace DragonBoxAlgebra.UI
                     }
                 }
 
+                if (_handPlayHandled && _controller.ShouldKeepHandCardInPanel(Index))
+                {
+                    transform.SetParent(_originalParent, false);
+                    transform.SetSiblingIndex(_originalSiblingIndex);
+                    Card = _controller.GetHandDisplayCard(Index);
+                    RefreshVisual();
+                    _controller.RefreshHandPresentation();
+                    return;
+                }
+
                 DestroyImmediate(gameObject);
                 _controller.RefreshHandPresentation();
                 return;

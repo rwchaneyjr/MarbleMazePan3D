@@ -29,6 +29,7 @@ namespace DragonBoxAlgebra.UI
         private int _originalSiblingIndex;
         private bool _isDragging;
         private bool _didDrag;
+        private bool _dropHandled;
         private bool _handPlayHandled;
         private Vector2 _dragPressScreenPosition;
 
@@ -259,6 +260,7 @@ namespace DragonBoxAlgebra.UI
 
             _isDragging = true;
             _didDrag = false;
+            _dropHandled = false;
             _handPlayHandled = false;
             _dragPressScreenPosition = eventData.pressPosition;
             _originalParent = transform.parent;
@@ -313,6 +315,16 @@ namespace DragonBoxAlgebra.UI
                     }
                 }
 
+                if (_handPlayHandled && _controller.ShouldKeepHandCardInPanel(Index))
+                {
+                    transform.SetParent(_originalParent, false);
+                    transform.SetSiblingIndex(_originalSiblingIndex);
+                    Card = _controller.GetHandDisplayCard(Index);
+                    RefreshVisual();
+                    _controller.RefreshHandPresentation();
+                    return;
+                }
+
                 DestroyImmediate(gameObject);
                 _controller.RefreshHandPresentation();
                 return;
@@ -323,6 +335,7 @@ namespace DragonBoxAlgebra.UI
             {
                 if (HandleDropOnCard(target))
                 {
+                    Destroy(gameObject);
                     return;
                 }
             }
@@ -390,7 +403,7 @@ namespace DragonBoxAlgebra.UI
         public void OnDrop(PointerEventData eventData)
         {
             CardWidget dragged = eventData.pointerDrag?.GetComponent<CardWidget>();
-            if (dragged == null || dragged == this)
+            if (dragged == null || dragged == this || dragged._dropHandled)
             {
                 return;
             }
@@ -400,6 +413,11 @@ namespace DragonBoxAlgebra.UI
 
         public bool HandleDropOnCard(CardWidget target)
         {
+            if (_dropHandled)
+            {
+                return false;
+            }
+
             if (SideName == "Hand")
             {
                 if (_controller.HasPendingBalance)
@@ -431,6 +449,7 @@ namespace DragonBoxAlgebra.UI
             SnapOnto(target);
             if (_controller.TryCombine(SideName, Index, target.Index))
             {
+                _dropHandled = true;
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 return true;
             }

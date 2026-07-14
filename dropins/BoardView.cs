@@ -183,6 +183,7 @@ namespace DragonBoxAlgebra.UI
 
             Canvas.ForceUpdateCanvases();
 
+            ClearOrphanedBoardDragWidgets();
             _widgets.Clear();
             TileLayout leftLayout = ComputeTileLayout(_leftPanel, CountSlotsForSide("Left", _controller.Board.Left));
             TileLayout rightLayout = ComputeTileLayout(_rightPanel, CountSlotsForSide("Right", _controller.Board.Right));
@@ -324,6 +325,29 @@ namespace DragonBoxAlgebra.UI
 
             card = default;
             return false;
+        }
+
+        private void ClearOrphanedBoardDragWidgets()
+        {
+            if (_dragRoot == null)
+            {
+                return;
+            }
+
+            var toRemove = new List<GameObject>();
+            for (int i = 0; i < _dragRoot.childCount; i++)
+            {
+                CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
+                if (widget != null && widget.SideName != "Hand")
+                {
+                    toRemove.Add(widget.gameObject);
+                }
+            }
+
+            foreach (GameObject go in toRemove)
+            {
+                Destroy(go);
+            }
         }
 
         private void RebuildSide(RectTransform panel, BoardSide side, string sideName, TileLayout layout)

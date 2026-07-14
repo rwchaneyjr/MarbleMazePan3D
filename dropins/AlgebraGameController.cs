@@ -40,6 +40,7 @@ namespace DragonBoxAlgebra.Gameplay
         private GameSnapshot _initialSnapshot;
         private BalancePending _pendingBalance;
         private int _levelIndex;
+        private int _activeHandSlot = -1;
         private bool _levelComplete;
         private int _activeMergeAnimations;
         private bool UsesManualPairMerge =>
@@ -53,6 +54,32 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool UsesPlayableHandDisplay =>
             LevelIndex + 1 >= ChapterLevelGenerator.Chapter4StartLevel;
+
+        public bool ShouldKeepHandCardInPanel(int handIndex) =>
+            UsesPlayableHandDisplay
+            && !_spentHandIndices.Contains(handIndex)
+            && handIndex == VisibleHandSlotIndex();
+
+        public bool KeepHandSlotVisibleDuringDrag() =>
+            UsesPlayableHandDisplay && HasPendingBalance;
+
+        public BoardCard GetHandDisplayCard(int handIndex)
+        {
+            if (handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return default;
+            }
+
+            BoardCard current = _hand[handIndex];
+            if (!UsesPlayableHandDisplay || handIndex >= _handTemplates.Count)
+            {
+                return current;
+            }
+
+            BoardCard display = current.Clone();
+            display.VisualTheme = _handTemplates[handIndex].VisualTheme;
+            return display;
+        }
 
         public bool ShouldDisplayHandCard(int handIndex)
         {
@@ -76,12 +103,27 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            return handIndex == VisibleHandSlotIndex();
+        }
+
+        private int VisibleHandSlotIndex()
+        {
             if (_pendingBalance != null)
             {
-                return handIndex == _pendingBalance.HandIndex;
+                return _pendingBalance.HandIndex;
             }
 
-            return handIndex == NextUnspentHandIndex();
+            if (_activeHandSlot >= 0)
+            {
+                return _activeHandSlot;
+            }
+
+            return NextUnspentHandIndex();
+        }
+
+        private void RestoreHandSlotFromSnapshot()
+        {
+            _activeHandSlot = _pendingBalance?.HandIndex ?? -1;
         }
 
         private int NextUnspentHandIndex()
@@ -166,6 +208,7 @@ namespace DragonBoxAlgebra.Gameplay
             _pendingBalance = null;
             _pendingCancels.Clear();
             _spentHandIndices.Clear();
+            _activeHandSlot = -1;
             _activeMergeAnimations = 0;
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
                 _spentHandIndices);
@@ -249,6 +292,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
+            RestoreHandSlotFromSnapshot();
             _undoStack.Clear();
             _levelComplete = false;
             BoardChanged?.Invoke();
@@ -264,6 +308,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
+            RestoreHandSlotFromSnapshot();
             _levelComplete = false;
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
@@ -563,6 +608,11 @@ namespace DragonBoxAlgebra.Gameplay
                 HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
             };
 
+            if (UsesPlayableHandDisplay)
+            {
+                _activeHandSlot = handIndex;
+            }
+
             MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
             if (UsesPlayableHandDisplay)
@@ -606,10 +656,15 @@ namespace DragonBoxAlgebra.Gameplay
             string placedSide = _pendingBalance.PlacedSide;
             int placedBoardIndex = _pendingBalance.PlacedIndex;
             _pendingBalance = null;
-            SyncHandFromTemplates();
             if (UsesPlayableHandDisplay)
             {
                 _spentHandIndices.Add(handIndex);
+                _activeHandSlot = -1;
+                SyncHandTemplateForCard(_hand[handIndex]);
+            }
+            else
+            {
+                SyncHandFromTemplates();
             }
 
             HandChanged?.Invoke();
