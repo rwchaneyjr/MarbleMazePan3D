@@ -131,6 +131,7 @@ namespace DragonBoxAlgebra.UI
                 && !completed
                 && !_controller.IsHandSlotPlayable(Index);
             _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
+            _canvasGroup.blocksRaycasts = true;
         }
 
         private void ApplyCreatureVisual()

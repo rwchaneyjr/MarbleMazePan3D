@@ -30,7 +30,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter6StartLevel = Chapter5StartLevel + Chapter5LevelCount;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-l64-letters-l86-random";
+        public const string CurriculumVersion = "2026-07-l64-letters-hand-flip";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -86,6 +86,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             HandRules.AssertAllHandCardsFlippable(levels);
+            HandRules.AssertVariableHandCardsFlippable(levels);
             return levels;
         }
 

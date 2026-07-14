@@ -22,6 +22,40 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
+        /// <summary>
+        /// Ch5+ hand cards must be variable creatures with a letter so tap can flip +/-.
+        /// </summary>
+        public static void AssertVariableHandCardsFlippable(IReadOnlyList<LevelDefinition> levels)
+        {
+            for (int i = ChapterLevelGenerator.Chapter5StartLevel - 1; i < levels.Count; i++)
+            {
+                LevelDefinition level = levels[i];
+                if (level.Chapter < 5)
+                {
+                    continue;
+                }
+
+                for (int h = 0; h < level.HandCards.Count; h++)
+                {
+                    CardKind kind = level.HandCards[h];
+                    if (kind is not (CardKind.DayCreature or CardKind.NightCreature))
+                    {
+                        throw new System.InvalidOperationException(
+                            $"Level {i + 1} ({level.Title}) hand card {h} must be a flippable variable creature, not {kind}.");
+                    }
+
+                    char letter = h < level.HandVariableLetters.Count
+                        ? level.HandVariableLetters[h]
+                        : '\0';
+                    if (letter == '\0')
+                    {
+                        throw new System.InvalidOperationException(
+                            $"Level {i + 1} ({level.Title}) hand card {h} needs a variable letter for +/- flip.");
+                    }
+                }
+            }
+        }
+
         public static void DedupeFlipFamilies(List<BoardCard> hand)
         {
             var seen = new HashSet<int>();
