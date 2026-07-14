@@ -56,13 +56,42 @@ namespace DragonBoxAlgebra.Gameplay
             LevelIndex + 1 >= ChapterLevelGenerator.Chapter4StartLevel;
 
         public bool ShouldKeepHandCardInPanel(int handIndex) =>
-            UsesPlayableHandDisplay
-            && !IsPlayableHandHiddenForPuzzleState()
-            && !_spentHandIndices.Contains(handIndex)
-            && handIndex == VisibleHandSlotIndex();
+            UsesPlayableHandDisplay && IsHandSlotPlayable(handIndex);
 
         public bool KeepHandSlotVisibleDuringDrag() =>
             UsesPlayableHandDisplay && HasPendingBalance;
+
+        public bool IsHandSlotPlayable(int handIndex)
+        {
+            if (!UsesPlayableHandDisplay)
+            {
+                return handIndex >= 0
+                    && handIndex < _hand.Count
+                    && _hand[handIndex].IsPlayableFromHand;
+            }
+
+            if (_levelComplete)
+            {
+                return false;
+            }
+
+            if (handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return false;
+            }
+
+            if (!_hand[handIndex].IsPlayableFromHand)
+            {
+                return false;
+            }
+
+            if (_spentHandIndices.Contains(handIndex))
+            {
+                return false;
+            }
+
+            return handIndex == CurrentPlayableHandSlotIndex();
+        }
 
         public BoardCard GetHandDisplayCard(int handIndex)
         {
@@ -89,53 +118,10 @@ namespace DragonBoxAlgebra.Gameplay
                 return true;
             }
 
-            if (_levelComplete || IsPlayableHandHiddenForPuzzleState())
-            {
-                return false;
-            }
-
-            if (handIndex < 0 || handIndex >= _hand.Count)
-            {
-                return false;
-            }
-
-            if (!_hand[handIndex].IsPlayableFromHand)
-            {
-                return false;
-            }
-
-            if (_spentHandIndices.Contains(handIndex))
-            {
-                return false;
-            }
-
-            return handIndex == VisibleHandSlotIndex();
+            return IsHandSlotPlayable(handIndex);
         }
 
-        private bool IsPlayableHandHiddenForPuzzleState()
-        {
-            if (!UsesPlayableHandDisplay)
-            {
-                return false;
-            }
-
-            if (NextUnspentHandIndex() < 0)
-            {
-                return true;
-            }
-
-            if (_pendingBalance != null || _pendingCancels.Count > 0 || _activeMergeAnimations > 0)
-            {
-                return false;
-            }
-
-            return WinChecker.IsReadyForSidesTogether(Board)
-                || (UsesManualPairMerge
-                    ? WinChecker.IsBoxAloneOnItsSide(Board)
-                    : WinChecker.IsBoxAlone(Board));
-        }
-
-        private int VisibleHandSlotIndex()
+        private int CurrentPlayableHandSlotIndex()
         {
             if (_pendingBalance != null)
             {
