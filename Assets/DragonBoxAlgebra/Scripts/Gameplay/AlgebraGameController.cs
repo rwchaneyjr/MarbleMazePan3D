@@ -508,6 +508,11 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            if (_spentHandIndices.Contains(handIndex))
+            {
+                return false;
+            }
+
             BoardCard template = _hand[handIndex];
             if (template.Kind == CardKind.DivideTool || template.Kind == CardKind.One)
             {
@@ -534,9 +539,43 @@ namespace DragonBoxAlgebra.Gameplay
             return TryPlayFromHand(handIndex, "Left");
         }
 
+        public bool CanPlayHandOntoBoardCard(int handIndex, string sideName, int boardIndex)
+        {
+            if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count
+                || _spentHandIndices.Contains(handIndex))
+            {
+                return false;
+            }
+
+            if (UsesOppositeHandPlay)
+            {
+                BoardSide side = Board.GetSide(sideName);
+                if (boardIndex < 0 || boardIndex >= side.Cards.Count)
+                {
+                    return false;
+                }
+
+                BoardCard targetCard = side.Cards[boardIndex];
+                if (IsCardPendingCancelOnSide(targetCard.Id, sideName))
+                {
+                    return false;
+                }
+
+                return CombineRules.GetCombineAction(_hand[handIndex], targetCard)
+                    == CombineActionType.OppositeCancel;
+            }
+
+            return true;
+        }
+
         public bool TryPlayHandOntoOpposite(int handIndex, string sideName, int targetBoardIndex)
         {
             if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return false;
+            }
+
+            if (_spentHandIndices.Contains(handIndex))
             {
                 return false;
             }
@@ -562,6 +601,9 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (CombineRules.GetCombineAction(handCard, targetCard) != CombineActionType.OppositeCancel)
             {
+                MessageChanged?.Invoke(targetCard.Kind == CardKind.Box
+                    ? "Drag onto the creature, not the red box."
+                    : "Drag onto the opposite light or dark creature.");
                 return false;
             }
 
