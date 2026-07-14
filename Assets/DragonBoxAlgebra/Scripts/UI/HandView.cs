@@ -47,17 +47,6 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (_controller.SuppressHandRefreshDuringDualDrag)
-            {
-                return;
-            }
-
-            if (_controller.UsesDualHandPanelDisplay)
-            {
-                SyncDualHandPanel();
-                return;
-            }
-
             bool preserveDragRoot = HasHandWidgetOnDragRoot() && _controller.KeepHandSlotVisibleDuringDrag();
             if (HasHandWidgetOnDragRoot() && !preserveDragRoot)
             {
@@ -67,76 +56,12 @@ namespace DragonBoxAlgebra.UI
             Refresh(preserveDragRoot);
         }
 
-        private void SyncDualHandPanel()
-        {
-            if (_controller.IsLevelComplete)
-            {
-                ClearHandOnly();
-                return;
-            }
-
-            ClearHandWidgets(_dragRoot);
-
-            var existing = new Dictionary<int, CardWidget>();
-            for (int i = 0; i < _panel.childCount; i++)
-            {
-                Transform child = _panel.GetChild(i);
-                if (child.GetComponent<BoardDropZone>() != null)
-                {
-                    continue;
-                }
-
-                CardWidget widget = child.GetComponent<CardWidget>();
-                if (widget != null && widget.SideName == "Hand")
-                {
-                    existing[widget.Index] = widget;
-                }
-            }
-
-            EnsureHandLayout();
-            var keep = new HashSet<int>();
-
-            for (int i = 0; i < _controller.Hand.Count; i++)
-            {
-                if (!_controller.ShouldDisplayHandCard(i))
-                {
-                    continue;
-                }
-
-                keep.Add(i);
-                BoardCard card = _controller.GetHandDisplayCard(i);
-                if (existing.TryGetValue(i, out CardWidget widget))
-                {
-                    widget.SetHandCard(card);
-                }
-                else
-                {
-                    CardWidget created = CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
-                    created.SetHandCard(card);
-                }
-            }
-
-            var remove = new List<GameObject>();
-            foreach (KeyValuePair<int, CardWidget> pair in existing)
-            {
-                if (!keep.Contains(pair.Key))
-                {
-                    remove.Add(pair.Value.gameObject);
-                }
-            }
-
-            foreach (GameObject go in remove)
-            {
-                Object.DestroyImmediate(go);
-            }
-        }
-
         private bool HasHandWidgetOnDragRoot()
         {
             for (int i = 0; i < _dragRoot.childCount; i++)
             {
                 CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName is "Hand" or "HandGhost")
+                if (widget != null && widget.SideName == "Hand")
                 {
                     return true;
                 }
@@ -150,7 +75,7 @@ namespace DragonBoxAlgebra.UI
             for (int i = 0; i < _dragRoot.childCount; i++)
             {
                 CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
-                if (widget != null && widget.SideName is "Hand" or "HandGhost" && widget.Index == handIndex)
+                if (widget != null && widget.SideName == "Hand" && widget.Index == handIndex)
                 {
                     return true;
                 }
@@ -226,7 +151,7 @@ namespace DragonBoxAlgebra.UI
                 }
 
                 CardWidget widget = child.GetComponent<CardWidget>();
-                if (widget != null && widget.SideName is "Hand" or "HandGhost")
+                if (widget != null && widget.SideName == "Hand")
                 {
                     toRemove.Add(child.gameObject);
                 }

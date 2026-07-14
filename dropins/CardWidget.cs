@@ -34,7 +34,6 @@ namespace DragonBoxAlgebra.UI
         private bool _handPlayHandled;
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
-        private CardWidget _dragGhost;
 
         private const float FlipDragThresholdPixels = 12f;
 
@@ -73,6 +72,11 @@ namespace DragonBoxAlgebra.UI
         public void SetHandCard(BoardCard card)
         {
             Card = card;
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.blocksRaycasts = true;
+            }
+
             RefreshVisual();
         }
 
@@ -283,12 +287,6 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (SideName == "Hand" && _controller.UsesDualHandPanelDisplay)
-            {
-                BeginDualHandGhostDrag(eventData);
-                return;
-            }
-
             _isDragging = true;
             _didDrag = false;
             _dropHandled = false;
@@ -307,34 +305,6 @@ namespace DragonBoxAlgebra.UI
             _dragOffset = (Vector2)transform.localPosition - _dragOffset;
         }
 
-        private void BeginDualHandGhostDrag(PointerEventData eventData)
-        {
-            _isDragging = true;
-            _didDrag = false;
-            _dropHandled = false;
-            _handPlayHandled = false;
-            _dragPressScreenPosition = eventData.pressPosition;
-            _controller.SetDualHandDragActive(true);
-
-            BoardCard display = _controller.GetHandDisplayCard(Index);
-            _dragGhost = Create(_dragRoot, display, Index, "HandGhost", _controller, _canvas, _dragRoot);
-            if (_dragGhost._canvasGroup != null)
-            {
-                _dragGhost._canvasGroup.blocksRaycasts = false;
-            }
-
-            _dragGhost._rect.position = _rect.position;
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
-                eventData.pressEventCamera, out Vector2 localPoint);
-            _dragOffset = (Vector2)_dragGhost._rect.localPosition - localPoint;
-
-            if (_canvasGroup != null)
-            {
-                _canvasGroup.alpha = 1f;
-                _canvasGroup.blocksRaycasts = false;
-            }
-        }
-
         public void OnDrag(PointerEventData eventData)
         {
             if (!_isDragging)
@@ -346,14 +316,7 @@ namespace DragonBoxAlgebra.UI
                     eventData.pressEventCamera, out Vector2 localPoint))
             {
                 _didDrag = true;
-                if (_dragGhost != null)
-                {
-                    _dragGhost._rect.localPosition = localPoint + _dragOffset;
-                }
-                else
-                {
-                    _rect.localPosition = localPoint + _dragOffset;
-                }
+                _rect.localPosition = localPoint + _dragOffset;
             }
         }
 
@@ -374,12 +337,6 @@ namespace DragonBoxAlgebra.UI
 
             if (SideName == "Hand")
             {
-                if (_dragGhost != null)
-                {
-                    EndDualHandGhostDrag(eventData);
-                    return;
-                }
-
                 if (!_handPlayHandled)
                 {
                     if (_canvasGroup != null)
@@ -401,8 +358,7 @@ namespace DragonBoxAlgebra.UI
                 {
                     transform.SetParent(_originalParent, false);
                     transform.SetSiblingIndex(_originalSiblingIndex);
-                    Card = _controller.GetHandDisplayCard(Index);
-                    RefreshVisual();
+                    SetHandCard(_controller.GetHandDisplayCard(Index));
                     _controller.RefreshHandPresentation();
                     return;
                 }
@@ -434,32 +390,6 @@ namespace DragonBoxAlgebra.UI
             transform.SetParent(_originalParent, false);
             transform.SetSiblingIndex(_originalSiblingIndex);
             RestoreDragRaycasts();
-        }
-
-        private void EndDualHandGhostDrag(PointerEventData eventData)
-        {
-            if (!_handPlayHandled)
-            {
-                if (ExceededFlipDragThreshold(eventData))
-                {
-                    TryPlayHandDrop(eventData);
-                }
-                else
-                {
-                    TryFlipHandOnTap();
-                }
-            }
-
-            if (_dragGhost != null)
-            {
-                Destroy(_dragGhost.gameObject);
-                _dragGhost = null;
-            }
-
-            Card = _controller.GetHandDisplayCard(Index);
-            SetHandCard(Card);
-            _controller.SetDualHandDragActive(false);
-            _controller.RefreshHandPresentation();
         }
 
         private void RestoreDragRaycasts()
@@ -755,11 +685,6 @@ namespace DragonBoxAlgebra.UI
         private bool CanDrag()
         {
             if (_controller == null)
-            {
-                return false;
-            }
-
-            if (SideName == "HandGhost")
             {
                 return false;
             }
