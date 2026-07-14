@@ -797,12 +797,6 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void CheckWin()
         {
-            // Win rule: red box alone, no ongoing swirls, and at least one player move.
-            if (_pendingBalance != null)
-            {
-                return;
-            }
-
             if (_pendingCancels.Count > 0)
             {
                 MessageChanged?.Invoke(_pendingCancels.Count > 1
@@ -811,17 +805,10 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (_activeMergeAnimations > 0)
-            {
-                return;
-            }
-
-            if (Moves.Moves <= 0)
-            {
-                return;
-            }
-
-            if (!WinChecker.IsRedBoxAloneWinState(Board))
+            // Win requires ALL of: red box alone (other side empty), no swirls, no ? hole,
+            // and at least one player move — nothing can win on level load without input.
+            if (!WinChecker.CanWin(Board, Moves.Moves, _pendingBalance != null, _pendingCancels.Count,
+                    _activeMergeAnimations))
             {
                 return;
             }

@@ -5,6 +5,9 @@ namespace DragonBoxAlgebra.Gameplay
         public int Moves { get; set; }
         public int CardsPlayed { get; set; }
 
+        /// <summary>True after the player has made at least one counted move this level.</summary>
+        public bool HasPlayerInput => Moves > 0;
+
         public void Reset()
         {
             Moves = 0;

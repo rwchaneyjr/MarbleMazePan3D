@@ -57,6 +57,26 @@ namespace DragonBoxAlgebra.Core
         /// <summary>Red box alone on one side with the other side empty.</summary>
         public static bool IsRedBoxAloneWinState(AlgebraBoard board) => IsReadyForSidesTogether(board);
 
+        /// <summary>
+        /// True when the puzzle may end: box alone, other side empty, no swirls or ? hole,
+        /// and the player has made at least one move (no win on load).
+        /// </summary>
+        public static bool CanWin(AlgebraBoard board, int moves, bool hasPendingBalance, int pendingCancelCount,
+            int activeMergeAnimations)
+        {
+            if (hasPendingBalance || pendingCancelCount > 0 || activeMergeAnimations > 0)
+            {
+                return false;
+            }
+
+            if (moves <= 0)
+            {
+                return false;
+            }
+
+            return IsRedBoxAloneWinState(board);
+        }
+
         public static bool HasPendingOpposites(AlgebraBoard board)
         {
             return CombineRules.TryAutoCombine(board.Left, out _)
