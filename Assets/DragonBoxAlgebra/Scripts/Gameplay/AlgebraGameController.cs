@@ -123,6 +123,11 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            if (_levelComplete)
+            {
+                return false;
+            }
+
             if (_spentHandIndices.Contains(handIndex))
             {
                 return false;
@@ -515,6 +520,12 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (_spentHandIndices.Contains(handIndex))
             {
+                return false;
+            }
+
+            if (UsesPlayableHandDisplay && handIndex != CurrentPlayableHandSlotIndex())
+            {
+                MessageChanged?.Invoke("Play the highlighted hand card first.");
                 return false;
             }
 

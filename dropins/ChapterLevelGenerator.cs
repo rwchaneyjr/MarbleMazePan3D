@@ -4,14 +4,14 @@ using DragonBoxAlgebra.Core;
 namespace DragonBoxAlgebra.Gameplay
 {
     /// <summary>
-    /// DragonBox-style intro: Ch1 has 12 tutorials; Ch2 has 18; Ch3 has 15; Ch4 has 20 (65 total).
+    /// DragonBox-style intro: Ch1 has 12 tutorials; Ch2 has 16; Ch3 has 15; Ch4 has 20 (63 total).
     /// Ch1 asterisk dismiss, Ch2 opposite drag, Ch3 balance, Ch4 multi-card moves.
     /// </summary>
     public static class ChapterLevelGenerator
     {
         public const int LevelsPerChapter = 20;
         public const int Chapter1LevelCount = 12;
-        public const int Chapter2LevelCount = 18;
+        public const int Chapter2LevelCount = 16;
         public const int Chapter3LevelCount = 15;
         public const int Chapter4LevelCount = 20;
         public const int ChapterCount = 4;
@@ -146,7 +146,7 @@ namespace DragonBoxAlgebra.Gameplay
             index is >= 6 and <= 9 or >= 16 and <= 19;
 
         private static bool ShouldSkipChapter2Slot(int index) =>
-            index is 18 or 19;
+            index is 16 or 17 or 18 or 19;
 
         private static bool ShouldSkipChapter3Slot(int index) =>
             index is 0 or 8 or 9 or 10 or 11;
@@ -182,53 +182,17 @@ namespace DragonBoxAlgebra.Gameplay
                 dragToMergePairs: true);
         }
 
-        /// <summary>Ch2: levels 1–16 dual pairs on both sides; later levels use hand opposite.</summary>
+        /// <summary>Ch2: dual-pair drag levels only (opposite-hand intro levels 29–30 removed).</summary>
         private static LevelDefinition BuildChapter2Level(int index, int theme, int displayNumber)
         {
             string title = $"Ch2 • {ChapterNames[1]} {displayNumber}";
 
-            if (index < 16)
-            {
-                return MakeDualPairDragLevel(
-                    title,
-                    chapter: 2,
-                    theme,
-                    index,
-                    differentSideThemes: index >= 9);
-            }
-
-            if (index < 18)
-            {
-                return index == 16
-                    ? Make(
-                        title,
-                        chapter: 2,
-                        theme,
-                        left: new[] { CardKind.Box, CardKind.DayCreature },
-                        right: System.Array.Empty<CardKind>(),
-                        hand: new[] { CardKind.NightCreature },
-                        parMoves: 2,
-                        parCards: 1)
-                    : Make(
-                        title,
-                        chapter: 2,
-                        theme,
-                        left: System.Array.Empty<CardKind>(),
-                        right: new[] { CardKind.Box, CardKind.DayCreature },
-                        hand: new[] { CardKind.NightCreature },
-                        parMoves: 2,
-                        parCards: 1);
-            }
-
-            return Make(
+            return MakeDualPairDragLevel(
                 title,
                 chapter: 2,
                 theme,
-                left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
-                right: System.Array.Empty<CardKind>(),
-                hand: new[] { CardKind.NightCreature },
-                parMoves: 3,
-                parCards: 1);
+                index,
+                differentSideThemes: index >= 9);
         }
 
         /// <summary>Ch3: balance hand tile → ? → merge * on each side.</summary>
@@ -303,72 +267,47 @@ namespace DragonBoxAlgebra.Gameplay
                     parCards: 1);
         }
 
-        /// <summary>Ch4: two or three hand tiles, tiles on both sides.</summary>
+        /// <summary>Ch4: multi-hand balance — same solvable board as Ch3, extra hand slots for sequencing.</summary>
         private static LevelDefinition BuildChapter4Level(int index, int theme)
         {
-            // Levels 46–49: intro — keep a creature on each side after fold.
-            if (index < 4)
+            int handCount = index < 10 ? 2 : 3;
+            bool boxOnLeft = index % 2 == 0;
+            string title = $"Ch4 • {ChapterNames[3]} {index + 1}";
+            return MakeCh4BalanceLevel(title, theme, handCount, boxOnLeft);
+        }
+
+        /// <summary>
+        /// Solvable Ch4 puzzle: balance one hand tile (box+day / day), merge both sides, dismiss swirls.
+        /// Extra hand tiles teach sequential play; the first tile completes the board.
+        /// </summary>
+        private static LevelDefinition MakeCh4BalanceLevel(string title, int theme, int handCount, bool boxOnLeft)
+        {
+            var hand = new CardKind[handCount];
+            for (int i = 0; i < handCount; i++)
             {
-                return Make(
-                    $"Ch4 • {ChapterNames[3]} {index + 1}",
+                hand[i] = i % 2 == 0 ? CardKind.NightCreature : CardKind.DayCreature;
+            }
+
+            int parMoves = 2 + handCount;
+            return boxOnLeft
+                ? Make(
+                    title,
                     chapter: 4,
                     theme,
                     left: new[] { CardKind.Box, CardKind.DayCreature },
-                    right: new[] { CardKind.DayCreature, CardKind.NightCreature },
-                    hand: new[] { CardKind.NightCreature, CardKind.DayCreature },
-                    parMoves: 3,
-                    parCards: 2);
-            }
-
-            // Levels 50+: include light+dark on the right so those tiles are playable (merge/balance).
-            if (index < 10)
-            {
-                return Make(
-                    $"Ch4 • {ChapterNames[3]} {index + 1}",
+                    right: new[] { CardKind.DayCreature },
+                    hand: hand,
+                    parMoves: parMoves,
+                    parCards: 1)
+                : Make(
+                    title,
                     chapter: 4,
                     theme,
-                    left: new[] { CardKind.Box, CardKind.DayCreature },
-                    right: new[] { CardKind.DayCreature, CardKind.NightCreature },
-                    hand: new[] { CardKind.NightCreature, CardKind.DayCreature },
-                    parMoves: 3,
-                    parCards: 2);
-            }
-
-            if (index < 16)
-            {
-                return Make(
-                    $"Ch4 • {ChapterNames[3]} {index + 1}",
-                    chapter: 4,
-                    theme,
-                    left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
-                    right: new[] { CardKind.DayCreature, CardKind.NightCreature },
-                    hand: new[] { CardKind.NightCreature, CardKind.NightCreature },
-                    parMoves: 4,
-                    parCards: 2);
-            }
-
-            if (index < 19)
-            {
-                return Make(
-                    $"Ch4 • {ChapterNames[3]} {index + 1}",
-                    chapter: 4,
-                    theme,
-                    left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
-                    right: new[] { CardKind.DayCreature, CardKind.NightCreature, CardKind.NightCreature },
-                    hand: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.DayCreature },
-                    parMoves: 5,
-                    parCards: 3);
-            }
-
-            return Make(
-                $"Ch4 • {ChapterNames[3]} {index + 1}",
-                chapter: 4,
-                theme,
-                left: new[] { CardKind.Box, CardKind.DayCreature, CardKind.DayCreature },
-                right: new[] { CardKind.DayCreature, CardKind.NightCreature, CardKind.NightCreature },
-                hand: new[] { CardKind.NightCreature, CardKind.NightCreature, CardKind.DayCreature },
-                parMoves: 5,
-                parCards: 3);
+                    left: new[] { CardKind.DayCreature },
+                    right: new[] { CardKind.Box, CardKind.DayCreature },
+                    hand: hand,
+                    parMoves: parMoves,
+                    parCards: 1);
         }
 
         private static LevelDefinition MakeDualPairDragLevel(string title, int chapter, int theme, int index,

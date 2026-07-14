@@ -518,6 +518,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            if (UsesPlayableHandDisplay && handIndex != CurrentPlayableHandSlotIndex())
+            {
+                MessageChanged?.Invoke("Play the highlighted hand card first.");
+                return false;
+            }
+
             BoardCard template = _hand[handIndex];
             if (template.Kind == CardKind.DivideTool || template.Kind == CardKind.One)
             {
