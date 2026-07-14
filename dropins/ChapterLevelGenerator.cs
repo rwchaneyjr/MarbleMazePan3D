@@ -21,6 +21,13 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>First global level number (1-based) for Chapter 4 / Move Cards.</summary>
         public const int Chapter4StartLevel = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount + 1;
 
+        /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
+        public const int OppositeExtraTileStartLevel = 40;
+        public const int OppositeExtraTileEndLevel = TotalLevels;
+
+        private const int OppositeExtraTileStartIndex = OppositeExtraTileStartLevel - 1;
+        private const int OppositeExtraTileEndIndex = OppositeExtraTileEndLevel - 1;
+
         private static readonly int[] ChapterLevelCounts =
         {
             Chapter1LevelCount,
@@ -44,6 +51,14 @@ namespace DragonBoxAlgebra.Gameplay
             levels.AddRange(GenerateChapter(2));
             levels.AddRange(GenerateChapter(3));
             levels.AddRange(GenerateChapter(4));
+
+            for (int i = OppositeExtraTileStartIndex;
+                 i <= OppositeExtraTileEndIndex && i < levels.Count;
+                 i++)
+            {
+                AddRandomExtraTileOppositeBox(levels[i], i);
+            }
+
             HandRules.AssertAllHandCardsFlippable(levels);
             return levels;
         }
@@ -381,6 +396,76 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return values;
+        }
+
+        /// <summary>One random day or night on the side away from the red box.</summary>
+        private static void AddRandomExtraTileOppositeBox(LevelDefinition level, int globalLevelIndex)
+        {
+            if (!TryGetOppositeSideLists(level, out List<CardKind> oppositeCards, out List<int> oppositeValues))
+            {
+                return;
+            }
+
+            var rng = new System.Random(globalLevelIndex * 7919 + 31);
+            CardKind extra = PickExtraCreature(oppositeCards, rng);
+            oppositeCards.Add(extra);
+            oppositeValues.Add(1);
+        }
+
+        private static CardKind PickExtraCreature(List<CardKind> oppositeCards, System.Random rng)
+        {
+            bool hasDay = false;
+            bool hasNight = false;
+            foreach (CardKind kind in oppositeCards)
+            {
+                if (kind == CardKind.DayCreature)
+                {
+                    hasDay = true;
+                }
+                else if (kind == CardKind.NightCreature)
+                {
+                    hasNight = true;
+                }
+            }
+
+            if (hasDay && !hasNight)
+            {
+                return CardKind.NightCreature;
+            }
+
+            if (hasNight && !hasDay)
+            {
+                return CardKind.DayCreature;
+            }
+
+            return rng.Next(2) == 0 ? CardKind.DayCreature : CardKind.NightCreature;
+        }
+
+        private static bool TryGetOppositeSideLists(LevelDefinition level, out List<CardKind> oppositeCards,
+            out List<int> oppositeValues)
+        {
+            oppositeCards = null;
+            oppositeValues = null;
+
+            bool boxOnLeft = level.LeftCards.Contains(CardKind.Box);
+            bool boxOnRight = level.RightCards.Contains(CardKind.Box);
+            if (boxOnLeft == boxOnRight)
+            {
+                return false;
+            }
+
+            if (boxOnLeft)
+            {
+                oppositeCards = level.RightCards;
+                oppositeValues = level.RightValues;
+            }
+            else
+            {
+                oppositeCards = level.LeftCards;
+                oppositeValues = level.LeftValues;
+            }
+
+            return true;
         }
     }
 }

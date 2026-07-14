@@ -844,6 +844,11 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
+            if (TryFinishSidesTogetherWhenBoxIsolated())
+            {
+                // Opposite side cleared — re-check win below.
+            }
+
             // Win requires ALL of: red box alone (other side empty), no swirls, no ? hole,
             // and at least one player move — nothing can win on level load without input.
             if (!WinChecker.CanWin(Board, Moves.Moves, _pendingBalance != null, _pendingCancels.Count,
@@ -858,6 +863,58 @@ namespace DragonBoxAlgebra.Gameplay
             int moves = Moves.Moves;
             MessageChanged?.Invoke("You win! The red box is alone.");
             WinSequenceStarted?.Invoke(stars, moves);
+        }
+
+        /// <summary>
+        /// Levels 40–63: when all swirls are gone and the red box is alone on its side,
+        /// clear the opposite side so the panels can come together.
+        /// </summary>
+        private bool TryFinishSidesTogetherWhenBoxIsolated()
+        {
+            if (!UsesExtraOppositeTileLevel || _pendingBalance != null)
+            {
+                return false;
+            }
+
+            if (!WinChecker.IsBoxAloneOnItsSide(Board))
+            {
+                return false;
+            }
+
+            if (!TryGetOppositeSideOfBox(out BoardSide opposite) || opposite.Cards.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = opposite.Cards.Count - 1; i >= 0; i--)
+            {
+                opposite.Cards.RemoveAt(i);
+            }
+
+            BoardChanged?.Invoke();
+            return true;
+        }
+
+        private bool UsesExtraOppositeTileLevel =>
+            _levelIndex + 1 >= ChapterLevelGenerator.OppositeExtraTileStartLevel
+            && _levelIndex + 1 <= ChapterLevelGenerator.OppositeExtraTileEndLevel;
+
+        private bool TryGetOppositeSideOfBox(out BoardSide opposite)
+        {
+            opposite = null;
+            if (Board.Left.Cards.Count == 1 && Board.Left.Cards[0].Kind == CardKind.Box)
+            {
+                opposite = Board.Right;
+                return true;
+            }
+
+            if (Board.Right.Cards.Count == 1 && Board.Right.Cards[0].Kind == CardKind.Box)
+            {
+                opposite = Board.Left;
+                return true;
+            }
+
+            return false;
         }
 
         public void CompleteWinPresentation(int stars, int moves)
