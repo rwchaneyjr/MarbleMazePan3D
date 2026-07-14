@@ -11,10 +11,7 @@ namespace DragonBoxAlgebra.UI
     {
         private const float WinPreDelay = 0.4f;
         private const float WinSlideDuration = 1.15f;
-        private const float BoxCenterSlideDuration = 0.85f;
         private const float WinPostDelay = 0.35f;
-        private static readonly Vector2 CenteredPanelAnchorMin = new(0.25f, 0f);
-        private static readonly Vector2 CenteredPanelAnchorMax = new(0.75f, 1f);
         private const float DefaultTileWidth = 110f;
         private const float DefaultTileHeight = 120f;
         private const float DefaultTileSpacing = 16f;
@@ -36,8 +33,6 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _rightAnchorMaxDefault;
         private bool _playingWinSequence;
         private Coroutine _winSequenceCoroutine;
-        private Coroutine _boxSlideCoroutine;
-        private string _activeBoxSlideSide;
 
         public void Initialize(AlgebraGameController controller, RectTransform left, RectTransform right,
             Canvas canvas, RectTransform dragRoot)
@@ -83,13 +78,6 @@ namespace DragonBoxAlgebra.UI
             }
 
             _playingWinSequence = false;
-            _activeBoxSlideSide = null;
-            if (_boxSlideCoroutine != null)
-            {
-                StopCoroutine(_boxSlideCoroutine);
-                _boxSlideCoroutine = null;
-            }
-
             ResetPanelAnchors();
         }
 
@@ -122,44 +110,34 @@ namespace DragonBoxAlgebra.UI
 
             yield return new WaitForSeconds(WinPreDelay);
 
-            if (_controller.TryGetBoxSlideToCenterSide(out string boxSide))
+            bool animateLeft = SideHasVisibleCards("Left");
+            bool animateRight = SideHasVisibleCards("Right");
+
+            Vector2 leftTargetMin = animateLeft
+                ? new Vector2(0.36f, _leftAnchorMinDefault.y)
+                : _leftAnchorMinDefault;
+            Vector2 leftTargetMax = animateLeft
+                ? new Vector2(0.49f, _leftAnchorMaxDefault.y)
+                : _leftAnchorMaxDefault;
+            Vector2 rightTargetMin = animateRight
+                ? new Vector2(0.51f, _rightAnchorMinDefault.y)
+                : _rightAnchorMinDefault;
+            Vector2 rightTargetMax = animateRight
+                ? new Vector2(0.64f, _rightAnchorMaxDefault.y)
+                : _rightAnchorMaxDefault;
+
+            float elapsed = 0f;
+            while (elapsed < WinSlideDuration)
             {
-                yield return SlidePanelToAnchors(
-                    boxSide == "Left" ? _leftPanel : _rightPanel,
-                    GetCenteredAnchors(boxSide == "Left" ? _leftPanel : _rightPanel),
-                    WinSlideDuration);
-            }
-            else
-            {
-                bool animateLeft = SideHasVisibleCards("Left");
-                bool animateRight = SideHasVisibleCards("Right");
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / WinSlideDuration));
 
-                Vector2 leftTargetMin = animateLeft
-                    ? new Vector2(0.36f, _leftAnchorMinDefault.y)
-                    : _leftAnchorMinDefault;
-                Vector2 leftTargetMax = animateLeft
-                    ? new Vector2(0.49f, _leftAnchorMaxDefault.y)
-                    : _leftAnchorMaxDefault;
-                Vector2 rightTargetMin = animateRight
-                    ? new Vector2(0.51f, _rightAnchorMinDefault.y)
-                    : _rightAnchorMinDefault;
-                Vector2 rightTargetMax = animateRight
-                    ? new Vector2(0.64f, _rightAnchorMaxDefault.y)
-                    : _rightAnchorMaxDefault;
+                _leftPanel.anchorMin = Vector2.Lerp(_leftAnchorMinDefault, leftTargetMin, animateLeft ? t : 0f);
+                _leftPanel.anchorMax = Vector2.Lerp(_leftAnchorMaxDefault, leftTargetMax, animateLeft ? t : 0f);
+                _rightPanel.anchorMin = Vector2.Lerp(_rightAnchorMinDefault, rightTargetMin, animateRight ? t : 0f);
+                _rightPanel.anchorMax = Vector2.Lerp(_rightAnchorMaxDefault, rightTargetMax, animateRight ? t : 0f);
 
-                float elapsed = 0f;
-                while (elapsed < WinSlideDuration)
-                {
-                    elapsed += Time.deltaTime;
-                    float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / WinSlideDuration));
-
-                    _leftPanel.anchorMin = Vector2.Lerp(_leftAnchorMinDefault, leftTargetMin, animateLeft ? t : 0f);
-                    _leftPanel.anchorMax = Vector2.Lerp(_leftAnchorMaxDefault, leftTargetMax, animateLeft ? t : 0f);
-                    _rightPanel.anchorMin = Vector2.Lerp(_rightAnchorMinDefault, rightTargetMin, animateRight ? t : 0f);
-                    _rightPanel.anchorMax = Vector2.Lerp(_rightAnchorMaxDefault, rightTargetMax, animateRight ? t : 0f);
-
-                    yield return null;
-                }
+                yield return null;
             }
 
             yield return new WaitForSeconds(WinPostDelay);
@@ -225,76 +203,6 @@ namespace DragonBoxAlgebra.UI
 
             BuildCancelMarkers(_leftPanel, "Left", leftLayout);
             BuildCancelMarkers(_rightPanel, "Right", rightLayout);
-            UpdateBoxCenterSlide();
-        }
-
-        private void UpdateBoxCenterSlide()
-        {
-            if (_playingWinSequence)
-            {
-                return;
-            }
-
-            if (_controller.TryGetBoxSlideToCenterSide(out string boxSide))
-            {
-                if (_activeBoxSlideSide == boxSide && _boxSlideCoroutine != null)
-                {
-                    return;
-                }
-
-                if (_boxSlideCoroutine != null)
-                {
-                    StopCoroutine(_boxSlideCoroutine);
-                }
-
-                _activeBoxSlideSide = boxSide;
-                RectTransform panel = boxSide == "Left" ? _leftPanel : _rightPanel;
-                (Vector2 targetMin, Vector2 targetMax) = GetCenteredAnchors(panel);
-                _boxSlideCoroutine = StartCoroutine(SlidePanelToAnchors(panel, (targetMin, targetMax), BoxCenterSlideDuration,
-                    () => _boxSlideCoroutine = null));
-                return;
-            }
-
-            if (_boxSlideCoroutine != null)
-            {
-                StopCoroutine(_boxSlideCoroutine);
-                _boxSlideCoroutine = null;
-            }
-
-            if (_activeBoxSlideSide != null)
-            {
-                ResetPanelAnchors();
-                _activeBoxSlideSide = null;
-            }
-        }
-
-        private static (Vector2 min, Vector2 max) GetCenteredAnchors(RectTransform panel)
-        {
-            Vector2 targetMin = CenteredPanelAnchorMin;
-            Vector2 targetMax = CenteredPanelAnchorMax;
-            targetMin.y = panel.anchorMin.y;
-            targetMax.y = panel.anchorMax.y;
-            return (targetMin, targetMax);
-        }
-
-        private IEnumerator SlidePanelToAnchors(RectTransform panel, (Vector2 min, Vector2 max) targets, float duration,
-            System.Action onComplete = null)
-        {
-            Vector2 startMin = panel.anchorMin;
-            Vector2 startMax = panel.anchorMax;
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
-                panel.anchorMin = Vector2.Lerp(startMin, targets.min, t);
-                panel.anchorMax = Vector2.Lerp(startMax, targets.max, t);
-                yield return null;
-            }
-
-            panel.anchorMin = targets.min;
-            panel.anchorMax = targets.max;
-            onComplete?.Invoke();
         }
 
         private int CountSlotsForSide(string sideName, BoardSide side)

@@ -358,18 +358,6 @@ namespace DragonBoxAlgebra.UI
                         MarkHandPlayHandled();
                         DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                     }
-
-                    return;
-                }
-
-                CardWidget target = FindDropTarget(eventData);
-                if (target != null && target != this && target.SideName == holeSide)
-                {
-                    if (_controller.TryPlayFromHand(Index, holeSide))
-                    {
-                        MarkHandPlayHandled();
-                        DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                    }
                 }
 
                 return;
@@ -412,14 +400,6 @@ namespace DragonBoxAlgebra.UI
             {
                 if (_controller.HasPendingBalance)
                 {
-                    if (target.SideName == _controller.PendingBalance.HoleSide
-                        && _controller.TryPlayFromHand(Index, target.SideName))
-                    {
-                        MarkHandPlayHandled();
-                        DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                        return true;
-                    }
-
                     return false;
                 }
 

@@ -232,10 +232,6 @@ namespace DragonBoxAlgebra.Gameplay
                 _spentHandIndices);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
-            if (_hand.Count == 0 && !level.DragToMergePairs)
-            {
-                ActivatePreplacedOppositePairs();
-            }
             ResolveCombines();
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
                 _spentHandIndices);
@@ -698,20 +694,10 @@ namespace DragonBoxAlgebra.Gameplay
 
             HandChanged?.Invoke();
 
-            if (!UsesManualPairMerge)
-            {
-                ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
-                ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
-            }
-
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke(UsesManualPairMerge
-                ? _pendingCancels.Count > 0
-                    ? "Balanced! Tap every *. Drag light onto dark on the same side to make more *."
-                    : "Balanced! Drag light onto dark on the same side to make *."
-                : _pendingCancels.Count > 0
-                    ? "Balanced! Click the spinning * to dismiss creatures."
-                    : "Balanced!");
+                ? "Balanced! Drag light onto dark on the same side to make *."
+                : "Balanced!");
             PruneInvalidCancelMarkers();
             ResolveCombines();
             return true;
@@ -746,41 +732,6 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         public bool HasRemainingSwirls => _pendingCancels.Count > 0;
-
-        public bool HasSwirlsOnSide(string sideName)
-        {
-            foreach (PendingCancelMarker marker in _pendingCancels)
-            {
-                if (marker.SideName == sideName)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public bool TryGetBoxSlideToCenterSide(out string boxSide)
-        {
-            boxSide = null;
-            if (Moves.Moves <= 0)
-            {
-                return false;
-            }
-
-            boxSide = WinChecker.GetSideWithBoxAlone(Board);
-            if (boxSide == null)
-            {
-                return false;
-            }
-
-            if (HasSwirlsOnSide(WinChecker.OppositeSide(boxSide)))
-            {
-                return false;
-            }
-
-            return true;
-        }
 
         private void CheckWin()
         {
