@@ -1,7 +1,7 @@
 # Push / Update SymbolAlgebra
 
 GitHub repo: **https://github.com/rwchaneyjr/SymbolAlgebra**  
-Local folder (Desktop): **`C:\Users\rober\Desktop\SymbolAlgebra`**
+Local folder: **`C:\Users\rober\SymbolAlgebra`** (Git Bash: `/c/Users/rober/SymbolAlgebra`)
 
 The cloud agent **cannot push** to SymbolAlgebra (403). Run these on your PC in **Git Bash**.
 
@@ -17,10 +17,10 @@ git remote add origin https://github.com/rwchaneyjr/SymbolAlgebra.git
 git push -u origin HEAD:main
 ```
 
-Then clone to Desktop:
+Then clone to your project folder:
 
 ```bash
-cd /c/Users/rober/Desktop
+cd /c/Users/rober
 git clone https://github.com/rwchaneyjr/SymbolAlgebra.git
 ```
 
@@ -31,7 +31,7 @@ git clone https://github.com/rwchaneyjr/SymbolAlgebra.git
 **Push your local changes to GitHub:**
 
 ```bash
-cd /c/Users/rober/Desktop/SymbolAlgebra
+cd /c/Users/rober/SymbolAlgebra
 git add .
 git commit -m "Update SymbolAlgebra"
 git push origin main
@@ -40,14 +40,14 @@ git push origin main
 **Pull latest game code (100 levels, Ch6) from MarbleMazePan3D:**
 
 ```bash
-cd /c/Users/rober/Desktop/SymbolAlgebra
+cd /c/Users/rober/SymbolAlgebra
 bash scripts/pull-100-levels.sh symbolalgebra
 ```
 
 Or manually:
 
 ```bash
-cd /c/Users/rober/Desktop/SymbolAlgebra
+cd /c/Users/rober/SymbolAlgebra
 git remote add source https://github.com/rwchaneyjr/MarbleMazePan3D.git
 git fetch source cursor/ch5-gradual-from-save-3fe3
 git merge source/cursor/ch5-gradual-from-save-3fe3 -m "Sync 100 levels from MarbleMazePan3D"
@@ -62,7 +62,7 @@ bash scripts/sync-dropins.sh import --here
 
 ## Open in Unity
 
-1. Unity Hub → **Open** → `C:\Users\rober\Desktop\SymbolAlgebra`
+1. Unity Hub → **Open** → `C:\Users\rober\SymbolAlgebra`
 2. Scene: `Assets/DragonBoxAlgebra/Scenes/DragonBox.unity`
 3. Press **Play**
 

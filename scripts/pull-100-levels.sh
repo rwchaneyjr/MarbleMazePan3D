@@ -4,8 +4,8 @@
 # Use in MarbleMazePan3D repo:
 #   bash scripts/pull-100-levels.sh
 #
-# Use in SymbolAlgebra (Desktop) — merges from MarbleMazePan3D:
-#   cd /c/Users/rober/Desktop/SymbolAlgebra
+# Use in SymbolAlgebra — merges from MarbleMazePan3D:
+#   cd /c/Users/rober/SymbolAlgebra
 #   bash scripts/pull-100-levels.sh symbolalgebra
 #
 # Then in Unity: wait for compile → Play → top bar should show …/100
@@ -51,7 +51,7 @@ pull_marblemazepan3d() {
 
 pull_symbolalgebra() {
   local target
-  target="$(normalize_windows_path "${SYMBOL_ALGEBRA_DIR:-/c/Users/rober/Desktop/SymbolAlgebra}")"
+  target="$(normalize_windows_path "${SYMBOL_ALGEBRA_DIR:-/c/Users/rober/SymbolAlgebra}")"
   if [[ ! -d "$target/.git" ]]; then
     echo "SymbolAlgebra repo not found: $target" >&2
     exit 1

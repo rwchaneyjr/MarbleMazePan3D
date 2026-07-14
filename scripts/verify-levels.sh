@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Quick check: does THIS folder have the 100-level ChapterLevelGenerator?
-# Run from your Unity project root (SymbolAlgebra or MarbleMazePan3D).
+# Run from: cd /c/Users/rober/SymbolAlgebra
 
 set -euo pipefail
 
