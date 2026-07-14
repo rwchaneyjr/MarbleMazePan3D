@@ -54,6 +54,9 @@ namespace DragonBoxAlgebra.Core
             return false;
         }
 
+        /// <summary>Red box alone on one side with the other side empty.</summary>
+        public static bool IsRedBoxAloneWinState(AlgebraBoard board) => IsReadyForSidesTogether(board);
+
         public static bool HasPendingOpposites(AlgebraBoard board)
         {
             return CombineRules.TryAutoCombine(board.Left, out _)

@@ -50,8 +50,6 @@ namespace DragonBoxAlgebra.Gameplay
         public bool UsesOppositeHandPlay =>
             CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16;
 
-        private bool RequiresEmptyOppositeSideForWin =>
-            CurrentLevel.Chapter >= 3 || CurrentLevel.HandCards.Count > 0;
         private static readonly Random Rng = new();
 
         public int LevelIndex => _levelIndex;
@@ -756,6 +754,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void CheckWin()
         {
+            // Win rule: red box alone, no ongoing swirls, and at least one player move.
             if (_pendingBalance != null)
             {
                 return;
@@ -779,15 +778,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            bool puzzleComplete = WinChecker.IsReadyForSidesTogether(Board);
-            if (!puzzleComplete && !RequiresEmptyOppositeSideForWin)
-            {
-                puzzleComplete = UsesManualPairMerge
-                    ? WinChecker.IsBoxAloneOnItsSide(Board)
-                    : WinChecker.IsBoxAlone(Board);
-            }
-
-            if (!puzzleComplete)
+            if (!WinChecker.IsRedBoxAloneWinState(Board))
             {
                 return;
             }
@@ -796,11 +787,7 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            MessageChanged?.Invoke(WinChecker.IsReadyForSidesTogether(Board)
-                ? "You win! The sides come together."
-                : UsesManualPairMerge
-                    ? "You win! The sides come together."
-                    : "You win! The red box is alone.");
+            MessageChanged?.Invoke("You win! The red box is alone.");
             WinSequenceStarted?.Invoke(stars, moves);
         }
 
