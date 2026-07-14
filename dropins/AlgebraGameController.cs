@@ -454,6 +454,17 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             PendingCancelMarker marker = _pendingCancels[markerIndex];
+            if (marker.SwirlOnly)
+            {
+                PushUndo();
+                _pendingCancels.RemoveAt(markerIndex);
+                Moves.RegisterCombine();
+                MessageChanged?.Invoke("Pair dismissed.");
+                BoardChanged?.Invoke();
+                CheckWin();
+                return true;
+            }
+
             BoardSide side = Board.GetSide(marker.SideName);
             if (!SideContainsBothCards(side, marker.CardIdA, marker.CardIdB))
             {
@@ -673,6 +684,9 @@ namespace DragonBoxAlgebra.Gameplay
             int holePlacedIndex = insertIndex;
             string placedSide = _pendingBalance.PlacedSide;
             int placedBoardIndex = _pendingBalance.PlacedIndex;
+            string balancePlacedId = Board.GetSide(placedSide).Cards[placedBoardIndex].Id;
+            string balanceHoleId = balancedSide.Cards[holePlacedIndex].Id;
+            bool creatureBalance = template.Kind is CardKind.DayCreature or CardKind.NightCreature;
             _pendingBalance = null;
             if (UsesPlayableHandDisplay)
             {
@@ -687,10 +701,23 @@ namespace DragonBoxAlgebra.Gameplay
 
             HandChanged?.Invoke();
 
+            if (creatureBalance)
+            {
+                CombineRules.RemoveCardById(Board.GetSide(placedSide), balancePlacedId);
+                CombineRules.RemoveCardById(Board.GetSide(targetSide), balanceHoleId);
+                _pendingCancels.Add(new PendingCancelMarker
+                {
+                    SideName = targetSide,
+                    CardIdA = balancePlacedId,
+                    CardIdB = balanceHoleId,
+                    SwirlOnly = true
+                });
+            }
+
             if (!UsesManualPairMerge)
             {
-                ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
-                ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
+                ActivateAllOppositePairsOnSide(placedSide);
+                ActivateAllOppositePairsOnSide(targetSide);
             }
 
             Moves.RegisterBalancedPlay();
@@ -938,6 +965,11 @@ namespace DragonBoxAlgebra.Gameplay
             for (int i = _pendingCancels.Count - 1; i >= 0; i--)
             {
                 PendingCancelMarker marker = _pendingCancels[i];
+                if (marker.SwirlOnly)
+                {
+                    continue;
+                }
+
                 BoardSide side = Board.GetSide(marker.SideName);
                 if (!SideContainsBothCards(side, marker.CardIdA, marker.CardIdB)
                     || !CardExistsOnlyOnSide(Board, marker.SideName, marker.CardIdA)

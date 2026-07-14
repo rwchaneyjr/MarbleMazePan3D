@@ -286,9 +286,6 @@ namespace DragonBoxAlgebra.UI
 
         private void BuildCancelMarkers(RectTransform panel, string sideName, TileLayout layout)
         {
-            BoardSide side = sideName == "Left" ? _controller.Board.Left : _controller.Board.Right;
-            bool useMergeIntro = _controller.CurrentLevel.Chapter == 1
-                || _controller.CurrentLevel.DragToMergePairs;
             IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
             for (int i = 0; i < markers.Count; i++)
             {
@@ -297,34 +294,8 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                PendingCancelMarker marker = markers[i];
-                if (useMergeIntro
-                    && TryFindCard(side, marker.CardIdA, out BoardCard cardA)
-                    && TryFindCard(side, marker.CardIdB, out BoardCard cardB))
-                {
-                    AsteriskCancelWidget.CreateMergePair(panel, _controller, i, cardA, cardB, layout.Width,
-                        layout.Height);
-                }
-                else
-                {
-                    AsteriskCancelWidget.Create(panel, _controller, i, layout.Width, layout.Height);
-                }
+                AsteriskCancelWidget.Create(panel, _controller, i, layout.Width, layout.Height);
             }
-        }
-
-        private static bool TryFindCard(BoardSide side, string cardId, out BoardCard card)
-        {
-            foreach (BoardCard boardCard in side.Cards)
-            {
-                if (boardCard.Id == cardId)
-                {
-                    card = boardCard;
-                    return true;
-                }
-            }
-
-            card = default;
-            return false;
         }
 
         private void ClearOrphanedBoardDragWidgets()

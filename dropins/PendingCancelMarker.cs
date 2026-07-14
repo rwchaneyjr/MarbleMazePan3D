@@ -5,5 +5,6 @@ namespace DragonBoxAlgebra.Gameplay
         public string SideName;
         public string CardIdA;
         public string CardIdB;
+        public bool SwirlOnly;
     }
 }
