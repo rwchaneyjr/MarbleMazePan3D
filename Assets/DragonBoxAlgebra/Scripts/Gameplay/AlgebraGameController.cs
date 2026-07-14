@@ -685,9 +685,6 @@ namespace DragonBoxAlgebra.Gameplay
             int holePlacedIndex = insertIndex;
             string placedSide = _pendingBalance.PlacedSide;
             int placedBoardIndex = _pendingBalance.PlacedIndex;
-            string balancePlacedId = Board.GetSide(placedSide).Cards[placedBoardIndex].Id;
-            string balanceHoleId = balancedSide.Cards[holePlacedIndex].Id;
-            bool creatureBalance = template.Kind is CardKind.DayCreature or CardKind.NightCreature;
             _pendingBalance = null;
             if (UsesPlayableHandDisplay)
             {
@@ -702,23 +699,10 @@ namespace DragonBoxAlgebra.Gameplay
 
             HandChanged?.Invoke();
 
-            if (creatureBalance)
-            {
-                CombineRules.RemoveCardById(Board.GetSide(placedSide), balancePlacedId);
-                CombineRules.RemoveCardById(Board.GetSide(targetSide), balanceHoleId);
-                _pendingCancels.Add(new PendingCancelMarker
-                {
-                    SideName = targetSide,
-                    CardIdA = balancePlacedId,
-                    CardIdB = balanceHoleId,
-                    SwirlOnly = true
-                });
-            }
-
             if (!UsesManualPairMerge)
             {
-                ActivateAllOppositePairsOnSide(placedSide);
-                ActivateAllOppositePairsOnSide(targetSide);
+                ActivateOppositePairOrCancelDice(placedSide, placedBoardIndex);
+                ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
             }
 
             Moves.RegisterBalancedPlay();

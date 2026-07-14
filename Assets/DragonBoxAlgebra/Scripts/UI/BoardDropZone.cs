@@ -22,7 +22,7 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (ui.Controller.HasPendingBalance && SideName != ui.Controller.PendingBalance.HoleSide)
+            if (ui.Controller.HasPendingBalance)
             {
                 return;
             }

@@ -370,16 +370,6 @@ namespace DragonBoxAlgebra.UI
                         MarkHandPlayHandled();
                         DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                     }
-
-                    return;
-                }
-
-                BoardDropZone boardZone = FindBoardZone(eventData);
-                if (boardZone != null && boardZone.SideName == holeSide
-                    && _controller.TryPlayFromHand(Index, holeSide))
-                {
-                    MarkHandPlayHandled();
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
 
                 return;
