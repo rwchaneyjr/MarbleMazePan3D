@@ -295,6 +295,13 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (count == 2)
             {
+                if (level.Chapter >= 6)
+                {
+                    return "Two variables in hand — play each negative one at a time: drag to a side, " +
+                           "fill the ? with the same variable, then positive + negative cancel into *. " +
+                           "Clear every * until x stands alone.";
+                }
+
                 return "Two tiles in hand — play each one: drag to a side, then drag the same tile to the ?. " +
                        "Finish one tile before starting the next.";
             }

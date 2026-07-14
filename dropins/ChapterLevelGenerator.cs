@@ -30,7 +30,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter6StartLevel = Chapter5StartLevel + Chapter5LevelCount;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-ch6-100";
+        public const string CurriculumVersion = "2026-07-ch6-100-v2";
 
         /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
         public const int OppositeExtraTileStartLevel = 40;
@@ -280,8 +280,10 @@ namespace DragonBoxAlgebra.Gameplay
             };
 
         /// <summary>
-        /// x plus two positive pair vars on its side; opposite side has two positives; hand holds both negatives.
-        /// Play each hand var in order to balance, merge swirls, until x stands alone.
+        /// Ch6 puzzle (levels 81–100): x side has x + two positive variables (image sprites);
+        /// other side has the same two positives; hand holds both negatives.
+        /// Play each negative → ? on other side → fill hole → positive + negative cancel to *.
+        /// Repeat until x is alone on one side.
         /// </summary>
         private static LevelDefinition MakeCh6MultiHandBalanceLevel(string title, int theme, char firstLetter,
             char secondLetter, bool xOnLeft)
