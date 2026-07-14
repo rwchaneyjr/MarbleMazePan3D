@@ -31,6 +31,7 @@ namespace DragonBoxAlgebra.Gameplay
         public bool HasPendingBalance => _pendingBalance != null;
         public BalancePending PendingBalance => _pendingBalance;
         public bool HasActiveMergeAnimations => _activeMergeAnimations > 0;
+        public bool IsLevelComplete => _levelComplete;
 
         private readonly List<BoardCard> _hand = new();
         private readonly List<BoardCard> _handTemplates = new();
@@ -850,12 +851,17 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
+            if (_levelComplete)
+            {
+                return;
+            }
+
             _levelComplete = true;
-            HandChanged?.Invoke();
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
             MessageChanged?.Invoke("You win! The red box is alone.");
             WinSequenceStarted?.Invoke(stars, moves);
+            HandChanged?.Invoke();
         }
 
         public void ClearOppositeSideAfterSidesTogether()

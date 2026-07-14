@@ -36,11 +36,17 @@ namespace DragonBoxAlgebra.UI
 
         private void OnWinSequenceStarted(int stars, int moves)
         {
-            Refresh();
+            ClearHandOnly();
         }
 
         private void RefreshHandInPlace()
         {
+            if (_controller.IsLevelComplete)
+            {
+                ClearHandOnly();
+                return;
+            }
+
             if (HasHandWidgetOnDragRoot() && !_controller.KeepHandSlotVisibleDuringDrag())
             {
                 return;
@@ -63,8 +69,20 @@ namespace DragonBoxAlgebra.UI
             return false;
         }
 
+        private void ClearHandOnly()
+        {
+            ClearHandWidgets(_dragRoot);
+            ClearHandPanel(_panel);
+        }
+
         private void Refresh()
         {
+            if (_controller.IsLevelComplete)
+            {
+                ClearHandOnly();
+                return;
+            }
+
             ClearHandWidgets(_dragRoot);
             ClearHandPanel(_panel);
 

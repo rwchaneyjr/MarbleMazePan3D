@@ -12,12 +12,6 @@ namespace DragonBoxAlgebra.UI
         private const float WinPreDelay = 0.4f;
         private const float WinSlideDuration = 1.15f;
         private const float WinPostDelay = 0.35f;
-        private const float TogetherTileSeparation = 58f;
-        private const float TogetherTileMeetGap = 6f;
-        private static readonly Vector2 TogetherLeftAnchorMin = new(0.25f, 0f);
-        private static readonly Vector2 TogetherLeftAnchorMax = new(0.5f, 1f);
-        private static readonly Vector2 TogetherRightAnchorMin = new(0.5f, 0f);
-        private static readonly Vector2 TogetherRightAnchorMax = new(0.75f, 1f);
         private const float DefaultTileWidth = 110f;
         private const float DefaultTileHeight = 120f;
         private const float DefaultTileSpacing = 16f;
@@ -39,7 +33,6 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _rightAnchorMaxDefault;
         private bool _playingWinSequence;
         private Coroutine _winSequenceCoroutine;
-        private readonly HashSet<RectTransform> _winSlideRects = new();
 
         public void Initialize(AlgebraGameController controller, RectTransform left, RectTransform right,
             Canvas canvas, RectTransform dragRoot)
@@ -85,7 +78,6 @@ namespace DragonBoxAlgebra.UI
             }
 
             _playingWinSequence = false;
-            _winSlideRects.Clear();
             ResetPanelAnchors();
         }
 
@@ -120,6 +112,7 @@ namespace DragonBoxAlgebra.UI
             if (_winSequenceCoroutine != null)
             {
                 StopCoroutine(_winSequenceCoroutine);
+                _winSequenceCoroutine = null;
             }
 
             _playingWinSequence = true;
@@ -133,55 +126,35 @@ namespace DragonBoxAlgebra.UI
                 yield return null;
             }
 
-            TryPrepareWinTileSlides(out List<WinTileSlide> tileSlides);
-
             yield return new WaitForSeconds(WinPreDelay);
-            yield return AnimateSidesTogether(WinSlideDuration, tileSlides);
-            yield return new WaitForSeconds(WinPostDelay);
 
-            _controller.ClearOppositeSideAfterSidesTogether();
-            _playingWinSequence = false;
-            _winSlideRects.Clear();
-            _winSequenceCoroutine = null;
-            _controller.CompleteWinPresentation(stars, moves);
-        }
+            bool animateLeft = SideHasVisibleCards("Left");
+            bool animateRight = SideHasVisibleCards("Right");
 
-        private IEnumerator AnimateSidesTogether(float duration, List<WinTileSlide> tileSlides)
-        {
-            Vector2 leftTargetMin = new Vector2(TogetherLeftAnchorMin.x, _leftAnchorMinDefault.y);
-            Vector2 leftTargetMax = new Vector2(TogetherLeftAnchorMax.x, _leftAnchorMaxDefault.y);
-            Vector2 rightTargetMin = new Vector2(TogetherRightAnchorMin.x, _rightAnchorMinDefault.y);
-            Vector2 rightTargetMax = new Vector2(TogetherRightAnchorMax.x, _rightAnchorMaxDefault.y);
+            Vector2 leftTargetMin = animateLeft
+                ? new Vector2(0.36f, _leftAnchorMinDefault.y)
+                : _leftAnchorMinDefault;
+            Vector2 leftTargetMax = animateLeft
+                ? new Vector2(0.49f, _leftAnchorMaxDefault.y)
+                : _leftAnchorMaxDefault;
+            Vector2 rightTargetMin = animateRight
+                ? new Vector2(0.51f, _rightAnchorMinDefault.y)
+                : _rightAnchorMinDefault;
+            Vector2 rightTargetMax = animateRight
+                ? new Vector2(0.64f, _rightAnchorMaxDefault.y)
+                : _rightAnchorMaxDefault;
 
             float elapsed = 0f;
-            while (elapsed < duration)
+            while (elapsed < WinSlideDuration)
             {
                 elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
-                float meet = Mathf.Lerp(TogetherTileSeparation, TogetherTileMeetGap, t);
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / WinSlideDuration));
 
-                _leftPanel.anchorMin = Vector2.Lerp(_leftAnchorMinDefault, leftTargetMin, t);
-                _leftPanel.anchorMax = Vector2.Lerp(_leftAnchorMaxDefault, leftTargetMax, t);
-                _rightPanel.anchorMin = Vector2.Lerp(_rightAnchorMinDefault, rightTargetMin, t);
-                _rightPanel.anchorMax = Vector2.Lerp(_rightAnchorMaxDefault, rightTargetMax, t);
+                _leftPanel.anchorMin = Vector2.Lerp(_leftAnchorMinDefault, leftTargetMin, animateLeft ? t : 0f);
+                _leftPanel.anchorMax = Vector2.Lerp(_leftAnchorMaxDefault, leftTargetMax, animateLeft ? t : 0f);
+                _rightPanel.anchorMin = Vector2.Lerp(_rightAnchorMinDefault, rightTargetMin, animateRight ? t : 0f);
+                _rightPanel.anchorMax = Vector2.Lerp(_rightAnchorMaxDefault, rightTargetMax, animateRight ? t : 0f);
 
-                if (tileSlides != null)
-                {
-                    foreach (WinTileSlide slide in tileSlides)
-                    {
-                        if (slide.Rect == null)
-                        {
-                            continue;
-                        }
-
-                        Vector2 end = slide.IsBox
-                            ? new Vector2(-meet, 0f)
-                            : new Vector2(meet + slide.OppositeOffset, 0f);
-                        slide.Rect.localPosition = Vector2.Lerp(slide.StartLocal, end, t);
-                    }
-                }
-
-                Canvas.ForceUpdateCanvases();
                 yield return null;
             }
 
@@ -190,82 +163,26 @@ namespace DragonBoxAlgebra.UI
             _rightPanel.anchorMin = rightTargetMin;
             _rightPanel.anchorMax = rightTargetMax;
 
-            if (tileSlides != null)
-            {
-                float meet = TogetherTileMeetGap;
-                foreach (WinTileSlide slide in tileSlides)
-                {
-                    if (slide.Rect == null)
-                    {
-                        continue;
-                    }
+            yield return new WaitForSeconds(WinPostDelay);
 
-                    slide.Rect.localPosition = slide.IsBox
-                        ? new Vector2(-meet, 0f)
-                        : new Vector2(meet + slide.OppositeOffset, 0f);
-                }
-            }
+            _controller.ClearOppositeSideAfterSidesTogether();
+            _playingWinSequence = false;
+            _winSequenceCoroutine = null;
+            _controller.CompleteWinPresentation(stars, moves);
         }
 
-        private readonly struct WinTileSlide
+        private bool SideHasVisibleCards(string sideName)
         {
-            public readonly RectTransform Rect;
-            public readonly Vector2 StartLocal;
-            public readonly bool IsBox;
-            public readonly float OppositeOffset;
-
-            public WinTileSlide(RectTransform rect, Vector2 startLocal, bool isBox, float oppositeOffset)
+            BoardSide side = sideName == "Left" ? _controller.Board.Left : _controller.Board.Right;
+            foreach (BoardCard card in side.Cards)
             {
-                Rect = rect;
-                StartLocal = startLocal;
-                IsBox = isBox;
-                OppositeOffset = oppositeOffset;
-            }
-        }
-
-        /// <summary>
-        /// Float the red box and any opposite-side tiles on the drag layer so all stay visible
-        /// while both sides slide together to the center.
-        /// </summary>
-        private bool TryPrepareWinTileSlides(out List<WinTileSlide> slides)
-        {
-            slides = new List<WinTileSlide>();
-            _winSlideRects.Clear();
-
-            if (!_controller.TryGetBoxSideNames(out string boxSide, out string oppositeSide))
-            {
-                return false;
+                if (!_controller.IsCardPendingCancelOnSide(card.Id, sideName))
+                {
+                    return true;
+                }
             }
 
-            int oppositeIndex = 0;
-            foreach (CardWidget widget in _widgets)
-            {
-                if (widget.SideName != boxSide && widget.SideName != oppositeSide)
-                {
-                    continue;
-                }
-
-                var rect = widget.transform as RectTransform;
-                if (rect == null)
-                {
-                    continue;
-                }
-
-                rect.SetParent(_dragRoot, true);
-                rect.SetAsLastSibling();
-                _winSlideRects.Add(rect);
-
-                bool isBox = widget.Card.Kind == CardKind.Box;
-                float oppositeOffset = isBox ? 0f : oppositeIndex * 12f;
-                if (!isBox)
-                {
-                    oppositeIndex++;
-                }
-
-                slides.Add(new WinTileSlide(rect, rect.localPosition, isBox, oppositeOffset));
-            }
-
-            return slides.Count > 0;
+            return false;
         }
 
         private void OnCombine(CombineEvent evt)
@@ -408,7 +325,7 @@ namespace DragonBoxAlgebra.UI
 
         private void ClearOrphanedBoardDragWidgets()
         {
-            if (_dragRoot == null)
+            if (_dragRoot == null || _playingWinSequence)
             {
                 return;
             }
@@ -418,12 +335,6 @@ namespace DragonBoxAlgebra.UI
             {
                 CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
                 if (widget == null || widget.SideName == "Hand")
-                {
-                    continue;
-                }
-
-                var rect = widget.transform as RectTransform;
-                if (rect != null && _winSlideRects.Contains(rect))
                 {
                     continue;
                 }
