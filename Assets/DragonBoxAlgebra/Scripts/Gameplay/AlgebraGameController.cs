@@ -92,7 +92,11 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         public bool KeepHandSlotVisibleDuringDrag() =>
-            UsesPlayableHandDisplay && HasPendingBalance;
+            UsesDualHandPanelDisplay || (UsesPlayableHandDisplay && HasPendingBalance);
+
+        public bool SuppressHandRefreshDuringDualDrag { get; private set; }
+
+        public void SetDualHandDragActive(bool active) => SuppressHandRefreshDuringDualDrag = active;
 
         public bool IsHandSlotPlayable(int handIndex)
         {

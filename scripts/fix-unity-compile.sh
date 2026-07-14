@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fix duplicate-class compile errors after dropins import (wrong copies in UI/).
-# Run from SymbolAlgebra root in Git Bash.
+# Run from SymbolAlgebra root: cd /c/Users/rober/SymbolAlgebra
 
 set -euo pipefail
 
