@@ -115,6 +115,11 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            if (UsesDualHandPanelDisplay)
+            {
+                return _pendingBalance == null || handIndex == _pendingBalance.HandIndex;
+            }
+
             return handIndex == CurrentPlayableHandSlotIndex();
         }
 
@@ -566,7 +571,15 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesPlayableHandDisplay && handIndex != CurrentPlayableHandSlotIndex())
+            if (UsesDualHandPanelDisplay)
+            {
+                if (_pendingBalance != null && handIndex != _pendingBalance.HandIndex)
+                {
+                    MessageChanged?.Invoke("Fill the ? hole first — finish the tile you started.");
+                    return false;
+                }
+            }
+            else if (UsesPlayableHandDisplay && handIndex != CurrentPlayableHandSlotIndex())
             {
                 MessageChanged?.Invoke("Play the highlighted hand card first.");
                 return false;
@@ -1031,11 +1044,6 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void ActivateOppositePairForCard(string sideName, int cardIndex)
         {
-            if (SideAlreadyHasCancelMarker(sideName))
-            {
-                return;
-            }
-
             BoardSide side = Board.GetSide(sideName);
             if (cardIndex < 0 || cardIndex >= side.Cards.Count)
             {
@@ -1057,11 +1065,6 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void ActivateAllOppositePairsOnSide(string sideName)
         {
-            if (SideAlreadyHasCancelMarker(sideName))
-            {
-                return;
-            }
-
             BoardSide side = Board.GetSide(sideName);
             for (int i = 0; i < side.Cards.Count; i++)
             {
@@ -1103,19 +1106,6 @@ namespace DragonBoxAlgebra.Gameplay
             return -1;
         }
 
-        private bool SideAlreadyHasCancelMarker(string sideName)
-        {
-            foreach (PendingCancelMarker marker in _pendingCancels)
-            {
-                if (marker.SideName == sideName)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         private void PruneInvalidCancelMarkers()
         {
             for (int i = _pendingCancels.Count - 1; i >= 0; i--)
@@ -1138,11 +1128,6 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
         {
-            if (SideAlreadyHasCancelMarker(sideName))
-            {
-                return;
-            }
-
             if (IsCardPendingCancelOnSide(cardIdA, sideName) || IsCardPendingCancelOnSide(cardIdB, sideName))
             {
                 return;
