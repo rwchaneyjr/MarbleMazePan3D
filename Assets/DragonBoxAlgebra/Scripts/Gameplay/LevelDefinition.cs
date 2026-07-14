@@ -21,8 +21,8 @@ namespace DragonBoxAlgebra.Gameplay
         public int ParMoves = 6;
         public int ParCards = 2;
         public bool DragToMergePairs;
-        /// <summary>Variable letter for positive/negative creature tiles in this level.</summary>
-        public char VariableLetter = 'x';
+        /// <summary>Letter variable for Ch5+ only. '\0' = creatures use light/dark art (levels 1–63).</summary>
+        public char VariableLetter = '\0';
 
         public BoardSide BuildSide(List<CardKind> kinds, List<int> values, int sideTheme = -1)
         {
@@ -34,7 +34,8 @@ namespace DragonBoxAlgebra.Gameplay
                 int visualTheme = kinds[i] is CardKind.DayCreature or CardKind.NightCreature
                     ? resolvedTheme
                     : -1;
-                char variableLetter = kinds[i] is CardKind.DayCreature or CardKind.NightCreature
+                char variableLetter = VariableLetter != '\0'
+                    && kinds[i] is CardKind.DayCreature or CardKind.NightCreature
                     ? VariableLetter
                     : '\0';
                 side.Cards.Add(new BoardCard(kinds[i], value, 1, visualTheme, variableLetter));
@@ -52,7 +53,8 @@ namespace DragonBoxAlgebra.Gameplay
                 int visualTheme = HandCards[i] is CardKind.DayCreature or CardKind.NightCreature
                     ? CreatureTheme
                     : -1;
-                char variableLetter = HandCards[i] is CardKind.DayCreature or CardKind.NightCreature
+                char variableLetter = VariableLetter != '\0'
+                    && HandCards[i] is CardKind.DayCreature or CardKind.NightCreature
                     ? VariableLetter
                     : '\0';
                 hand.Add(new BoardCard(HandCards[i], value, 1, visualTheme, variableLetter));

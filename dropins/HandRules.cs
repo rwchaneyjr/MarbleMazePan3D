@@ -36,7 +36,9 @@ namespace DragonBoxAlgebra.Gameplay
 
         private static int FlipFamilyKey(BoardCard card)
         {
-            int letterOffset = (char.ToLowerInvariant(card.ResolvedVariableLetter) - 'a') * 10;
+            int letterOffset = card.VariableLetter != '\0'
+                ? (char.ToLowerInvariant(card.VariableLetter) - 'a') * 10
+                : 0;
             return card.Kind switch
             {
                 CardKind.DayCreature => 100 + letterOffset + card.Value,

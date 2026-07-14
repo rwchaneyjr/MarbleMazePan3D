@@ -148,9 +148,10 @@ namespace DragonBoxAlgebra.UI
             EnsureLoaded();
             int theme = ResolveTheme(card);
 
-            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature)
+            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature
+                && card.VariableLetter != '\0')
             {
-                Sprite variable = GetVariableSprite(card.ResolvedVariableLetter, card.Kind == CardKind.DayCreature);
+                Sprite variable = GetVariableSprite(card.VariableLetter, card.Kind == CardKind.DayCreature);
                 if (variable != null)
                 {
                     return variable;

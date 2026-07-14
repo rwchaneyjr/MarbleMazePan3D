@@ -116,7 +116,14 @@ namespace DragonBoxAlgebra.Core
                 return false;
             }
 
-            return a.ResolvedVariableLetter == b.ResolvedVariableLetter;
+            bool aUsesLetter = a.VariableLetter != '\0';
+            bool bUsesLetter = b.VariableLetter != '\0';
+            if (!aUsesLetter && !bUsesLetter)
+            {
+                return true;
+            }
+
+            return a.VariableLetter == b.VariableLetter;
         }
 
         public static bool IsDiceOppositePair(BoardCard a, BoardCard b)

@@ -41,8 +41,12 @@ namespace DragonBoxAlgebra.UI
         public static string Label(BoardCard card) => card.Kind switch
         {
             CardKind.Box => "BOX",
-            CardKind.DayCreature => $"POS {VariableLabel(card)}",
-            CardKind.NightCreature => $"NEG {VariableLabel(card)}",
+            CardKind.DayCreature => UsesVariableLetter(card)
+                ? $"POS {VariableLabel(card)}"
+                : $"DAY x{card.Value}",
+            CardKind.NightCreature => UsesVariableLetter(card)
+                ? $"NEG {VariableLabel(card)}"
+                : $"NIGHT x{card.Value}",
             CardKind.PositiveConstant => $"+{card.Value}",
             CardKind.NegativeConstant => $"-{card.Value}",
             CardKind.One => "ONE",
@@ -149,8 +153,12 @@ namespace DragonBoxAlgebra.UI
         public static string AlgebraLabel(BoardCard card) => card.Kind switch
         {
             CardKind.Box => "x",
-            CardKind.DayCreature => FormatVariableAlgebra(card, positive: true),
-            CardKind.NightCreature => FormatVariableAlgebra(card, positive: false),
+            CardKind.DayCreature => UsesVariableLetter(card)
+                ? FormatVariableAlgebra(card, positive: true)
+                : card.Value == 1 ? "x" : $"{card.Value}x",
+            CardKind.NightCreature => UsesVariableLetter(card)
+                ? FormatVariableAlgebra(card, positive: false)
+                : card.Value == 1 ? "-x" : $"-{card.Value}x",
             CardKind.PositiveConstant => $"+{card.Value}",
             CardKind.NegativeConstant => $"-{card.Value}",
             CardKind.One => "1",
@@ -158,15 +166,17 @@ namespace DragonBoxAlgebra.UI
             _ => "?"
         };
 
+        private static bool UsesVariableLetter(BoardCard card) => card.VariableLetter != '\0';
+
         public static string VariableLabel(BoardCard card)
         {
-            char letter = card.ResolvedVariableLetter;
+            char letter = card.VariableLetter;
             return card.Value == 1 ? letter.ToString() : $"{card.Value}{letter}";
         }
 
         private static string FormatVariableAlgebra(BoardCard card, bool positive)
         {
-            char letter = card.ResolvedVariableLetter;
+            char letter = card.VariableLetter;
             string core = card.Value == 1 ? letter.ToString() : $"{card.Value}{letter}";
             return positive ? core : (card.Value == 1 ? $"-{letter}" : $"-{card.Value}{letter}");
         }
