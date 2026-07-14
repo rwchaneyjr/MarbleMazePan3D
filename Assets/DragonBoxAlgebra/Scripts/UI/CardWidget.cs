@@ -29,6 +29,7 @@ namespace DragonBoxAlgebra.UI
         private Transform _originalParent;
         private int _originalSiblingIndex;
         private bool _isDragging;
+        private bool _dragStarted;
         private bool _didDrag;
         private bool _dropHandled;
         private bool _handPlayHandled;
@@ -39,7 +40,7 @@ namespace DragonBoxAlgebra.UI
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (_didDrag || SideName != "Hand" || _controller == null)
+            if (_didDrag || _dragStarted || SideName != "Hand" || _controller == null || !CanFlipHand())
             {
                 return;
             }
@@ -51,7 +52,7 @@ namespace DragonBoxAlgebra.UI
         {
             if (_controller.TryFlipHandCard(Index))
             {
-                Card = _controller.Hand[Index];
+                Card = _controller.GetHandDisplayCard(Index);
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
                 StartCoroutine(PlayHandFlip());
             }
@@ -131,6 +132,7 @@ namespace DragonBoxAlgebra.UI
                 && !completed
                 && !_controller.IsHandSlotPlayable(Index);
             _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
+            _canvasGroup.blocksRaycasts = true;
         }
 
         private void ApplyCreatureVisual()
@@ -282,16 +284,50 @@ namespace DragonBoxAlgebra.UI
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (!CanDrag())
+            if (SideName == "Hand")
+            {
+                if (!CanFlipHand() && !CanDrag())
+                {
+                    return;
+                }
+            }
+            else if (!CanDrag())
             {
                 return;
             }
 
             _isDragging = true;
+            _dragStarted = false;
             _didDrag = false;
             _dropHandled = false;
             _handPlayHandled = false;
             _dragPressScreenPosition = eventData.pressPosition;
+
+            if (SideName != "Hand")
+            {
+                BeginBoardDrag(eventData);
+            }
+        }
+
+        private void BeginBoardDrag(PointerEventData eventData)
+        {
+            _dragStarted = true;
+            _originalParent = transform.parent;
+            _originalSiblingIndex = transform.GetSiblingIndex();
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.blocksRaycasts = false;
+            }
+
+            transform.SetParent(_dragRoot, true);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
+                eventData.pressEventCamera, out _dragOffset);
+            _dragOffset = (Vector2)transform.localPosition - _dragOffset;
+        }
+
+        private void BeginHandDrag(PointerEventData eventData)
+        {
+            _dragStarted = true;
             _originalParent = transform.parent;
             _originalSiblingIndex = transform.GetSiblingIndex();
             if (_canvasGroup != null)
@@ -309,6 +345,29 @@ namespace DragonBoxAlgebra.UI
         {
             if (!_isDragging)
             {
+                return;
+            }
+
+            if (SideName == "Hand")
+            {
+                if (!_dragStarted)
+                {
+                    if (!CanDrag() || !ExceededFlipDragThreshold(eventData))
+                    {
+                        return;
+                    }
+
+                    BeginHandDrag(eventData);
+                }
+
+                if (_dragStarted
+                    && RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
+                        eventData.pressEventCamera, out Vector2 handLocalPoint))
+                {
+                    _didDrag = true;
+                    _rect.localPosition = handLocalPoint + _dragOffset;
+                }
+
                 return;
             }
 
@@ -337,6 +396,17 @@ namespace DragonBoxAlgebra.UI
 
             if (SideName == "Hand")
             {
+                if (!_dragStarted)
+                {
+                    if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
+                    {
+                        TryFlipHandOnTap();
+                    }
+
+                    _isDragging = false;
+                    return;
+                }
+
                 if (!_handPlayHandled)
                 {
                     if (_canvasGroup != null)
@@ -348,7 +418,7 @@ namespace DragonBoxAlgebra.UI
                     {
                         TryPlayHandDrop(eventData);
                     }
-                    else
+                    else if (CanFlipHand())
                     {
                         TryFlipHandOnTap();
                     }
@@ -696,6 +766,27 @@ namespace DragonBoxAlgebra.UI
             }
 
             return Card.IsDraggableFromBoard;
+        }
+
+        private bool CanFlipHand()
+        {
+            if (_controller == null || SideName != "Hand" || _controller.IsLevelComplete)
+            {
+                return false;
+            }
+
+            if (Index < 0 || Index >= _controller.Hand.Count)
+            {
+                return false;
+            }
+
+            BoardCard card = _controller.Hand[Index];
+            if (!CardFlipRules.CanFlip(card))
+            {
+                return false;
+            }
+
+            return _controller.CurrentLevel.Chapter < 5 || card.VariableLetter != '\0';
         }
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
