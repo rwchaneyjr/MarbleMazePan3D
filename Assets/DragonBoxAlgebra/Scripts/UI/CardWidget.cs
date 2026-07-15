@@ -33,67 +33,40 @@ namespace DragonBoxAlgebra.UI
         private bool _didDrag;
         private bool _dropHandled;
         private bool _handPlayHandled;
-        private bool _handFlipHandled;
-        private bool _handPointerActive;
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        /// <summary>Drag to board only after this much movement — taps stay flips.</summary>
-        private const float DragStartThresholdPixels = 40f;
+        /// <summary>Must move this many pixels before drag steals the click — keeps tap = flip.</summary>
+        private const float DragStartThresholdPixels = 100f;
 
-        public void OnPointerDown(PointerEventData eventData)
+        public void OnPointerDown(PointerEventData eventData) => TryFlipHandOnClick(eventData);
+
+        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick(eventData);
+
+        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnClick(eventData);
+
+        private void TryFlipHandOnClick(PointerEventData eventData)
         {
-            if (SideName != "Hand")
+            if (SideName != "Hand" || _controller == null || _handPlayHandled || _dragStarted || _didDrag)
             {
                 return;
             }
 
-            _handPointerActive = true;
-            _handFlipHandled = false;
-            _handPlayHandled = false;
-            _dragPressScreenPosition = eventData.position;
-        }
-
-        public void OnPointerUp(PointerEventData eventData)
-        {
-            if (SideName != "Hand" || !_handPointerActive)
+            if (eventData != null && PointerMovementPixels(eventData) > DragStartThresholdPixels)
             {
                 return;
             }
 
-            _handPointerActive = false;
-            if (_handPlayHandled || _handFlipHandled || _dragStarted)
-            {
-                return;
-            }
-
-            if (!ExceededDragStartThreshold(eventData))
-            {
-                TryFlipHandOnTap();
-            }
-        }
-
-        public void OnPointerClick(PointerEventData eventData)
-        {
-            if (SideName == "Hand")
-            {
-                TryFlipHandOnTap();
-            }
+            TryFlipHandOnTap();
         }
 
         private void TryFlipHandOnTap()
         {
-            if (SideName != "Hand" || _controller == null || _handPlayHandled || _handFlipHandled || !CanFlipHand())
+            if (SideName != "Hand" || _controller == null || !_controller.TryFlipHandCard(Index))
             {
                 return;
             }
 
-            if (!_controller.TryFlipHandCard(Index))
-            {
-                return;
-            }
-
-            _handFlipHandled = true;
             Card = _controller.GetHandDisplayCard(Index);
             RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
@@ -115,9 +88,6 @@ namespace DragonBoxAlgebra.UI
         public void SetHandCard(BoardCard card)
         {
             Card = card;
-            _handFlipHandled = false;
-            _handPlayHandled = false;
-            _handPointerActive = false;
             if (_canvasGroup != null)
             {
                 _canvasGroup.blocksRaycasts = true;
@@ -346,7 +316,14 @@ namespace DragonBoxAlgebra.UI
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (SideName != "Hand" && !CanDrag())
+            if (SideName == "Hand")
+            {
+                if (!CanDrag())
+                {
+                    return;
+                }
+            }
+            else if (!CanDrag())
             {
                 return;
             }
@@ -356,7 +333,6 @@ namespace DragonBoxAlgebra.UI
             _didDrag = false;
             _dropHandled = false;
             _handPlayHandled = false;
-            _handFlipHandled = false;
             _dragPressScreenPosition = eventData.pressPosition;
 
             if (SideName != "Hand")
@@ -456,7 +432,7 @@ namespace DragonBoxAlgebra.UI
             {
                 if (!_dragStarted)
                 {
-                    if (!_handPlayHandled && !_handFlipHandled && CanFlipHand())
+                    if (!_handPlayHandled)
                     {
                         TryFlipHandOnTap();
                     }
@@ -476,8 +452,7 @@ namespace DragonBoxAlgebra.UI
                     {
                         TryPlayHandDrop(eventData);
                     }
-
-                    if (!_handPlayHandled && !_handFlipHandled && CanFlipHand() && !ExceededDragStartThreshold(eventData))
+                    else
                     {
                         TryFlipHandOnTap();
                     }
