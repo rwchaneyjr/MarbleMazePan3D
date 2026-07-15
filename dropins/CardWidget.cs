@@ -36,10 +36,18 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        /// <summary>Must move this many pixels before drag steals the click — keeps tap = flip.</summary>
-        private const float DragStartThresholdPixels = 100f;
+        /// <summary>Drag to board only after this much movement — taps stay flips.</summary>
+        private const float DragStartThresholdPixels = 120f;
 
-        public void OnPointerDown(PointerEventData eventData) => TryFlipHandOnClick(eventData);
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (SideName != "Hand")
+            {
+                return;
+            }
+
+            _dragPressScreenPosition = eventData.position;
+        }
 
         public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick(eventData);
 
@@ -48,11 +56,6 @@ namespace DragonBoxAlgebra.UI
         private void TryFlipHandOnClick(PointerEventData eventData)
         {
             if (SideName != "Hand" || _controller == null || _handPlayHandled || _dragStarted || _didDrag)
-            {
-                return;
-            }
-
-            if (eventData != null && PointerMovementPixels(eventData) > DragStartThresholdPixels)
             {
                 return;
             }
@@ -148,6 +151,7 @@ namespace DragonBoxAlgebra.UI
                 && !_controller.IsHandSlotPlayable(Index);
             _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
             _canvasGroup.blocksRaycasts = true;
+            _canvasGroup.interactable = true;
         }
 
         private void ApplyCreatureVisual()
@@ -860,6 +864,7 @@ namespace DragonBoxAlgebra.UI
             image.sprite = SpriteFactory.RoundedCard;
             image.type = Image.Type.Sliced;
             image.color = CardVisuals.Background(card.Kind);
+            image.raycastTarget = true;
 
             var widget = root.AddComponent<CardWidget>();
             widget._rect = rect;
@@ -926,6 +931,7 @@ namespace DragonBoxAlgebra.UI
             widget.Bind(card, index, sideName, controller, canvas, dragRoot);
             widget._canvasGroup = root.GetComponent<CanvasGroup>();
             widget._canvasGroup.blocksRaycasts = true;
+            widget._canvasGroup.interactable = true;
             return widget;
         }
 

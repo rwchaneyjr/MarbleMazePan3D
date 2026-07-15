@@ -176,8 +176,9 @@ namespace DragonBoxAlgebra.UI
 
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {
-                new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem),
+                var eventSystemGo = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem),
                     typeof(UnityEngine.EventSystems.StandaloneInputModule));
+                eventSystemGo.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>().pixelDragThreshold = 40;
             }
         }
 
