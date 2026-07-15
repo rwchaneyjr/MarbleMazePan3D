@@ -411,46 +411,39 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
         }
 
-        public bool TryFlipHandCard(int handIndex)
+        public bool CanFlipHandCard(int handIndex)
         {
             if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;
             }
 
-            BoardCard card = _hand[handIndex];
-            if (UsesVariablePositiveNegative)
-            {
-                if (!CardFlipRules.CanFlip(card))
-                {
-                    MessageChanged?.Invoke("That card cannot flip.");
-                    return false;
-                }
+            return CardFlipRules.CanFlip(_hand[handIndex]);
+        }
 
-                if (card.VariableLetter == '\0' && CurrentLevel.Chapter < 7)
-                {
-                    MessageChanged?.Invoke("That card cannot flip.");
-                    return false;
-                }
-            }
-            else if (!CardFlipRules.CanFlip(card))
+        public bool TryFlipHandCard(int handIndex)
+        {
+            if (!CanFlipHandCard(handIndex))
             {
                 MessageChanged?.Invoke("That card cannot flip.");
                 return false;
             }
+
+            BoardCard card = _hand[handIndex];
 
             PushUndo();
             _hand[handIndex] = CardFlipRules.Flip(card);
             SyncHandTemplateForCard(_hand[handIndex]);
 
             HandChanged?.Invoke();
+            bool creatureOnly = _hand[handIndex].VariableLetter == '\0';
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
-                ? UsesVariablePositiveNegative
-                    ? "Flipped to positive. Click again for negative."
-                    : "Flipped to yellow (light). Click again for dark."
-                : UsesVariablePositiveNegative
-                    ? "Flipped to negative. Click again for positive."
-                    : "Flipped to dark. Click again for yellow (light).");
+                ? creatureOnly || !UsesVariablePositiveNegative
+                    ? $"Flipped to {LightTerm}. Click again for {DarkTerm}."
+                    : "Flipped to positive. Click again for negative."
+                : creatureOnly || !UsesVariablePositiveNegative
+                    ? $"Flipped to {DarkTerm}. Click again for {LightTerm}."
+                    : "Flipped to negative. Click again for positive.");
             return true;
         }
 
@@ -984,6 +977,9 @@ namespace DragonBoxAlgebra.Gameplay
         public bool UsesExtraOppositeTileLevel =>
             _levelIndex + 1 >= ChapterLevelGenerator.OppositeExtraTileStartLevel
             && _levelIndex + 1 <= ChapterLevelGenerator.OppositeExtraTileEndLevel;
+
+        public bool UsesPlusBetweenBoardTiles =>
+            ChapterLevelGenerator.UsesPlusBetweenBoardTiles(_levelIndex + 1);
 
         public bool TryGetBoxSideNames(out string boxSide, out string oppositeSide)
         {

@@ -15,6 +15,7 @@ namespace DragonBoxAlgebra.UI
         private const float DefaultTileWidth = 110f;
         private const float DefaultTileHeight = 120f;
         private const float DefaultTileSpacing = 16f;
+        private const float PlusSeparatorWidth = 28f;
         private const float MinTileWidth = 52f;
         private const float MinTileSpacing = 4f;
         private const int CompactPadding = 12;
@@ -209,8 +210,12 @@ namespace DragonBoxAlgebra.UI
 
             ClearOrphanedBoardDragWidgets();
             _widgets.Clear();
-            TileLayout leftLayout = ComputeTileLayout(_leftPanel, CountSlotsForSide("Left", _controller.Board.Left));
-            TileLayout rightLayout = ComputeTileLayout(_rightPanel, CountSlotsForSide("Right", _controller.Board.Right));
+            int leftSlots = CountSlotsForSide("Left", _controller.Board.Left);
+            int rightSlots = CountSlotsForSide("Right", _controller.Board.Right);
+            int leftPlus = CountPlusSeparatorsForSide("Left", _controller.Board.Left);
+            int rightPlus = CountPlusSeparatorsForSide("Right", _controller.Board.Right);
+            TileLayout leftLayout = ComputeTileLayout(_leftPanel, leftSlots, leftPlus);
+            TileLayout rightLayout = ComputeTileLayout(_rightPanel, rightSlots, rightPlus);
             RebuildSide(_leftPanel, _controller.Board.Left, "Left", leftLayout);
             RebuildSide(_rightPanel, _controller.Board.Right, "Right", rightLayout);
 
@@ -231,13 +236,19 @@ namespace DragonBoxAlgebra.UI
 
         private int CountSlotsForSide(string sideName, BoardSide side)
         {
-            int count = 0;
+            int visibleCards = 0;
             for (int i = 0; i < side.Cards.Count; i++)
             {
                 if (!_controller.IsCardPendingCancelOnSide(side.Cards[i].Id, sideName))
                 {
-                    count++;
+                    visibleCards++;
                 }
+            }
+
+            int count = visibleCards;
+            if (_controller.UsesPlusBetweenBoardTiles && visibleCards > 1)
+            {
+                count += visibleCards - 1;
             }
 
             if (_controller.HasPendingBalance && _controller.PendingBalance.HoleSide == sideName)
@@ -257,7 +268,26 @@ namespace DragonBoxAlgebra.UI
             return count;
         }
 
-        private TileLayout ComputeTileLayout(RectTransform panel, int slotCount)
+        private int CountPlusSeparatorsForSide(string sideName, BoardSide side)
+        {
+            if (!_controller.UsesPlusBetweenBoardTiles)
+            {
+                return 0;
+            }
+
+            int visibleCards = 0;
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (!_controller.IsCardPendingCancelOnSide(side.Cards[i].Id, sideName))
+                {
+                    visibleCards++;
+                }
+            }
+
+            return visibleCards > 1 ? visibleCards - 1 : 0;
+        }
+
+        private TileLayout ComputeTileLayout(RectTransform panel, int slotCount, int plusSeparatorCount)
         {
             int padding = slotCount >= 5 ? CompactPadding : DefaultPadding;
             float available = Mathf.Max(0f, panel.rect.width - padding * 2f);
@@ -267,24 +297,30 @@ namespace DragonBoxAlgebra.UI
                 return new TileLayout(DefaultTileWidth, DefaultTileHeight, DefaultTileSpacing, DefaultPadding);
             }
 
+            int cardSlots = Mathf.Max(1, slotCount - plusSeparatorCount);
             float spacing = slotCount >= 5 ? 8f : DefaultTileSpacing;
-            float needed = slotCount * DefaultTileWidth + (slotCount - 1) * spacing;
+            float needed = cardSlots * DefaultTileWidth
+                + plusSeparatorCount * PlusSeparatorWidth
+                + (slotCount - 1) * spacing;
 
             if (needed <= available)
             {
-                return new TileLayout(DefaultTileWidth, DefaultTileHeight, DefaultTileSpacing, padding);
+                return new TileLayout(DefaultTileWidth, DefaultTileHeight, spacing, padding);
             }
 
-            float width = (available - (slotCount - 1) * MinTileSpacing) / slotCount;
+            float width = (available - plusSeparatorCount * PlusSeparatorWidth - (slotCount - 1) * MinTileSpacing)
+                / cardSlots;
             width = Mathf.Clamp(width, MinTileWidth, DefaultTileWidth);
             spacing = slotCount > 1
-                ? Mathf.Max(MinTileSpacing, (available - slotCount * width) / (slotCount - 1))
+                ? Mathf.Max(MinTileSpacing,
+                    (available - cardSlots * width - plusSeparatorCount * PlusSeparatorWidth) / (slotCount - 1))
                 : 0f;
 
-            float total = slotCount * width + (slotCount - 1) * spacing;
+            float total = cardSlots * width + plusSeparatorCount * PlusSeparatorWidth + (slotCount - 1) * spacing;
             if (total > available)
             {
-                width = (available - (slotCount - 1) * MinTileSpacing) / slotCount;
+                width = (available - plusSeparatorCount * PlusSeparatorWidth - (slotCount - 1) * MinTileSpacing)
+                    / cardSlots;
                 spacing = MinTileSpacing;
             }
 
@@ -374,6 +410,8 @@ namespace DragonBoxAlgebra.UI
             horizontalLayout.spacing = layout.Spacing;
             horizontalLayout.padding = new RectOffset(layout.Padding, layout.Padding, layout.Padding, layout.Padding);
 
+            bool usePlus = _controller.UsesPlusBetweenBoardTiles;
+            bool placedCard = false;
             for (int i = 0; i < side.Cards.Count; i++)
             {
                 BoardCard card = side.Cards[i];
@@ -382,11 +420,41 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
+                if (usePlus && placedCard)
+                {
+                    CreatePlusSeparator(panel, layout.Height);
+                }
+
                 CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot,
                     layout.Width, layout.Height);
                 widget.gameObject.AddComponent<CardDropZone>();
                 _widgets.Add(widget);
+                placedCard = true;
             }
+        }
+
+        private static void CreatePlusSeparator(Transform parent, float tileHeight)
+        {
+            var go = new GameObject("PlusSeparator", typeof(RectTransform), typeof(Text), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+
+            var layoutElement = go.GetComponent<LayoutElement>();
+            layoutElement.minWidth = PlusSeparatorWidth;
+            layoutElement.preferredWidth = PlusSeparatorWidth;
+            layoutElement.minHeight = tileHeight;
+            layoutElement.preferredHeight = tileHeight;
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(PlusSeparatorWidth, tileHeight);
+
+            var text = go.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.text = "+";
+            text.fontSize = 34;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = new Color(0.95f, 0.95f, 0.88f);
+            text.raycastTarget = false;
         }
     }
 }
