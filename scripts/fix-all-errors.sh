@@ -59,17 +59,34 @@ echo "==> Step 6: Verify scripts match"
 bash "$SCRIPT_DIR/verify-no-conflict-markers.sh" "$ROOT"
 
 CONTROLLER="$ROOT/Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs"
-if [[ -f "$CONTROLLER" ]] && ! grep -q 'CanFlipHandCard' "$CONTROLLER"; then
+GENERATOR="$ROOT/Assets/DragonBoxAlgebra/Scripts/Gameplay/ChapterLevelGenerator.cs"
+missing=0
+
+check_symbol() {
+  local file="$1"
+  local symbol="$2"
+  local label="$3"
+  if [[ ! -f "$file" ]] || ! grep -q "$symbol" "$file"; then
+    echo "ERROR: $label missing $symbol" >&2
+    missing=1
+  fi
+}
+
+check_symbol "$CONTROLLER" 'CanFlipHandCard' 'AlgebraGameController.cs'
+check_symbol "$GENERATOR" 'StartLevelIndexForChapter' 'ChapterLevelGenerator.cs'
+check_symbol "$GENERATOR" 'NameForChapter' 'ChapterLevelGenerator.cs'
+check_symbol "$GENERATOR" 'UsesPlusBetweenBoardTiles' 'ChapterLevelGenerator.cs'
+check_symbol "$GENERATOR" 'CurriculumVersion = "2026-07-ch7-mixed-128"' 'ChapterLevelGenerator.cs'
+
+if [[ $missing -ne 0 ]]; then
   echo "" >&2
-  echo "ERROR: AlgebraGameController.cs is still OLD (missing CanFlipHandCard)." >&2
-  echo "Run this to switch to the clean branch:" >&2
-  echo "  git checkout -B $BRANCH $FETCH_REMOTE/$BRANCH" >&2
+  echo "Scripts are mismatched (old + new mixed). Switch to the clean branch:" >&2
+  echo "  git checkout -B $BRANCH ${FETCH_REMOTE:-source}/$BRANCH" >&2
+  echo "  bash scripts/fix-all-errors.sh" >&2
   exit 1
 fi
 
-if [[ -f "$CONTROLLER" ]] && grep -q 'CanFlipHandCard' "$CONTROLLER"; then
-  echo "OK — AlgebraGameController has CanFlipHandCard"
-fi
+echo "OK — AlgebraGameController + ChapterLevelGenerator match (128 levels)"
 
 echo ""
 echo "============================================"
