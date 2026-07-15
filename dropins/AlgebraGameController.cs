@@ -149,8 +149,27 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            // Keep every hand card visible/active for the whole level (including after use).
-            return !_levelComplete;
+            if (_levelComplete)
+            {
+                return false;
+            }
+
+            if (UsesDualHandPanelDisplay)
+            {
+                return true;
+            }
+
+            if (_spentHandIndices.Contains(handIndex))
+            {
+                return false;
+            }
+
+            if (!UsesPlayableHandDisplay)
+            {
+                return true;
+            }
+
+            return IsHandSlotPlayable(handIndex);
         }
 
         private int CurrentPlayableHandSlotIndex()
