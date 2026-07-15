@@ -83,7 +83,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter7SeaShowcaseLevelCount = 8;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-ch7-sea-120";
+        public const string CurriculumVersion = "2026-07-ch7-plus-120";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -93,6 +93,13 @@ namespace DragonBoxAlgebra.Gameplay
 
         /// <summary>From global level 86: random 2 or 3 variable letters (one tile each).</summary>
         public const int HighVariableLetterCountStartLevel = 86;
+
+        /// <summary>Levels 100–112 show a + sign between each board tile image.</summary>
+        public const int PlusBetweenTilesStartLevel = 100;
+        public const int PlusBetweenTilesEndLevel = 112;
+
+        public static bool UsesPlusBetweenBoardTiles(int globalLevel) =>
+            globalLevel >= PlusBetweenTilesStartLevel && globalLevel <= PlusBetweenTilesEndLevel;
 
         /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
         public const int OppositeExtraTileStartLevel = 40;

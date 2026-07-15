@@ -987,6 +987,9 @@ namespace DragonBoxAlgebra.Gameplay
             _levelIndex + 1 >= ChapterLevelGenerator.OppositeExtraTileStartLevel
             && _levelIndex + 1 <= ChapterLevelGenerator.OppositeExtraTileEndLevel;
 
+        public bool UsesPlusBetweenBoardTiles =>
+            ChapterLevelGenerator.UsesPlusBetweenBoardTiles(_levelIndex + 1);
+
         public bool TryGetBoxSideNames(out string boxSide, out string oppositeSide)
         {
             boxSide = null;
