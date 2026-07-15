@@ -505,7 +505,8 @@ namespace DragonBoxAlgebra.Gameplay
 
             int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
             int mixedTheme = mixedIndex % SeaCreatureNames.Length;
-            const int tileCount = 2;
+            // LOCKED hand/board card count (flip-working): alternate 2 and 3 — do not force 2.
+            int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
             bool mixedXLeft = mixedIndex % 2 == 0;
             string mixedTitle =
                 $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
@@ -587,15 +588,14 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Global 113–128: x + mix of sea + variable (2 tiles each side).
-        /// Hand: one dark variable + one dark sea (same count/layout as correct dual-hand levels).
+        /// Global 113–128: x + mix of sea + variable (2 or 3 tiles each side — LOCKED).
+        /// Hand count = tileCount: one dark per slot (variable letter and/or sea).
         /// </summary>
         private static LevelDefinition MakeCh7MixedSeaVariableLevel(string title, int globalLevel, int seaTheme,
             bool xOnLeft, int tileCount)
         {
-            tileCount = 2;
             int letterSeed = globalLevel * 7919 + 31;
-            int variableSlotCount = 1;
+            int variableSlotCount = tileCount == 2 ? 1 : (globalLevel % 2 == 0 ? 2 : 1);
             int seaSlotCount = tileCount - variableSlotCount;
             List<char> letters = PickDistinctVariableLetters(letterSeed, variableSlotCount);
 
@@ -641,8 +641,7 @@ namespace DragonBoxAlgebra.Gameplay
                 AddMixedSlotsToSide(level.RightCards, level.RightVariableLetters, slots, letters, ref letterIndex);
             }
 
-            // Same hand construction as the known-good flip/correct-images dual hand:
-            // one night per board slot type (1 variable letter + 1 sea).
+            // Hand card count LOCKED to tileCount: one NightCreature per board slot.
             letterIndex = 0;
             foreach (bool isVariable in slots)
             {

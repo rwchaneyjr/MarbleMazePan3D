@@ -161,8 +161,12 @@ namespace DragonBoxAlgebra.UI
         {
             Sprite icon = CardVisuals.IconSprite(Card);
             bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
-            // Always show full creature/variable PNGs in hand (never shrink to label mode).
-            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card);
+            // LOCKED hand layout (flip-working): multi-card hand uses stretch+preserveAspect
+            // (never ApplyCoverSpriteLayout — cover crops and messes up hand PNGs).
+            bool multiHand = SideName == "Hand"
+                && _controller != null
+                && _controller.Hand.Count > 1;
+            bool usesCoverIcon = CardVisuals.ShowsIconOnly(Card) && !multiHand;
 
             if (_creatureImage != null)
             {
@@ -173,7 +177,7 @@ namespace DragonBoxAlgebra.UI
                 var creatureRect = _creatureImage.rectTransform.parent as RectTransform;
                 if (creatureRect != null)
                 {
-                    if (usesFullIcon && isCreature)
+                    if (usesCoverIcon && isCreature)
                     {
                         creatureRect.offsetMin = new Vector2(3f, 3f);
                         creatureRect.offsetMax = new Vector2(-3f, -3f);
@@ -187,13 +191,13 @@ namespace DragonBoxAlgebra.UI
 
                 if (icon != null && _creatureImage.rectTransform != null)
                 {
-                    if (usesFullIcon && isCreature && creatureRect != null)
+                    if (usesCoverIcon && isCreature && creatureRect != null)
                     {
                         ApplyCoverSpriteLayout(_creatureImage, icon, creatureRect);
                     }
                     else
                     {
-                        var inset = usesFullIcon ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
+                        var inset = usesCoverIcon ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
                         StretchSpriteLayout(_creatureImage.rectTransform, inset);
                         _creatureImage.preserveAspect = true;
                     }

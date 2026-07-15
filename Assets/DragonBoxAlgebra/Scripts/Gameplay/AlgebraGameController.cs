@@ -78,11 +78,14 @@ namespace DragonBoxAlgebra.Gameplay
         private bool UsesReusableVariableHandCards =>
             UsesDualHandPanelDisplay && CurrentLevel.Chapter >= 5;
 
+        /// <summary>
+        /// Hand card count is locked for the level: slots stay in the panel even after play.
+        /// Cards stay active; spent only blocks replay, never hides/dims the slot.
+        /// </summary>
         public bool ShouldKeepHandCardInPanel(int handIndex) =>
-            UsesPlayableHandDisplay
+            !_levelComplete
             && handIndex >= 0
-            && handIndex < _hand.Count
-            && (!UsesDualHandPanelDisplay || !_spentHandIndices.Contains(handIndex));
+            && handIndex < _hand.Count;
 
         public bool IsHandBalanceComplete(int handIndex) =>
             handIndex >= 0 && _spentHandIndices.Contains(handIndex);
@@ -144,32 +147,13 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool ShouldDisplayHandCard(int handIndex)
         {
+            // Locked hand card count: every slot stays visible until the level ends.
             if (handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;
             }
 
-            if (_levelComplete)
-            {
-                return false;
-            }
-
-            if (UsesDualHandPanelDisplay)
-            {
-                return true;
-            }
-
-            if (_spentHandIndices.Contains(handIndex))
-            {
-                return false;
-            }
-
-            if (!UsesPlayableHandDisplay)
-            {
-                return true;
-            }
-
-            return IsHandSlotPlayable(handIndex);
+            return !_levelComplete;
         }
 
         private int CurrentPlayableHandSlotIndex()
