@@ -47,12 +47,9 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            // Always refresh. Skipping while a hand tile is on DragRoot left stale/duplicate
+            // tiles and broke the opposite-snap drag flow.
             bool preserveDragRoot = HasHandWidgetOnDragRoot() && _controller.KeepHandSlotVisibleDuringDrag();
-            if (HasHandWidgetOnDragRoot() && !preserveDragRoot)
-            {
-                return;
-            }
-
             Refresh(preserveDragRoot);
         }
 

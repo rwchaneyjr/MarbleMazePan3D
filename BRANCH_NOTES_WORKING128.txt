@@ -1,1 +1,22 @@
-Branch: correct PNG hand/board images (from flip-working) + opposite snap/swirl + levels 1-128.
+# working128variable-images--x / working128-correct-images-1412
+
+This branch combines:
+
+1. **Correct hand tile count** — dual hand like Ch5/Ch6: one reusable dark
+   variable + one dark sea on mixed Ch7 levels (not 3 copies of the same image).
+
+2. **Dragging mechanism from the working128 opposite-snap work**:
+   - DraggableTile + TileSnapTarget magnetic snap onto opposites
+   - Hand or board tile → opposite → merge + swirl
+   - Left/right sides independent (swirls/? on one side do not lock the other)
+   - Drag freeze fix (no ghost tile blocking later drags)
+   - Cards stay active/visible
+
+Pull:
+
+```bash
+cd /c/Users/rober/SymbolAlgebra
+git fetch origin
+git checkout cursor/working128variable-images--x
+git pull origin cursor/working128variable-images--x
+```

@@ -689,14 +689,15 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool TryPlayHandOntoOppositeOnSide(int handIndex, string sideName)
         {
-            if (!UsesOppositeHandPlay)
-            {
-                return false;
-            }
-
             BoardSide side = Board.GetSide(sideName);
             for (int i = 0; i < side.Cards.Count; i++)
             {
+                if (CombineRules.GetCombineAction(_hand[handIndex], side.Cards[i])
+                        != CombineActionType.OppositeCancel)
+                {
+                    continue;
+                }
+
                 if (CanPlayHandOntoBoardCard(handIndex, sideName, i)
                     && TryPlayHandOntoOpposite(handIndex, sideName, i))
                 {
@@ -704,9 +705,13 @@ namespace DragonBoxAlgebra.Gameplay
                 }
             }
 
-            MessageChanged?.Invoke(side.Cards.Count == 0
-                ? "That side is empty — drag onto the side with the opposite creature."
-                : "Drag onto the opposite light or dark creature.");
+            if (UsesOppositeHandPlay)
+            {
+                MessageChanged?.Invoke(side.Cards.Count == 0
+                    ? "That side is empty — drag onto the side with the opposite creature."
+                    : "Drag onto the opposite light or dark creature.");
+            }
+
             return false;
         }
 
