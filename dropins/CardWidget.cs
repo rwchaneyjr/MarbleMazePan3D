@@ -33,6 +33,7 @@ namespace DragonBoxAlgebra.UI
         private bool _didDrag;
         private bool _dropHandled;
         private bool _handPlayHandled;
+        private int _lastFlipFrame = -1;
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
@@ -55,6 +56,12 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            if (Time.frameCount == _lastFlipFrame)
+            {
+                return;
+            }
+
+            _lastFlipFrame = Time.frameCount;
             Card = _controller.GetHandDisplayCard(Index);
             RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
