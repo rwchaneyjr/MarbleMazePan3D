@@ -161,12 +161,10 @@ namespace DragonBoxAlgebra.UI
         {
             Sprite icon = CardVisuals.IconSprite(Card);
             bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
-            // LOCKED hand layout (flip-working): multi-card hand uses stretch+preserveAspect
-            // (never ApplyCoverSpriteLayout — cover crops and messes up hand PNGs).
-            bool multiHand = SideName == "Hand"
-                && _controller != null
-                && _controller.Hand.Count > 1;
-            bool usesCoverIcon = CardVisuals.ShowsIconOnly(Card) && !multiHand;
+            // LOCKED hand layout: never ApplyCoverSpriteLayout on hand (cover crops PNGs).
+            // Hand uses stretch + preserveAspect with a tight inset (no empty label gap).
+            bool isHand = SideName == "Hand";
+            bool usesCoverIcon = CardVisuals.ShowsIconOnly(Card) && !isHand;
 
             if (_creatureImage != null)
             {
@@ -184,8 +182,10 @@ namespace DragonBoxAlgebra.UI
                     }
                     else
                     {
-                        creatureRect.offsetMin = new Vector2(8f, 28f);
-                        creatureRect.offsetMax = new Vector2(-8f, -8f);
+                        float pad = isHand ? 3f : 8f;
+                        float top = isHand ? 3f : 28f;
+                        creatureRect.offsetMin = new Vector2(pad, top);
+                        creatureRect.offsetMax = new Vector2(-pad, -pad);
                     }
                 }
 
@@ -197,7 +197,7 @@ namespace DragonBoxAlgebra.UI
                     }
                     else
                     {
-                        var inset = usesCoverIcon ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
+                        var inset = isHand ? new Vector2(3f, 3f) : new Vector2(8f, 28f);
                         StretchSpriteLayout(_creatureImage.rectTransform, inset);
                         _creatureImage.preserveAspect = true;
                     }
