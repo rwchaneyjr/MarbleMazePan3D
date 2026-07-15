@@ -522,36 +522,49 @@ namespace DragonBoxAlgebra.Gameplay
         {
             if (displayNumber <= Chapter7SeaXLevelCount)
             {
-                int seaTheme = displayNumber - 1;
-                bool xOnLeft = displayNumber % 2 == 1;
-                string creature = SeaCreatureNames[seaTheme];
-                string title = $"Ch7 • {ChapterNames[6]} {displayNumber} (x + {creature})";
-                return MakeCh7SeaXBalanceLevel(title, seaTheme, xOnLeft);
+                return BuildChapter7SeaXLevel(displayNumber);
             }
 
             if (displayNumber <= Chapter7SeaXLevelCount + Chapter7VariableLevelCount)
             {
-                int variableIndex = displayNumber - Chapter7SeaXLevelCount;
-                int letterSeed = globalLevel * 7919 + 31;
-                int countSeed = globalLevel * 7919 + 47;
-                int letterCount = VariableLetterCountForGlobalLevel(globalLevel, countSeed);
-                List<char> letters = PickDistinctVariableLetters(letterSeed, letterCount);
-                int seaTheme = (variableIndex - 1) % SeaCreatureNames.Length;
-                string title =
-                    $"Ch7 • {ChapterNames[6]} {displayNumber} (x + {FormatVariableLettersLabel(letters)})";
-                bool xOnLeft = variableIndex % 2 == 1;
-                return MakeCh7VariableBalanceLevel(title, seaTheme, letters, xOnLeft);
+                return BuildChapter7VariableLevel(globalLevel, displayNumber);
             }
 
-            {
-                int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
-                int seaTheme = mixedIndex % SeaCreatureNames.Length;
-                int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
-                bool xOnLeft = mixedIndex % 2 == 0;
-                string title =
-                    $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
-                return MakeCh7MixedSeaVariableLevel(title, globalLevel, seaTheme, xOnLeft, tileCount);
-            }
+            return BuildChapter7MixedLevel(globalLevel, displayNumber);
+        }
+
+        private static LevelDefinition BuildChapter7SeaXLevel(int displayNumber)
+        {
+            int themeIndex = displayNumber - 1;
+            bool goalOnLeft = displayNumber % 2 == 1;
+            string creature = SeaCreatureNames[themeIndex];
+            string levelTitle = $"Ch7 • {ChapterNames[6]} {displayNumber} (x + {creature})";
+            return MakeCh7SeaXBalanceLevel(levelTitle, themeIndex, goalOnLeft);
+        }
+
+        private static LevelDefinition BuildChapter7VariableLevel(int globalLevel, int displayNumber)
+        {
+            int variableIndex = displayNumber - Chapter7SeaXLevelCount;
+            int letterSeed = globalLevel * 7919 + 31;
+            int countSeed = globalLevel * 7919 + 47;
+            int letterCount = VariableLetterCountForGlobalLevel(globalLevel, countSeed);
+            List<char> letters = PickDistinctVariableLetters(letterSeed, letterCount);
+            int themeIndex = (variableIndex - 1) % SeaCreatureNames.Length;
+            string levelTitle =
+                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + {FormatVariableLettersLabel(letters)})";
+            bool goalOnLeft = variableIndex % 2 == 1;
+            return MakeCh7VariableBalanceLevel(levelTitle, themeIndex, letters, goalOnLeft);
+        }
+
+        private static LevelDefinition BuildChapter7MixedLevel(int globalLevel, int displayNumber)
+        {
+            int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
+            int themeIndex = mixedIndex % SeaCreatureNames.Length;
+            int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
+            bool goalOnLeft = mixedIndex % 2 == 0;
+            string levelTitle =
+                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
+            return MakeCh7MixedSeaVariableLevel(levelTitle, globalLevel, themeIndex, goalOnLeft, tileCount);
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
