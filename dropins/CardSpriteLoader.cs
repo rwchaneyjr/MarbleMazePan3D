@@ -162,6 +162,16 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
+            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature
+                && card.IsVariableXGoal)
+            {
+                Sprite variable = GetVariableSprite('x', card.Kind == CardKind.DayCreature);
+                if (variable != null)
+                {
+                    return variable;
+                }
+            }
+
             return card.Kind switch
             {
                 CardKind.DayCreature => GetThemed(theme, light: true),

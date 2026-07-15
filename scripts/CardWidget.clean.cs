@@ -55,18 +55,18 @@ namespace DragonBoxAlgebra.UI
 
         private void TryFlipHandOnTap()
         {
-            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
-            {
-                return;
-            }
-
             if (Time.frameCount == _lastFlipFrame)
             {
                 return;
             }
 
+            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
+            {
+                return;
+            }
+
             _lastFlipFrame = Time.frameCount;
-            Card = _controller.GetHandDisplayCard(Index);
+            Card = _controller.Hand[Index];
             RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
             StartCoroutine(PlayHandFlip());
@@ -153,6 +153,8 @@ namespace DragonBoxAlgebra.UI
 
             if (_creatureImage != null)
             {
+                // Clear first so Unity repaints when switching light/dark or +/- art.
+                _creatureImage.sprite = null;
                 _creatureImage.sprite = icon;
                 _creatureImage.enabled = icon != null;
                 _creatureImage.color = Color.white;
@@ -285,7 +287,7 @@ namespace DragonBoxAlgebra.UI
 
             if (_controller != null && SideName == "Hand")
             {
-                Card = _controller.GetHandDisplayCard(Index);
+                Card = _controller.Hand[Index];
             }
 
             RefreshVisual();

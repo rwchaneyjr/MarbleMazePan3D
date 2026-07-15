@@ -136,13 +136,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return default;
             }
 
-            BoardCard current = _hand[handIndex];
+            BoardCard display = _hand[handIndex];
             if (!UsesPlayableHandDisplay || handIndex >= _handTemplates.Count)
             {
-                return current;
+                return display;
             }
 
-            BoardCard display = current.Clone();
             display.VisualTheme = _handTemplates[handIndex].VisualTheme;
             return display;
         }
@@ -438,7 +437,6 @@ namespace DragonBoxAlgebra.Gameplay
             _hand[handIndex] = CardFlipRules.Flip(card);
             SyncHandTemplateForCard(_hand[handIndex]);
 
-            HandChanged?.Invoke();
             bool creatureOnly = _hand[handIndex].VariableLetter == '\0';
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
                 ? creatureOnly || !UsesVariablePositiveNegative
