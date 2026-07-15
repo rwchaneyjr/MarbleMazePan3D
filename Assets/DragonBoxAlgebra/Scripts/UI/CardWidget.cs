@@ -519,19 +519,28 @@ namespace DragonBoxAlgebra.UI
 
             ClearSnapHighlight();
             RestoreDragVisuals();
+            RestoreDragRaycasts();
+
             if (!TryToSnap(eventData))
             {
                 ReturnToStart();
+                return;
             }
-            else if (_handPlayHandled || _dropHandled)
+
+            if (_dropHandled)
             {
-                RestoreDragRaycasts();
-                Destroy(gameObject);
+                // Board refresh owns cleanup when combine succeeded; only destroy if still alive on DragRoot.
+                if (this != null && gameObject != null && transform.parent == _dragRoot)
+                {
+                    Destroy(gameObject);
+                }
+
+                return;
             }
-            else
-            {
-                ReturnToStart();
-            }
+
+            // Snapped visually but merge did not apply — put the tile back.
+            EnsureDraggable().ClearSnappedFlag();
+            ReturnToStart();
         }
 
         /// <summary>
@@ -562,7 +571,9 @@ namespace DragonBoxAlgebra.UI
                 _dropHandled = true;
             }
 
-            return _handPlayHandled || _dropHandled || drag.IsSnapped;
+            // Only treat as handled when a real merge/play happened — not merely a visual snap.
+            // Returning true on IsSnapped alone used to leave tiles stuck and block later drags.
+            return _handPlayHandled || _dropHandled;
         }
 
         private void ReturnToStart()
@@ -574,6 +585,18 @@ namespace DragonBoxAlgebra.UI
             {
                 transform.SetParent(_originalParent, false);
                 transform.SetSiblingIndex(_originalSiblingIndex);
+            }
+
+            if (_rect != null)
+            {
+                _rect.anchoredPosition = Vector2.zero;
+                _rect.localRotation = Quaternion.identity;
+                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+            }
+
+            if (_originalParent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
             }
 
             RestoreDragVisuals();
