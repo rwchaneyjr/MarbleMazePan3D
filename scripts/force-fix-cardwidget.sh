@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DROPIN="$ROOT/dropins/CardWidget.cs"
 TARGET="$ROOT/Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs"
-REMOTE_BRANCH="${REMOTE_BRANCH:-cursor/extreme-hand-flip-3fe3}"
+REMOTE_BRANCH="${REMOTE_BRANCH:-cursor/working-up-to-variable-100-3fe3-7-14-26}"
 REMOTE="${REMOTE:-source}"
 
 has_markers() {
