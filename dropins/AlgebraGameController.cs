@@ -71,11 +71,8 @@ namespace DragonBoxAlgebra.Gameplay
         public bool UsesPlayableHandDisplay =>
             LevelIndex + 1 >= ChapterLevelGenerator.Chapter4StartLevel;
 
-        public bool UsesMultiHandPanelDisplay =>
-            _hand.Count >= 2 && CurrentLevel.Chapter >= 4;
-
         public bool UsesDualHandPanelDisplay =>
-            UsesMultiHandPanelDisplay && CurrentLevel.Chapter >= 5;
+            _hand.Count >= 2 && CurrentLevel.Chapter >= 5;
 
         private bool UsesReusableVariableHandCards =>
             UsesDualHandPanelDisplay && CurrentLevel.Chapter >= 5;
@@ -159,7 +156,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesMultiHandPanelDisplay)
+            if (UsesDualHandPanelDisplay)
             {
                 return true;
             }
