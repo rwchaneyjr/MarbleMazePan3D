@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Overwrite CardWidget.cs with the clean dropins copy — NO git merge required.
-# Fixes Unity CS8300 "Merge conflict marker encountered".
+# Overwrite CardWidget.cs with the bundled clean copy — no git merge needed.
+# Fixes Unity CS8300 at line ~789.
 #
 # Usage:
 #   cd /c/Users/rober/SymbolAlgebra
@@ -10,68 +10,52 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-DROPIN="$ROOT/dropins/CardWidget.cs"
 TARGET="$ROOT/Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs"
-REMOTE_BRANCH="${REMOTE_BRANCH:-cursor/working-up-to-variable-100-3fe3-7-14-26}"
-REMOTE="${REMOTE:-source}"
+BUNDLED="$SCRIPT_DIR/CardWidget.clean.cs"
+DROPIN="$ROOT/dropins/CardWidget.cs"
 
-has_markers() {
-  [[ -f "$1" ]] && grep -qE '^(<<<<<<<|=======|>>>>>>>)' "$1"
+pick_source() {
+  if [[ -f "$BUNDLED" ]] && ! grep -qE '^(<<<<<<<|=======|>>>>>>>)' "$BUNDLED" 2>/dev/null; then
+    echo "$BUNDLED"
+    return
+  fi
+  if [[ -f "$DROPIN" ]] && ! grep -qE '^(<<<<<<<|=======|>>>>>>>)' "$DROPIN" 2>/dev/null; then
+    echo "$DROPIN"
+    return
+  fi
+  echo ""
 }
 
-echo "==> Force-fix CardWidget.cs (no merge needed)"
+echo "==> Force-fix CardWidget.cs (CS8300)"
 
-if has_markers "$DROPIN"; then
-  echo "    dropins/CardWidget.cs has conflict markers — fetching clean copy..."
-  fetched=0
-  for remote in "$REMOTE" origin source; do
-    for branch in "$REMOTE_BRANCH" cursor/extreme-hand-flip-3fe3 cursor/ch7-sea-variable-120-3fe3; do
-      if git -C "$ROOT" fetch "$remote" "$branch" 2>/dev/null \
-        && git -C "$ROOT" show "$remote/$branch:dropins/CardWidget.cs" > "$DROPIN" 2>/dev/null \
-        && ! has_markers "$DROPIN"; then
-        echo "    Got clean copy from $remote/$branch"
-        fetched=1
-        break 2
-      fi
-    done
+SRC="$(pick_source)"
+if [[ -z "$SRC" ]]; then
+  BRANCH="cursor/working-up-to-variable-100-3fe3-7-14-26"
+  for remote in origin source; do
+    if git -C "$ROOT" fetch "$remote" "$BRANCH" 2>/dev/null \
+      && git -C "$ROOT" show "$remote/$BRANCH:scripts/CardWidget.clean.cs" > "$BUNDLED.tmp" 2>/dev/null; then
+      mv "$BUNDLED.tmp" "$BUNDLED"
+      SRC="$BUNDLED"
+      break
+    fi
   done
-  if [[ $fetched -eq 0 ]]; then
-    echo "    Stripping conflict marker lines as last resort..."
-    sed -i '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' "$DROPIN" 2>/dev/null \
-      || sed -i '' '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' "$DROPIN" 2>/dev/null \
-      || true
-  fi
 fi
 
-if [[ ! -f "$DROPIN" ]]; then
-  echo "ERROR: No clean dropins/CardWidget.cs and could not fetch one." >&2
-  exit 1
-fi
-
-if has_markers "$DROPIN"; then
-  echo "ERROR: dropins/CardWidget.cs still has conflict markers after fetch." >&2
+if [[ -z "$SRC" ]]; then
+  echo "ERROR: No clean CardWidget.cs found." >&2
   exit 1
 fi
 
 mkdir -p "$(dirname "$TARGET")"
-cp "$DROPIN" "$TARGET"
+cp "$SRC" "$TARGET"
+cp "$SRC" "$DROPIN" 2>/dev/null || true
 
-# Emergency: strip any leftover marker lines in the Unity copy
-if has_markers "$TARGET"; then
-  sed -i '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' "$TARGET" 2>/dev/null \
-    || sed -i '' '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' "$TARGET" 2>/dev/null \
-    || true
-fi
-
-echo "    Wrote: $TARGET"
-
-if has_markers "$TARGET"; then
-  echo "ERROR: CardWidget.cs still broken after copy." >&2
+if grep -qE '^(<<<<<<<|=======|>>>>>>>)' "$TARGET" 2>/dev/null; then
+  echo "ERROR: CardWidget.cs still has conflict markers." >&2
   exit 1
 fi
 
+echo "    Fixed: $TARGET"
+echo "    Source: $SRC"
 echo ""
-echo "OK — CardWidget.cs is clean. Open Unity and wait for recompile."
-echo "Lines 792-793 should be:"
-echo "    private bool CanFlipHand() =>"
-echo "        _controller != null && SideName == \"Hand\" && _controller.CanFlipHandCard(Index);"
+echo "OK — open Unity, wait for compile, press Play."
