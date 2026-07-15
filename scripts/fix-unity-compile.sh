@@ -1,14 +1,34 @@
 #!/usr/bin/env bash
-# Fix duplicate-class compile errors after dropins import (wrong copies in UI/).
-# Run from SymbolAlgebra root: cd /c/Users/rober/SymbolAlgebra
+# Fix compile errors: restore clean CardWidget.cs + re-import dropins.
+# Run: cd /c/Users/rober/SymbolAlgebra && bash scripts/fix-unity-compile.sh
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="${1:-.}"
-SCRIPTS="$ROOT/Assets/DragonBoxAlgebra/Scripts"
+if [[ "$ROOT" == "." ]]; then
+  ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
 
-if [[ ! -d "$SCRIPTS" ]]; then
-  echo "Not found: $SCRIPTS" >&2
+SCRIPTS="$ROOT/Assets/DragonBoxAlgebra/Scripts"
+DROPIN="$ROOT/dropins/CardWidget.cs"
+TARGET="$ROOT/Scripts/UI/CardWidget.cs"
+TARGET="$ROOT/Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs"
+
+has_markers() {
+  [[ -f "$1" ]] && grep -qE '^(<<<<<<<|=======|>>>>>>>)' "$1"
+}
+
+echo "==> Restore clean CardWidget.cs (fixes CS8300)..."
+if [[ -f "$DROPIN" ]]; then
+  mkdir -p "$(dirname "$TARGET")"
+  cp "$DROPIN" "$TARGET"
+  echo "    Copied dropins/CardWidget.cs"
+fi
+
+if has_markers "$TARGET"; then
+  echo "ERROR: CardWidget.cs still has merge conflict markers." >&2
+  echo "Run: bash scripts/force-fix-cardwidget.sh" >&2
   exit 1
 fi
 
@@ -19,12 +39,20 @@ for f in ChapterLevelGenerator.cs VariableGoalRules.cs WinChecker.cs CombineRule
   rm -f "$SCRIPTS/UI/$f" "$SCRIPTS/UI/${f}.meta"
 done
 
-echo "==> Re-import dropins to correct folders..."
+echo "==> Re-import dropins..."
 if [[ -f "$ROOT/scripts/sync-dropins.sh" ]]; then
   (cd "$ROOT" && bash scripts/sync-dropins.sh import --here)
-else
-  echo "sync-dropins.sh not found — only removed UI duplicates."
+fi
+
+echo "==> Final CardWidget restore..."
+if [[ -f "$DROPIN" ]]; then
+  cp "$DROPIN" "$TARGET"
+fi
+
+if has_markers "$TARGET"; then
+  echo "ERROR: CardWidget.cs still broken." >&2
+  exit 1
 fi
 
 echo ""
-echo "Done. Return to Unity — errors should clear. Then Play (expect 1/100)."
+echo "Done. Unity should compile. Expect 128/128 levels."
