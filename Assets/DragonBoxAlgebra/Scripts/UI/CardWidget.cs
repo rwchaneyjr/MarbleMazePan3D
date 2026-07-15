@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace DragonBoxAlgebra.UI
 {
     public class CardWidget : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
-        IPointerClickHandler, IPointerDownHandler, IPointerUpHandler
+        IPointerClickHandler
     {
         public BoardCard Card { get; private set; }
         public int Index { get; private set; }
@@ -37,38 +37,11 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        /// <summary>Must move this many pixels before drag steals the tap — higher = flip is easier.</summary>
-        private const float FlipDragThresholdPixels = 100f;
+        private const float FlipDragThresholdPixels = 12f;
 
-        public void OnPointerDown(PointerEventData eventData)
-        {
-            if (SideName != "Hand")
-            {
-                return;
-            }
-
-            _dragPressScreenPosition = eventData.position;
-            if (!_isDragging)
-            {
-                _dragStarted = false;
-                _didDrag = false;
-                _handPlayHandled = false;
-            }
-        }
-
-        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        private void TryFlipHandOnClick(PointerEventData eventData)
+        public void OnPointerClick(PointerEventData eventData)
         {
             if (_didDrag || _dragStarted || SideName != "Hand" || _controller == null || !CanFlipHand())
-            {
-                return;
-            }
-
-            if (eventData != null
-                && Vector2.Distance(_dragPressScreenPosition, eventData.position) > FlipDragThresholdPixels)
             {
                 return;
             }
@@ -90,7 +63,6 @@ namespace DragonBoxAlgebra.UI
 
             _lastFlipFrame = Time.frameCount;
             Card = _controller.GetHandDisplayCard(Index);
-            RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
             StartCoroutine(PlayHandFlip());
         }
