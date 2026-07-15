@@ -66,13 +66,14 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (_controller.TryFlipHandCard(Index))
+            if (!_controller.TryFlipHandCard(Index))
             {
-                _handFlipHandled = true;
-                Card = _controller.GetHandDisplayCard(Index);
-                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
-                StartCoroutine(PlayHandFlip());
+                return;
             }
+
+            _handFlipHandled = true;
+            DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
+            // HandChanged rebuilds hand widgets — do not StartCoroutine on this instance.
         }
 
         public void Bind(BoardCard card, int index, string sideName, AlgebraGameController controller, Canvas canvas,
