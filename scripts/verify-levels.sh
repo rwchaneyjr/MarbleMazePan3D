@@ -20,7 +20,9 @@ if [[ -f "$stale" ]]; then
 fi
 
 ch6="$(grep -c 'Chapter6LevelCount' "$GEN" || true)"
+ch7="$(grep -c 'Chapter7LevelCount' "$GEN" || true)"
 gen6="$(grep -c 'GenerateChapter6' "$GEN" || true)"
+gen7="$(grep -c 'GenerateChapter7' "$GEN" || true)"
 ver="$(grep 'CurriculumVersion' "$GEN" | head -1 | sed 's/.*= "//;s/";.*//')"
 
 echo "File: $GEN"
@@ -28,10 +30,10 @@ echo "CurriculumVersion: ${ver:-unknown}"
 grep -E 'Chapter[1-6]LevelCount|ChapterCount|TotalLevels' "$GEN" | head -8
 echo ""
 
-if [[ "$ch6" -ge 1 && "$gen6" -ge 1 ]]; then
-  echo "OK — this copy includes Chapter 6 (should be 100 levels in Unity)."
+if [[ "$ch6" -ge 1 && "$gen6" -ge 1 && "$ch7" -ge 1 && "$gen7" -ge 1 ]]; then
+  echo "OK — this copy includes Chapter 7 (should be 120 levels in Unity)."
 else
-  echo "OLD — only 80 levels. This file has no Chapter 6."
+  echo "OLD — missing Chapter 7. This file may only have 100 levels."
   echo ""
   echo "Fix (SymbolAlgebra):"
   echo "  git remote add source https://github.com/rwchaneyjr/MarbleMazePan3D.git"

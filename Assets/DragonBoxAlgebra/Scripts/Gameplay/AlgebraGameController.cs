@@ -317,17 +317,23 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (count == 2)
             {
+                if (level.Chapter >= 7)
+                {
+                    return "Sea creatures and x — tap to flip light/dark. Play each hand tile: drag to a side, " +
+                           "fill the ?, merge to *, tap to dismiss. Clear every * until x stands alone.";
+                }
+
                 if (level.Chapter >= 6)
                 {
-                    return "Two variables in hand — play each negative one at a time: drag to a side, " +
+                    return "Variables in hand — tap to flip positive/negative. Play each one: drag to a side, " +
                            "fill the ? with the same variable, then positive + negative cancel into *. " +
                            "Clear every * until x stands alone.";
                 }
 
                 if (level.Chapter >= 5)
                 {
-                    return "Two variable images in hand — play each negative one at a time: drag to a side, " +
-                           "fill the ?, then positive + negative cancel into *. " +
+                    return "Variable images in hand — tap a card to flip positive/negative. " +
+                           "Play each one: drag to a side, fill the ?, merge to *, tap to dismiss. " +
                            "Clear every * until the red box stands alone.";
                 }
 
@@ -413,7 +419,21 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             BoardCard card = _hand[handIndex];
-            if (!CardFlipRules.CanFlip(card))
+            if (UsesVariablePositiveNegative)
+            {
+                if (!CardFlipRules.CanFlip(card))
+                {
+                    MessageChanged?.Invoke("That card cannot flip.");
+                    return false;
+                }
+
+                if (card.VariableLetter == '\0' && CurrentLevel.Chapter < 7)
+                {
+                    MessageChanged?.Invoke("That card cannot flip.");
+                    return false;
+                }
+            }
+            else if (!CardFlipRules.CanFlip(card))
             {
                 MessageChanged?.Invoke("That card cannot flip.");
                 return false;

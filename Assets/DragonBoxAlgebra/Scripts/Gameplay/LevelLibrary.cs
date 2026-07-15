@@ -22,7 +22,8 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 Debug.LogWarning(
                     $"[DragonBox] {levels.Count} levels loaded ({ChapterLevelGenerator.CurriculumVersion}). " +
-                    $"Ch6 starts at level {ChapterLevelGenerator.Chapter6StartLevel}.");
+                    $"Ch6 starts at level {ChapterLevelGenerator.Chapter6StartLevel}. " +
+                    $"Ch7 starts at level {ChapterLevelGenerator.Chapter7StartLevel}.");
             }
 
             return levels;

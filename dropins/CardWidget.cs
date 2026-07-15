@@ -786,7 +786,13 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
+<<<<<<< HEAD
             return _controller.CurrentLevel.Chapter < 5 || card.VariableLetter != '\0';
+=======
+            return _controller.CurrentLevel.Chapter < 5
+                || card.VariableLetter != '\0'
+                || _controller.CurrentLevel.Chapter >= 7;
+>>>>>>> source/cursor/ch7-sea-variable-120-3fe3
         }
 
         private void TryPlayHandOnBoardTarget(CardWidget target)

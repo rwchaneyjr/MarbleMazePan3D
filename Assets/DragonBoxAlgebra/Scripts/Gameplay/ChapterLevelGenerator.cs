@@ -5,7 +5,7 @@ namespace DragonBoxAlgebra.Gameplay
 {
     /// <summary>
     /// DragonBox-style intro: Ch1–Ch4 through level 62; Ch5 (63–80) variable images + red box;
-    /// Ch6 (81–100) x + variables, two in hand.
+    /// Ch6 (81–100) x + variables; Ch7 (101–120) sea creatures + variables.
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -16,9 +16,10 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter4LevelCount = 19;
         public const int Chapter5LevelCount = 18;
         public const int Chapter6LevelCount = 20;
-        public const int ChapterCount = 6;
+        public const int Chapter7LevelCount = 20;
+        public const int ChapterCount = 7;
         public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
-            + Chapter4LevelCount + Chapter5LevelCount + Chapter6LevelCount;
+            + Chapter4LevelCount + Chapter5LevelCount + Chapter6LevelCount + Chapter7LevelCount;
 
         /// <summary>First global level number (1-based) for Chapter 4 / Move Cards.</summary>
         public const int Chapter4StartLevel = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount + 1;
@@ -29,8 +30,20 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>First global level number (1-based) for Chapter 6 / Multi Variables.</summary>
         public const int Chapter6StartLevel = Chapter5StartLevel + Chapter5LevelCount;
 
+        /// <summary>First global level number (1-based) for Chapter 7 / Sea Creatures.</summary>
+        public const int Chapter7StartLevel = Chapter6StartLevel + Chapter6LevelCount;
+
+        /// <summary>Ch7 levels 1–6: x + sea creature light/dark images.</summary>
+        public const int Chapter7SeaXLevelCount = 6;
+
+        /// <summary>Ch7 levels 7–12: x + variable letter images.</summary>
+        public const int Chapter7VariableLevelCount = 6;
+
+        /// <summary>Ch7 levels 13–20: one level per sea creature (Fish … Starfish).</summary>
+        public const int Chapter7SeaShowcaseLevelCount = 8;
+
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-l64-letters-l86-random";
+        public const string CurriculumVersion = "2026-07-ch7-sea-120";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -55,7 +68,8 @@ namespace DragonBoxAlgebra.Gameplay
             Chapter3LevelCount,
             Chapter4LevelCount,
             Chapter5LevelCount,
-            Chapter6LevelCount
+            Chapter6LevelCount,
+            Chapter7LevelCount
         };
 
         private static readonly string[] ChapterNames =
@@ -65,7 +79,13 @@ namespace DragonBoxAlgebra.Gameplay
             "Balance Sides",
             "Move Cards",
             "Variable Images",
-            "x and Variables"
+            "x and Variables",
+            "Sea Creatures"
+        };
+
+        private static readonly string[] SeaCreatureNames =
+        {
+            "Fish", "Turtle", "Clam", "Dolphin", "Eel", "Lobster", "Sea Horse", "Starfish"
         };
 
         public static IReadOnlyList<LevelDefinition> GenerateAll()
@@ -77,6 +97,7 @@ namespace DragonBoxAlgebra.Gameplay
             levels.AddRange(GenerateChapter(4));
             levels.AddRange(GenerateChapter5());
             levels.AddRange(GenerateChapter6());
+            levels.AddRange(GenerateChapter7());
 
             for (int i = OppositeExtraTileStartIndex;
                  i <= OppositeExtraTileEndIndex && i < levels.Count;
@@ -86,6 +107,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             HandRules.AssertAllHandCardsFlippable(levels);
+            HandRules.AssertVariableHandCardsFlippable(levels);
             return levels;
         }
 
@@ -417,6 +439,163 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 AddPairOnSide(xSideCards, xSideLetters, secondLetter);
             }
+
+            if (xOnLeft)
+            {
+                level.LeftCards.AddRange(xSideCards);
+                level.LeftVariableLetters.AddRange(xSideLetters);
+            }
+            else
+            {
+                level.RightCards.AddRange(xSideCards);
+                level.RightVariableLetters.AddRange(xSideLetters);
+            }
+
+            level.LeftValues = ValuesFor(level.LeftCards);
+            level.RightValues = ValuesFor(level.RightCards);
+            level.HandValues = ValuesFor(level.HandCards);
+            return level;
+        }
+
+        private static IEnumerable<LevelDefinition> GenerateChapter7()
+        {
+            for (int i = 0; i < Chapter7LevelCount; i++)
+            {
+                int displayNumber = i + 1;
+                int globalLevel = Chapter7StartLevel + displayNumber - 1;
+                int theme = (7 * 3 + i) % 10;
+                yield return BuildChapter7Level(globalLevel, theme, displayNumber);
+            }
+        }
+
+        /// <summary>
+        /// Ch7 (101–120): 6 sea+x, 6 variables, 8 sea creature showcase levels.
+        /// </summary>
+        private static LevelDefinition BuildChapter7Level(int globalLevel, int theme, int displayNumber)
+        {
+            if (displayNumber <= Chapter7SeaXLevelCount)
+            {
+                int seaTheme = displayNumber - 1;
+                bool xOnLeft = displayNumber % 2 == 1;
+                string creature = SeaCreatureNames[seaTheme];
+                string title = $"Ch7 • {ChapterNames[6]} {displayNumber} (x + {creature})";
+                return MakeCh7SeaXBalanceLevel(title, seaTheme, xOnLeft);
+            }
+
+            if (displayNumber <= Chapter7SeaXLevelCount + Chapter7VariableLevelCount)
+            {
+                int variableIndex = displayNumber - Chapter7SeaXLevelCount;
+                int letterSeed = globalLevel * 7919 + 31;
+                int countSeed = globalLevel * 7919 + 47;
+                int letterCount = VariableLetterCountForGlobalLevel(globalLevel, countSeed);
+                List<char> letters = PickDistinctVariableLetters(letterSeed, letterCount);
+                int seaTheme = (variableIndex - 1) % SeaCreatureNames.Length;
+                string title =
+                    $"Ch7 • {ChapterNames[6]} {displayNumber} (x + {FormatVariableLettersLabel(letters)})";
+                bool xOnLeft = variableIndex % 2 == 1;
+                return MakeCh7VariableBalanceLevel(title, seaTheme, letters, xOnLeft);
+            }
+
+            int showcaseIndex = displayNumber - Chapter7SeaXLevelCount - Chapter7VariableLevelCount - 1;
+            int showcaseTheme = showcaseIndex % SeaCreatureNames.Length;
+            string showcaseCreature = SeaCreatureNames[showcaseTheme];
+            bool showcaseXOnLeft = showcaseIndex % 2 == 0;
+            string showcaseTitle = $"Ch7 • {ChapterNames[6]} {displayNumber} ({showcaseCreature})";
+            return MakeCh7SeaShowcaseLevel(showcaseTitle, showcaseTheme, showcaseXOnLeft);
+        }
+
+        /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
+        private static LevelDefinition MakeCh7SeaXBalanceLevel(string title, int seaTheme, bool xOnLeft)
+        {
+            var level = new LevelDefinition
+            {
+                Title = title,
+                Chapter = 7,
+                CreatureTheme = seaTheme,
+                ParMoves = 3,
+                ParCards = 1
+            };
+
+            if (xOnLeft)
+            {
+                level.LeftCards.Add(CardKind.DayCreature);
+                level.LeftVariableLetters.Add(VariableGoalRules.GoalLetter);
+                level.LeftCards.Add(CardKind.DayCreature);
+                level.LeftVariableLetters.Add('\0');
+                level.RightCards.Add(CardKind.DayCreature);
+                level.RightVariableLetters.Add('\0');
+            }
+            else
+            {
+                level.LeftCards.Add(CardKind.DayCreature);
+                level.LeftVariableLetters.Add('\0');
+                level.RightCards.Add(CardKind.DayCreature);
+                level.RightVariableLetters.Add(VariableGoalRules.GoalLetter);
+                level.RightCards.Add(CardKind.DayCreature);
+                level.RightVariableLetters.Add('\0');
+            }
+
+            level.HandCards.Add(CardKind.NightCreature);
+            level.HandVariableLetters.Add('\0');
+            level.LeftValues = ValuesFor(level.LeftCards);
+            level.RightValues = ValuesFor(level.RightCards);
+            level.HandValues = ValuesFor(level.HandCards);
+            return level;
+        }
+
+        /// <summary>Ch7 variable block: x + letter images; reusable negatives in hand.</summary>
+        private static LevelDefinition MakeCh7VariableBalanceLevel(string title, int seaTheme,
+            IReadOnlyList<char> letters, bool xOnLeft)
+        {
+            var level = new LevelDefinition
+            {
+                Title = title,
+                Chapter = 7,
+                CreatureTheme = seaTheme,
+                ParMoves = ParMovesForVariableLetterCount(letters.Count),
+                ParCards = letters.Count
+            };
+
+            if (xOnLeft)
+            {
+                level.LeftCards.Add(CardKind.DayCreature);
+                level.LeftVariableLetters.Add(VariableGoalRules.GoalLetter);
+                AddOnePerLetterToSide(level.LeftCards, level.LeftVariableLetters, letters);
+                AddOnePerLetterToSide(level.RightCards, level.RightVariableLetters, letters);
+            }
+            else
+            {
+                AddOnePerLetterToSide(level.LeftCards, level.LeftVariableLetters, letters);
+                level.RightCards.Add(CardKind.DayCreature);
+                level.RightVariableLetters.Add(VariableGoalRules.GoalLetter);
+                AddOnePerLetterToSide(level.RightCards, level.RightVariableLetters, letters);
+            }
+
+            AddHandNegativesForLetters(level, letters);
+            level.LeftValues = ValuesFor(level.LeftCards);
+            level.RightValues = ValuesFor(level.RightCards);
+            level.HandValues = ValuesFor(level.HandCards);
+            return level;
+        }
+
+        /// <summary>One sea creature pair beside x; merge and dismiss to leave x alone.</summary>
+        private static LevelDefinition MakeCh7SeaShowcaseLevel(string title, int seaTheme, bool xOnLeft)
+        {
+            var level = new LevelDefinition
+            {
+                Title = title,
+                Chapter = 7,
+                CreatureTheme = seaTheme,
+                ParMoves = 1,
+                ParCards = 0
+            };
+
+            var xSideCards = new List<CardKind> { CardKind.DayCreature };
+            var xSideLetters = new List<char> { VariableGoalRules.GoalLetter };
+            xSideCards.Add(CardKind.DayCreature);
+            xSideCards.Add(CardKind.NightCreature);
+            xSideLetters.Add('\0');
+            xSideLetters.Add('\0');
 
             if (xOnLeft)
             {
