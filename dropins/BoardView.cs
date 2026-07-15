@@ -197,6 +197,44 @@ namespace DragonBoxAlgebra.UI
             {
                 DragonBoxAlgebra.Audio.AudioManager.Instance.PlayCombine();
             }
+
+            Vector3 worldPos = ResolveCombineWorldPosition(evt);
+            if (_dragRoot != null)
+            {
+                _dragRoot.SetAsLastSibling();
+                VortexEffect.Play(_dragRoot, worldPos);
+            }
+            else if (_canvas != null)
+            {
+                VortexEffect.Play(_canvas.transform, worldPos);
+            }
+        }
+
+        private Vector3 ResolveCombineWorldPosition(CombineEvent evt)
+        {
+            Vector3 sum = Vector3.zero;
+            int found = 0;
+            foreach (CardWidget widget in _widgets)
+            {
+                if (widget == null || widget.SideName != evt.SideName)
+                {
+                    continue;
+                }
+
+                if (widget.Index == evt.IndexA || widget.Index == evt.IndexB)
+                {
+                    sum += widget.transform.position;
+                    found++;
+                }
+            }
+
+            if (found > 0)
+            {
+                return sum / found;
+            }
+
+            RectTransform panel = evt.SideName == "Left" ? _leftPanel : _rightPanel;
+            return panel != null ? panel.position : Vector3.zero;
         }
 
         private void Refresh()

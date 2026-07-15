@@ -476,8 +476,8 @@ namespace DragonBoxAlgebra.Gameplay
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
                     MessageChanged?.Invoke(_pendingBalance != null
-                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — click *. The ? hole stays until you fill it."
-                        : $"{Capitalize(LightTerm)} met {DarkTerm} — click the spinning * to dismiss.");
+                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. The ? hole stays until you fill it."
+                        : $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
                 }
                 else
                 {
@@ -739,7 +739,7 @@ namespace DragonBoxAlgebra.Gameplay
                 TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
                 _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
-                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — click the spinning * to dismiss.");
+                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
             }
             else
             {
@@ -931,8 +931,8 @@ namespace DragonBoxAlgebra.Gameplay
             if (_pendingCancels.Count > 0)
             {
                 MessageChanged?.Invoke(_pendingCancels.Count > 1
-                    ? "Tap each swirl to dismiss — clear them in any order."
-                    : "Tap the swirl to dismiss it.");
+                    ? "Swirls clearing…"
+                    : "Swirl clearing…");
                 return;
             }
 

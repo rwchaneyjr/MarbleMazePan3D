@@ -12,6 +12,7 @@ namespace DragonBoxAlgebra.UI
         private const float MergeDuration = 1.15f;
         private const float MergeHalfOffset = 28f;
         private const float SwirlClickableAlpha = 0.25f;
+        private const float AutoDismissDelay = 0.35f;
         private const string SwirlingLightResourcePath = "CreatureSprites/SwirlingLight";
 
         private AlgebraGameController _controller;
@@ -22,7 +23,9 @@ namespace DragonBoxAlgebra.UI
         private Text _symbolFallbackText;
         private bool _readyToClick;
         private bool _mergeInProgress;
+        private bool _autoDismissStarted;
         private Coroutine _symbolAnimation;
+        private Coroutine _autoDismissCoroutine;
 
         private static Sprite _swirlingLightSprite;
 
@@ -45,6 +48,7 @@ namespace DragonBoxAlgebra.UI
             _symbolGroup.alpha = 1f;
             _symbolRect.localScale = Vector3.one;
             StartSymbolAnimation();
+            ScheduleAutoDismiss();
         }
 
         public void InitializeMergePair(AlgebraGameController controller, int markerIndex,
@@ -288,6 +292,37 @@ namespace DragonBoxAlgebra.UI
             _mergeInProgress = false;
             _controller?.NotifyMergeAnimationCompleted();
             StartSymbolAnimation();
+            ScheduleAutoDismiss();
+        }
+
+        private void ScheduleAutoDismiss()
+        {
+            if (_autoDismissStarted)
+            {
+                return;
+            }
+
+            _autoDismissStarted = true;
+            if (_autoDismissCoroutine != null)
+            {
+                StopCoroutine(_autoDismissCoroutine);
+            }
+
+            _autoDismissCoroutine = StartCoroutine(AutoDismissAfterSwirl());
+        }
+
+        private IEnumerator AutoDismissAfterSwirl()
+        {
+            yield return new WaitForSeconds(AutoDismissDelay);
+            if (_controller == null || !_readyToClick)
+            {
+                yield break;
+            }
+
+            if (_controller.TryDismissCancelMarker(_markerIndex))
+            {
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCombine();
+            }
         }
 
         private void StartSymbolAnimation()
