@@ -735,7 +735,19 @@ namespace DragonBoxAlgebra.Gameplay
                 int insertAt = Math.Clamp(targetBoardIndex + 1, 0, side.Cards.Count);
                 side.Cards.Insert(insertAt, handCard.CloneForPlacement());
                 BoardCard placed = side.Cards[insertAt];
-                TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
+                if (!TryCreateCancelMarker(sideName, targetCard.Id, placed.Id))
+                {
+                    // Marker failed — still cancel instantly so the drop never "pops to the side".
+                    CombineRules.RemovePairById(side, targetCard.Id, placed.Id);
+                    CombineOccurred?.Invoke(new CombineEvent
+                    {
+                        SideName = sideName,
+                        Action = CombineActionType.OppositeCancel,
+                        IndexA = targetBoardIndex,
+                        IndexB = insertAt
+                    });
+                }
+
                 _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
                 MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
@@ -1164,11 +1176,11 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        private void TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
+        private bool TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
         {
             if (IsCardPendingCancelOnSide(cardIdA, sideName) || IsCardPendingCancelOnSide(cardIdB, sideName))
             {
-                return;
+                return false;
             }
 
             BoardSide side = Board.GetSide(sideName);
@@ -1189,17 +1201,17 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (cardA == null || cardB == null || !CombineRules.UsesAsteriskCancel(cardA.Value, cardB.Value))
             {
-                return;
+                return false;
             }
 
             if (!SideContainsBothCards(side, cardIdA, cardIdB))
             {
-                return;
+                return false;
             }
 
             if (!CardExistsOnlyOnSide(sideName, cardIdA) || !CardExistsOnlyOnSide(sideName, cardIdB))
             {
-                return;
+                return false;
             }
 
             foreach (PendingCancelMarker marker in _pendingCancels)
@@ -1212,7 +1224,7 @@ namespace DragonBoxAlgebra.Gameplay
                 if ((marker.CardIdA == cardIdA && marker.CardIdB == cardIdB)
                     || (marker.CardIdA == cardIdB && marker.CardIdB == cardIdA))
                 {
-                    return;
+                    return false;
                 }
             }
 
@@ -1222,6 +1234,7 @@ namespace DragonBoxAlgebra.Gameplay
                 CardIdA = cardIdA,
                 CardIdB = cardIdB
             });
+            return true;
         }
 
         private static bool CardExistsOnlyOnSide(AlgebraBoard board, string sideName, string cardId)

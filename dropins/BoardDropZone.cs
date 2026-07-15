@@ -37,8 +37,15 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Prefer merging onto the opposite under the pointer — never dump onto the side end.
-            if (TryMergeOntoOppositeUnderPointer(controller, dragged, eventData))
+            // 1) Merge onto nearest correct opposite (distance snap) — this is the intended drop.
+            if (TryMergeNearestOpposite(controller, dragged, eventData))
+            {
+                return;
+            }
+
+            // 2) If the pointer is over ANY board tile, do nothing.
+            //    Falling through to TryPlayFromHand is what "pops the tile to the side".
+            if (FindAnyBoardCardUnderPointer(eventData, dragged) != null)
             {
                 return;
             }
@@ -54,6 +61,7 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            // 3) Empty panel only → start balance play.
             if (controller.TryPlayFromHand(dragged.Index, SideName))
             {
                 dragged.MarkHandPlayHandled();
@@ -61,16 +69,40 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private static bool TryMergeOntoOppositeUnderPointer(AlgebraGameController controller,
-            CardWidget dragged, PointerEventData eventData)
+        private static bool TryMergeNearestOpposite(AlgebraGameController controller, CardWidget dragged,
+            PointerEventData eventData)
         {
-            CardWidget opposite = FindOppositeUnderPointer(controller, dragged, eventData);
-            if (opposite == null)
+            TileSnapTarget best = null;
+            float bestDistance = Mathf.Max(160f, dragged.snapDistance);
+
+            Vector2 screen = eventData.position;
+            Camera cam = eventData.pressEventCamera;
+            Vector3 dragPos = dragged.transform.position;
+
+            foreach (TileSnapTarget target in Object.FindObjectsOfType<TileSnapTarget>())
+            {
+                if (target == null || !target.IsCorrectTile(dragged))
+                {
+                    continue;
+                }
+
+                float screenDist = Vector2.Distance(screen,
+                    RectTransformUtility.WorldToScreenPoint(cam, target.GetSnapPosition()));
+                float worldDist = Vector3.Distance(dragPos, target.GetSnapPosition()) * 100f;
+                float distance = Mathf.Min(screenDist, worldDist);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = target;
+                }
+            }
+
+            if (best?.Widget == null)
             {
                 return false;
             }
 
-            if (controller.TryPlayHandOntoOpposite(dragged.Index, opposite.SideName, opposite.Index))
+            if (controller.TryPlayHandOntoOpposite(dragged.Index, best.Widget.SideName, best.Widget.Index))
             {
                 dragged.MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -80,8 +112,7 @@ namespace DragonBoxAlgebra.UI
             return false;
         }
 
-        private static CardWidget FindOppositeUnderPointer(AlgebraGameController controller,
-            CardWidget dragged, PointerEventData eventData)
+        private static CardWidget FindAnyBoardCardUnderPointer(PointerEventData eventData, CardWidget dragged)
         {
             if (eventData == null || EventSystem.current == null)
             {
@@ -90,7 +121,6 @@ namespace DragonBoxAlgebra.UI
 
             var results = new System.Collections.Generic.List<RaycastResult>();
             EventSystem.current.RaycastAll(eventData, results);
-
             foreach (RaycastResult result in results)
             {
                 if (result.gameObject == null)
@@ -100,23 +130,10 @@ namespace DragonBoxAlgebra.UI
 
                 CardWidget widget = result.gameObject.GetComponent<CardWidget>()
                     ?? result.gameObject.GetComponentInParent<CardWidget>();
-                if (widget == null || widget == dragged || widget.SideName == "Hand")
+                if (widget != null && widget != dragged && widget.SideName != "Hand")
                 {
-                    continue;
+                    return widget;
                 }
-
-                if (CombineRules.GetCombineAction(dragged.Card, widget.Card)
-                    != CombineActionType.OppositeCancel)
-                {
-                    continue;
-                }
-
-                if (!controller.CanPlayHandOntoBoardCard(dragged.Index, widget.SideName, widget.Index))
-                {
-                    continue;
-                }
-
-                return widget;
             }
 
             return null;

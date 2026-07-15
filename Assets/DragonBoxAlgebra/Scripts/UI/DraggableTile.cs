@@ -11,7 +11,7 @@ namespace DragonBoxAlgebra.UI
     {
         [Header("Snapping")]
         [Tooltip("Max screen-pixel distance to snap onto a correct opposite.")]
-        public float snapDistance = 140f;
+        public float snapDistance = 180f;
 
         private CardWidget _owner;
         private Vector3 _startingPosition;
@@ -43,6 +43,7 @@ namespace DragonBoxAlgebra.UI
             TileSnapTarget closestTarget = null;
             float closestDistance = snapDistance;
 
+            Vector3 ownerPos = transform.position;
             TileSnapTarget[] targets = FindObjectsOfType<TileSnapTarget>();
             foreach (TileSnapTarget target in targets)
             {
@@ -52,7 +53,10 @@ namespace DragonBoxAlgebra.UI
                 }
 
                 Vector2 targetScreen = RectTransformUtility.WorldToScreenPoint(eventCamera, target.GetSnapPosition());
-                float distance = Vector2.Distance(screenPosition, targetScreen);
+                float screenDist = Vector2.Distance(screenPosition, targetScreen);
+                // Also allow center-to-center proximity so edge drops still count as "on" the tile.
+                float worldDist = Vector3.Distance(ownerPos, target.GetSnapPosition()) * 100f;
+                float distance = Mathf.Min(screenDist, worldDist);
                 if (distance < closestDistance)
                 {
                     closestDistance = distance;

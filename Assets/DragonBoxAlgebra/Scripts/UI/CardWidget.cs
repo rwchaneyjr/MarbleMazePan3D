@@ -17,7 +17,7 @@ namespace DragonBoxAlgebra.UI
         public AlgebraGameController Controller => _controller;
 
         /// <summary>Screen-pixel snap radius — forwarded to DraggableTile.snapDistance.</summary>
-        public float snapDistance = 140f;
+        public float snapDistance = 180f;
 
         private AlgebraGameController _controller;
         private RectTransform _rect;
