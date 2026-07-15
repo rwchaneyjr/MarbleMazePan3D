@@ -543,13 +543,15 @@ namespace DragonBoxAlgebra.Gameplay
                 return MakeCh7VariableBalanceLevel(title, seaTheme, letters, xOnLeft);
             }
 
-            int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
-            int seaTheme = mixedIndex % SeaCreatureNames.Length;
-            int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
-            bool xOnLeft = mixedIndex % 2 == 0;
-            string title =
-                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
-            return MakeCh7MixedSeaVariableLevel(title, globalLevel, seaTheme, xOnLeft, tileCount);
+            {
+                int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
+                int seaTheme = mixedIndex % SeaCreatureNames.Length;
+                int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
+                bool xOnLeft = mixedIndex % 2 == 0;
+                string title =
+                    $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
+                return MakeCh7MixedSeaVariableLevel(title, globalLevel, seaTheme, xOnLeft, tileCount);
+            }
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
