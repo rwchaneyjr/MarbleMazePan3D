@@ -66,13 +66,13 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (_controller.TryFlipHandCard(Index))
+            if (!_controller.TryFlipHandCard(Index))
             {
-                _handFlipHandled = true;
-                Card = _controller.GetHandDisplayCard(Index);
-                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
-                StartCoroutine(PlayHandFlip());
+                return;
             }
+
+            _handFlipHandled = true;
+            DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
         }
 
         public void Bind(BoardCard card, int index, string sideName, AlgebraGameController controller, Canvas canvas,
@@ -789,8 +789,26 @@ namespace DragonBoxAlgebra.UI
             return Card.IsDraggableFromBoard;
         }
 
-        private bool CanFlipHand() =>
-            _controller != null && SideName == "Hand" && _controller.CanFlipHandCard(Index);
+        private bool CanFlipHand()
+        {
+            if (_controller == null || SideName != "Hand" || _controller.IsLevelComplete)
+            {
+                return false;
+            }
+
+            if (Index < 0 || Index >= _controller.Hand.Count)
+            {
+                return false;
+            }
+
+            BoardCard card = _controller.Hand[Index];
+            if (!CardFlipRules.CanFlip(card))
+            {
+                return false;
+            }
+
+            return true;
+        }
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
