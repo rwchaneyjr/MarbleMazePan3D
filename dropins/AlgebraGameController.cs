@@ -62,7 +62,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         private string GoalAlonePhrase => UsesVariableXGoalWin ? "Leave x alone!" : "Leave the red box alone!";
 
-        private static readonly Random Rng = new();
+        private static readonly System.Random Rng = new();
 
         public int LevelIndex => _levelIndex;
         public int LevelCount => LevelLibrary.Levels.Count;
