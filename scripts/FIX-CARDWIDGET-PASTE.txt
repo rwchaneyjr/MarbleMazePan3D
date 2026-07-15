@@ -1,0 +1,9 @@
+# PASTE THIS ENTIRE BLOCK INTO GIT BASH (one time)
+# Fixes CS8300 and makes CardWidget stick (Assets + dropins)
+
+cd /c/Users/rober/SymbolAlgebra
+git fetch origin cursor/working-up-to-variable-100-3fe3-7-14-26
+git show origin/cursor/working-up-to-variable-100-3fe3-7-14-26:scripts/CardWidget.clean.cs > Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs
+mkdir -p dropins
+git show origin/cursor/working-up-to-variable-100-3fe3-7-14-26:scripts/CardWidget.clean.cs > dropins/CardWidget.cs
+echo "DONE — CardWidget fixed in Assets AND dropins (will stick)."

@@ -1,0 +1,19 @@
+# MAKE CARDWIDGET STICK — paste ALL of this into Git Bash ONCE
+
+cd /c/Users/rober/SymbolAlgebra
+git fetch origin cursor/working-up-to-variable-100-3fe3-7-14-26
+
+# 1. Clean file in all 3 places (Unity + dropins + backup)
+git show origin/cursor/working-up-to-variable-100-3fe3-7-14-26:scripts/CardWidget.clean.cs > Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs
+mkdir -p dropins scripts
+git show origin/cursor/working-up-to-variable-100-3fe3-7-14-26:scripts/CardWidget.clean.cs > dropins/CardWidget.cs
+git show origin/cursor/working-up-to-variable-100-3fe3-7-14-26:scripts/CardWidget.clean.cs > scripts/CardWidget.clean.cs
+
+# 2. Save in YOUR git so discard/merge cannot bring back junk
+git add Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs dropins/CardWidget.cs scripts/CardWidget.clean.cs
+git commit -m "Lock clean CardWidget.cs (no merge markers)" || true
+
+# 3. Protect future merges (run once)
+bash scripts/install-git-hooks.sh 2>/dev/null || true
+
+echo DONE — Unity: Stop, wait, Play. CardWidget is locked in.
