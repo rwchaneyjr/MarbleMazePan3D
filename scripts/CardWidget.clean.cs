@@ -67,6 +67,7 @@ namespace DragonBoxAlgebra.UI
 
             _lastFlipFrame = Time.frameCount;
             Card = _controller.GetHandDisplayCard(Index);
+            RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
             StartCoroutine(PlayHandFlip());
         }
@@ -109,12 +110,7 @@ namespace DragonBoxAlgebra.UI
             ApplyCreatureVisual();
             if (_labelText != null)
             {
-                bool showHandSlotLabel = SideName == "Hand"
-                    && _controller != null
-                    && _controller.Hand.Count > 1
-                    && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
-                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled
-                    && !showHandSlotLabel;
+                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled;
 
                 if (showIconOnly)
                 {
@@ -153,11 +149,7 @@ namespace DragonBoxAlgebra.UI
         {
             Sprite icon = CardVisuals.IconSprite(Card);
             bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
-            bool showHandSlotLabel = SideName == "Hand"
-                && _controller != null
-                && _controller.Hand.Count > 1
-                && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
-            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card) && !showHandSlotLabel;
+            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card);
 
             if (_creatureImage != null)
             {
@@ -289,6 +281,11 @@ namespace DragonBoxAlgebra.UI
             if (_rect == null)
             {
                 yield break;
+            }
+
+            if (_controller != null && SideName == "Hand")
+            {
+                Card = _controller.GetHandDisplayCard(Index);
             }
 
             RefreshVisual();
