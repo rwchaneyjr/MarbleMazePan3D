@@ -33,6 +33,7 @@ namespace DragonBoxAlgebra.UI
         private bool _didDrag;
         private bool _dropHandled;
         private bool _handPlayHandled;
+        private bool _gestureFlipHandled;
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
@@ -46,16 +47,20 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            _gestureFlipHandled = false;
+            _handPlayHandled = false;
+            _dragStarted = false;
+            _didDrag = false;
             _dragPressScreenPosition = eventData.position;
         }
 
-        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        private void TryFlipHandOnClick(PointerEventData eventData)
+        public void OnPointerClick(PointerEventData eventData)
         {
-            if (SideName != "Hand" || _controller == null || _handPlayHandled || _dragStarted || _didDrag)
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (SideName != "Hand" || _controller == null || CanDrag())
             {
                 return;
             }
@@ -65,11 +70,13 @@ namespace DragonBoxAlgebra.UI
 
         private void TryFlipHandOnTap()
         {
-            if (SideName != "Hand" || _controller == null || !_controller.TryFlipHandCard(Index))
+            if (SideName != "Hand" || _controller == null || _handPlayHandled || _gestureFlipHandled
+                || !_controller.TryFlipHandCard(Index))
             {
                 return;
             }
 
+            _gestureFlipHandled = true;
             Card = _controller.GetHandDisplayCard(Index);
             RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
@@ -441,7 +448,7 @@ namespace DragonBoxAlgebra.UI
                         TryFlipHandOnTap();
                     }
 
-                    _isDragging = false;
+                    ResetHandDragState();
                     return;
                 }
 
@@ -476,12 +483,14 @@ namespace DragonBoxAlgebra.UI
                     }
 
                     _controller.RefreshHandPresentation();
+                    ResetHandDragState();
                     return;
                 }
 
                 transform.SetParent(_originalParent, false);
                 transform.SetSiblingIndex(_originalSiblingIndex);
                 RestoreDragRaycasts();
+                ResetHandDragState();
                 return;
             }
 
@@ -507,6 +516,13 @@ namespace DragonBoxAlgebra.UI
             {
                 _canvasGroup.blocksRaycasts = true;
             }
+        }
+
+        private void ResetHandDragState()
+        {
+            _isDragging = false;
+            _dragStarted = false;
+            _didDrag = false;
         }
 
         private void TryPlayHandDrop(PointerEventData eventData)
