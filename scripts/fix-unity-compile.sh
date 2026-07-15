@@ -40,7 +40,11 @@ echo "==> Restoring clean CardWidget.cs (fixes CS8300 merge conflict markers)...
 if has_conflict_markers "$CARD_WIDGET"; then
   echo "    CardWidget.cs has conflict markers — replacing from dropins/"
 fi
-restore_cardwidget
+if [[ -f "$SCRIPT_DIR/force-fix-cardwidget.sh" ]]; then
+  bash "$SCRIPT_DIR/force-fix-cardwidget.sh"
+else
+  restore_cardwidget
+fi
 
 if has_conflict_markers "$CARD_WIDGET"; then
   echo "ERROR: CardWidget.cs still has merge conflict markers after restore." >&2
