@@ -139,11 +139,8 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            bool completed = _controller.IsHandBalanceComplete(Index);
-            bool waitingTurn = _controller.UsesDualHandPanelDisplay
-                && !completed
-                && !_controller.IsHandSlotPlayable(Index);
-            _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
+            // Keep hand tiles fully visible/draggable while swirls spin on either side.
+            _canvasGroup.alpha = 1f;
             _canvasGroup.blocksRaycasts = true;
         }
 
