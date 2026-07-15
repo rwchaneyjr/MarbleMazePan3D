@@ -33,21 +33,36 @@ namespace DragonBoxAlgebra.UI
         private bool _didDrag;
         private bool _dropHandled;
         private bool _handPlayHandled;
+        private bool _handFlipConsumedThisTap;
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        /// <summary>Must move this many pixels before drag steals the click — keeps tap = flip.</summary>
+        /// <summary>Drag to board only after this much movement — taps stay flips.</summary>
         private const float DragStartThresholdPixels = 100f;
 
-        public void OnPointerDown(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        private void TryFlipHandOnClick(PointerEventData eventData)
+        public void OnPointerDown(PointerEventData eventData)
         {
-            if (SideName != "Hand" || _controller == null || _handPlayHandled || _dragStarted || _didDrag)
+            if (SideName != "Hand")
+            {
+                return;
+            }
+
+            _handFlipConsumedThisTap = false;
+            _dragPressScreenPosition = eventData.position;
+        }
+
+        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnRelease(eventData);
+
+        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnRelease(eventData);
+
+        private void TryFlipHandOnRelease(PointerEventData eventData)
+        {
+            if (SideName != "Hand" || _controller == null || _handPlayHandled || _handFlipConsumedThisTap)
+            {
+                return;
+            }
+
+            if (_dragStarted || _didDrag)
             {
                 return;
             }
@@ -62,11 +77,13 @@ namespace DragonBoxAlgebra.UI
 
         private void TryFlipHandOnTap()
         {
-            if (SideName != "Hand" || _controller == null || !_controller.TryFlipHandCard(Index))
+            if (SideName != "Hand" || _controller == null || _handFlipConsumedThisTap
+                || !_controller.TryFlipHandCard(Index))
             {
                 return;
             }
 
+            _handFlipConsumedThisTap = true;
             Card = _controller.GetHandDisplayCard(Index);
             RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
@@ -333,6 +350,7 @@ namespace DragonBoxAlgebra.UI
             _didDrag = false;
             _dropHandled = false;
             _handPlayHandled = false;
+            _handFlipConsumedThisTap = false;
             _dragPressScreenPosition = eventData.pressPosition;
 
             if (SideName != "Hand")
@@ -860,6 +878,7 @@ namespace DragonBoxAlgebra.UI
             image.sprite = SpriteFactory.RoundedCard;
             image.type = Image.Type.Sliced;
             image.color = CardVisuals.Background(card.Kind);
+            image.raycastTarget = true;
 
             var widget = root.AddComponent<CardWidget>();
             widget._rect = rect;
