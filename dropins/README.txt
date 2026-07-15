@@ -69,3 +69,6 @@ C:\Users\rober\SymbolAlgebra\Assets\DragonBoxAlgebra\Scripts\
 - Day/night cancel waits until balance completes
 - Click hand card to flip light/dark before playing
 - Dice cancel instantly (level 4), no asterisks
+- Hand cards visibly drag above the board
+- Drag near an opposite tile to snap onto it
+- Opposite cancel shows swirl immediately (no * click)

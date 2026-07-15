@@ -13,11 +13,12 @@ namespace DragonBoxAlgebra.UI
 
             var rect = go.GetComponent<RectTransform>();
             rect.position = worldPosition;
-            rect.sizeDelta = new Vector2(120f, 120f);
+            rect.sizeDelta = new Vector2(140f, 140f);
 
             var image = go.GetComponent<Image>();
             image.sprite = SpriteFactory.RoundedCard;
-            image.color = new Color(0.2f, 0.95f, 0.35f, 0.85f);
+            image.raycastTarget = false;
+            image.color = new Color(0.2f, 0.95f, 0.35f, 0.9f);
 
             var textGo = new GameObject("Spiral", typeof(RectTransform), typeof(Text));
             textGo.transform.SetParent(go.transform, false);
@@ -27,11 +28,12 @@ namespace DragonBoxAlgebra.UI
             textRect.offsetMin = Vector2.zero;
             textRect.offsetMax = Vector2.zero;
             var text = textGo.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = EmojiFont.Get() ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.alignment = TextAnchor.MiddleCenter;
-            text.fontSize = 48;
+            text.fontSize = 56;
             text.text = "🌀";
-            text.color = new Color(0.1f, 0.55f, 0.2f);
+            text.raycastTarget = false;
+            text.color = new Color(0.08f, 0.45f, 0.18f);
 
             go.GetComponent<VortexEffect>().StartCoroutine(go.GetComponent<VortexEffect>().Animate());
         }
@@ -40,6 +42,7 @@ namespace DragonBoxAlgebra.UI
         {
             Transform t = transform;
             Image image = GetComponent<Image>();
+            Text spiral = GetComponentInChildren<Text>();
             float elapsed = 0f;
             const float duration = 0.55f;
 
@@ -47,13 +50,20 @@ namespace DragonBoxAlgebra.UI
             {
                 elapsed += Time.deltaTime;
                 float n = elapsed / duration;
-                t.localScale = Vector3.one * Mathf.Lerp(0.4f, 1.6f, n);
+                t.localScale = Vector3.one * Mathf.Lerp(0.45f, 1.75f, n);
                 t.Rotate(0f, 0f, 720f * Time.deltaTime);
                 if (image != null)
                 {
                     Color c = image.color;
-                    c.a = Mathf.Lerp(0.85f, 0f, n);
+                    c.a = Mathf.Lerp(0.9f, 0f, n);
                     image.color = c;
+                }
+
+                if (spiral != null)
+                {
+                    Color c = spiral.color;
+                    c.a = Mathf.Lerp(1f, 0f, n);
+                    spiral.color = c;
                 }
 
                 yield return null;
