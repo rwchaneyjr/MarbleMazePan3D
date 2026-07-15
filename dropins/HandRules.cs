@@ -47,7 +47,7 @@ namespace DragonBoxAlgebra.Gameplay
                     char letter = h < level.HandVariableLetters.Count
                         ? level.HandVariableLetters[h]
                         : '\0';
-                    if (letter == '\0')
+                    if (letter == '\0' && level.Chapter < 7)
                     {
                         throw new System.InvalidOperationException(
                             $"Level {i + 1} ({level.Title}) hand card {h} needs a variable letter for +/- flip.");

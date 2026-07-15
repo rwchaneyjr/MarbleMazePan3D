@@ -786,7 +786,9 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
-            return _controller.CurrentLevel.Chapter < 5 || card.VariableLetter != '\0';
+            return _controller.CurrentLevel.Chapter < 5
+                || card.VariableLetter != '\0'
+                || _controller.CurrentLevel.Chapter >= 7;
         }
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
