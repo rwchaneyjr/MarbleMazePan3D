@@ -732,7 +732,7 @@ namespace DragonBoxAlgebra.Gameplay
             if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
             {
                 // Place the hand clone beside the target so the swirl sits in that slot.
-                int insertAt = Mathf.Clamp(targetBoardIndex + 1, 0, side.Cards.Count);
+                int insertAt = Math.Clamp(targetBoardIndex + 1, 0, side.Cards.Count);
                 side.Cards.Insert(insertAt, handCard.CloneForPlacement());
                 BoardCard placed = side.Cards[insertAt];
                 TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
