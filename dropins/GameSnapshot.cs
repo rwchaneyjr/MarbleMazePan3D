@@ -9,19 +9,14 @@ namespace DragonBoxAlgebra.Gameplay
         public List<BoardCard> Hand = new();
         public List<BoardCard> Right = new();
         public List<PendingCancelMarker> PendingCancels = new();
+        public List<BalancePending> PendingBalances = new();
         public int Moves;
         public int CardsPlayed;
-        public bool HasPendingBalance;
-        public string PendingPlacedSide;
-        public int PendingPlacedIndex;
-        public int PendingHandIndex;
-        public int PendingHoleInsertIndex;
-        public BoardCard PendingCard;
 
         public List<int> SpentHandIndices = new();
 
         public static GameSnapshot Capture(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves,
-            BalancePending pendingBalance, IReadOnlyList<PendingCancelMarker> pendingCancels,
+            IReadOnlyList<BalancePending> pendingBalances, IReadOnlyList<PendingCancelMarker> pendingCancels,
             IReadOnlyCollection<int> spentHandIndices)
         {
             var snapshot = new GameSnapshot
@@ -56,14 +51,24 @@ namespace DragonBoxAlgebra.Gameplay
                 });
             }
 
-            if (pendingBalance != null)
+            if (pendingBalances != null)
             {
-                snapshot.HasPendingBalance = true;
-                snapshot.PendingPlacedSide = pendingBalance.PlacedSide;
-                snapshot.PendingPlacedIndex = pendingBalance.PlacedIndex;
-                snapshot.PendingHandIndex = pendingBalance.HandIndex;
-                snapshot.PendingHoleInsertIndex = pendingBalance.HoleInsertIndex;
-                snapshot.PendingCard = pendingBalance.Card.Clone();
+                foreach (BalancePending pending in pendingBalances)
+                {
+                    if (pending == null)
+                    {
+                        continue;
+                    }
+
+                    snapshot.PendingBalances.Add(new BalancePending
+                    {
+                        PlacedSide = pending.PlacedSide,
+                        PlacedIndex = pending.PlacedIndex,
+                        HandIndex = pending.HandIndex,
+                        HoleInsertIndex = pending.HoleInsertIndex,
+                        Card = pending.Card.Clone()
+                    });
+                }
             }
 
             foreach (int spentIndex in spentHandIndices)
@@ -74,13 +79,14 @@ namespace DragonBoxAlgebra.Gameplay
             return snapshot;
         }
 
-        public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves, out BalancePending pendingBalance,
-            List<PendingCancelMarker> pendingCancels, HashSet<int> spentHandIndices)
+        public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves,
+            List<BalancePending> pendingBalances, List<PendingCancelMarker> pendingCancels,
+            HashSet<int> spentHandIndices)
         {
             board.Left.Cards.Clear();
             board.Right.Cards.Clear();
             hand.Clear();
-            pendingBalance = null;
+            pendingBalances.Clear();
             pendingCancels.Clear();
 
             foreach (BoardCard card in Left)
@@ -112,16 +118,16 @@ namespace DragonBoxAlgebra.Gameplay
             moves.Moves = Moves;
             moves.CardsPlayed = CardsPlayed;
 
-            if (HasPendingBalance)
+            foreach (BalancePending pending in PendingBalances)
             {
-                pendingBalance = new BalancePending
+                pendingBalances.Add(new BalancePending
                 {
-                    PlacedSide = PendingPlacedSide,
-                    PlacedIndex = PendingPlacedIndex,
-                    HandIndex = PendingHandIndex,
-                    HoleInsertIndex = PendingHoleInsertIndex,
-                    Card = PendingCard.Clone()
-                };
+                    PlacedSide = pending.PlacedSide,
+                    PlacedIndex = pending.PlacedIndex,
+                    HandIndex = pending.HandIndex,
+                    HoleInsertIndex = pending.HoleInsertIndex,
+                    Card = pending.Card.Clone()
+                });
             }
 
             spentHandIndices.Clear();

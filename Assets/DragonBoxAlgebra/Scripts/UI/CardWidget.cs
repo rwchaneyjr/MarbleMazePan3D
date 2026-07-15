@@ -676,29 +676,28 @@ namespace DragonBoxAlgebra.UI
 
             if (_controller.HasPendingBalance)
             {
-                string holeSide = _controller.PendingBalance.HoleSide;
-
                 BalanceHoleWidget balanceHole = FindBalanceHole(eventData);
-                if (balanceHole != null && balanceHole.SideName == holeSide)
+                if (balanceHole != null
+                    && _controller.CountPendingBalanceHolesOnSide(balanceHole.SideName) > 0
+                    && _controller.TryPlayFromHand(Index, balanceHole.SideName))
                 {
-                    if (_controller.TryPlayFromHand(Index, holeSide))
-                    {
-                        MarkHandPlayHandled();
-                        DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                    }
-
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                     return;
                 }
 
                 BoardDropZone boardZone = FindBoardZone(eventData);
                 string pendingSide = boardZone != null ? boardZone.SideName : SideUnderPointer(eventData);
-                if (pendingSide == holeSide && _controller.TryPlayFromHand(Index, holeSide))
+                if (pendingSide != null
+                    && _controller.CountPendingBalanceHolesOnSide(pendingSide) > 0
+                    && _controller.TryPlayFromHand(Index, pendingSide))
                 {
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    return;
                 }
 
-                return;
+                // Hole not filled — still allow playing the other side / other hand below.
             }
 
             // 2) Empty board panel only → start balance. Never "side dump" when over a non-opposite tile.
@@ -797,25 +796,21 @@ namespace DragonBoxAlgebra.UI
 
             if (SideName == "Hand")
             {
-                if (_controller.HasPendingBalance)
+                if (target.SideName != "Hand")
                 {
-                    if (target.SideName == _controller.PendingBalance.HoleSide
+                    // Opposite merge always allowed on either side, even with swirls/? holes elsewhere.
+                    if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
+                    {
+                        TryPlayHandOnBoardTarget(target);
+                        return false;
+                    }
+
+                    if (_controller.HasPendingBalance
+                        && _controller.CountPendingBalanceHolesOnSide(target.SideName) > 0
                         && _controller.TryPlayFromHand(Index, target.SideName))
                     {
                         MarkHandPlayHandled();
                         DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                    }
-
-                    return false;
-                }
-
-                if (target.SideName != "Hand")
-                {
-                    // Only merge when this tile is the opposite. Do not start balance from a card drop —
-                    // that appends at the end of the side and looks like the tile "went off to the side".
-                    if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
-                    {
-                        TryPlayHandOnBoardTarget(target);
                     }
                 }
 
@@ -1124,9 +1119,7 @@ namespace DragonBoxAlgebra.UI
             layoutElement.preferredHeight = tileHeight;
 
             widget.Bind(card, index, sideName, controller, canvas, dragRoot);
-            widget._canvasGroup = root.GetComponent<CanvasGroup>();
-            widget._canvasGroup.blocksRaycasts = true;
-            widget._canvasGroup.interactable = true;
+            widget.EnsureFullyActive();
 
             var draggable = root.AddComponent<DraggableTile>();
             draggable.Bind(widget);

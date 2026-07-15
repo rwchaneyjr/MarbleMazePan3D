@@ -28,18 +28,19 @@ namespace DragonBoxAlgebra.Gameplay
         public IReadOnlyList<BoardCard> Hand => _hand;
         public IReadOnlyList<PendingCancelMarker> PendingCancels => _pendingCancels;
         public bool CanUndo => _undoStack.Count > 0;
-        public bool HasPendingBalance => _pendingBalance != null;
-        public BalancePending PendingBalance => _pendingBalance;
+        public bool HasPendingBalance => _pendingBalances.Count > 0;
+        public BalancePending PendingBalance => _pendingBalances.Count > 0 ? _pendingBalances[0] : null;
+        public IReadOnlyList<BalancePending> PendingBalances => _pendingBalances;
         public bool HasActiveMergeAnimations => _activeMergeAnimations > 0;
         public bool IsLevelComplete => _levelComplete;
 
         private readonly List<BoardCard> _hand = new();
         private readonly List<BoardCard> _handTemplates = new();
         private readonly List<PendingCancelMarker> _pendingCancels = new();
+        private readonly List<BalancePending> _pendingBalances = new();
         private readonly HashSet<int> _spentHandIndices = new();
         private readonly Stack<GameSnapshot> _undoStack = new();
         private GameSnapshot _initialSnapshot;
-        private BalancePending _pendingBalance;
         private int _levelIndex;
         private int _activeHandSlot = -1;
         private bool _levelComplete;
@@ -118,12 +119,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesDualHandPanelDisplay)
-            {
-                return _pendingBalance == null || handIndex == _pendingBalance.HandIndex;
-            }
-
-            return handIndex == CurrentPlayableHandSlotIndex();
+            // Left/right and hand slots stay independent: swirls or a hole on one side
+            // never lock the other side or the other hand card.
+            return true;
         }
 
         public BoardCard GetHandDisplayCard(int handIndex)
@@ -157,9 +155,9 @@ namespace DragonBoxAlgebra.Gameplay
 
         private int CurrentPlayableHandSlotIndex()
         {
-            if (_pendingBalance != null)
+            if (_pendingBalances.Count > 0)
             {
-                return _pendingBalance.HandIndex;
+                return _pendingBalances[0].HandIndex;
             }
 
             if (_activeHandSlot >= 0)
@@ -172,7 +170,45 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void RestoreHandSlotFromSnapshot()
         {
-            _activeHandSlot = _pendingBalance?.HandIndex ?? -1;
+            _activeHandSlot = _pendingBalances.Count > 0 ? _pendingBalances[0].HandIndex : -1;
+        }
+
+        public int CountPendingBalanceHolesOnSide(string sideName)
+        {
+            int count = 0;
+            foreach (BalancePending pending in _pendingBalances)
+            {
+                if (pending != null && pending.HoleSide == sideName)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        public BalancePending FindPendingBalanceForHole(string holeSide, BoardCard template, int handIndex)
+        {
+            foreach (BalancePending pending in _pendingBalances)
+            {
+                if (pending != null
+                    && pending.HoleSide == holeSide
+                    && pending.HandIndex == handIndex
+                    && pending.Matches(template))
+                {
+                    return pending;
+                }
+            }
+
+            foreach (BalancePending pending in _pendingBalances)
+            {
+                if (pending != null && pending.HoleSide == holeSide && pending.Matches(template))
+                {
+                    return pending;
+                }
+            }
+
+            return null;
         }
 
         private int NextUnspentHandIndex()
@@ -253,17 +289,17 @@ namespace DragonBoxAlgebra.Gameplay
             Moves.Reset();
             _undoStack.Clear();
             _levelComplete = false;
-            _pendingBalance = null;
+            _pendingBalances.Clear();
             _pendingCancels.Clear();
             _spentHandIndices.Clear();
             _activeHandSlot = -1;
             _activeMergeAnimations = 0;
-            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
+            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalances, _pendingCancels,
                 _spentHandIndices);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
             ResolveCombines();
-            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
+            _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalances, _pendingCancels,
                 _spentHandIndices);
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
@@ -363,7 +399,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
+            _initialSnapshot.Apply(Board, _hand, Moves, _pendingBalances, _pendingCancels, _spentHandIndices);
             RestoreHandSlotFromSnapshot();
             _undoStack.Clear();
             _levelComplete = false;
@@ -379,7 +415,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
+            _undoStack.Pop().Apply(Board, _hand, Moves, _pendingBalances, _pendingCancels, _spentHandIndices);
             RestoreHandSlotFromSnapshot();
             _levelComplete = false;
             BoardChanged?.Invoke();
@@ -456,8 +492,8 @@ namespace DragonBoxAlgebra.Gameplay
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
-                    MessageChanged?.Invoke(_pendingBalance != null
-                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. The ? hole stays until you fill it."
+                    MessageChanged?.Invoke(HasPendingBalance
+                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. Other side stays free to play."
                         : $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
                 }
                 else
@@ -477,12 +513,6 @@ namespace DragonBoxAlgebra.Gameplay
                 BoardChanged?.Invoke();
                 CheckWin();
                 return true;
-            }
-
-            if (_pendingBalance != null)
-            {
-                MessageChanged?.Invoke("Fill the balance hole first.");
-                return false;
             }
 
             PushUndo();
@@ -580,20 +610,6 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesDualHandPanelDisplay)
-            {
-                if (_pendingBalance != null && handIndex != _pendingBalance.HandIndex)
-                {
-                    MessageChanged?.Invoke("Fill the ? hole first — finish the tile you started.");
-                    return false;
-                }
-            }
-            else if (UsesPlayableHandDisplay && handIndex != CurrentPlayableHandSlotIndex())
-            {
-                MessageChanged?.Invoke("Play the highlighted hand card first.");
-                return false;
-            }
-
             BoardCard template = _hand[handIndex];
             if (template.Kind == CardKind.DivideTool || template.Kind == CardKind.One)
             {
@@ -601,7 +617,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (_pendingBalance != null)
+            // Fill a ? hole on this side when the tile matches — does not lock the other side.
+            if (FindPendingBalanceForHole(targetSide, template, handIndex) != null)
             {
                 return TryCompleteBalance(handIndex, targetSide, template);
             }
@@ -709,7 +726,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             PushUndo();
-            _pendingBalance = null;
+            // Do not clear other-side balance holes — sides stay independent.
             if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
             {
                 // Place the hand clone beside the target so the swirl sits in that slot.
@@ -795,69 +812,61 @@ namespace DragonBoxAlgebra.Gameplay
 
         private bool TryStartBalance(int handIndex, string targetSide, BoardCard template)
         {
+            // One open hole per hand tile is enough; allow the other hand/side freely.
+            foreach (BalancePending existing in _pendingBalances)
+            {
+                if (existing != null && existing.HandIndex == handIndex)
+                {
+                    MessageChanged?.Invoke("That hand tile already has a ? hole — drag it onto the hole, or use the other hand tile on the other side.");
+                    return false;
+                }
+            }
+
             PushUndo();
             BoardSide placedSide = Board.GetSide(targetSide);
             placedSide.Cards.Add(template.CloneForPlacement());
             int placedIndex = placedSide.Cards.Count - 1;
             string holeSide = targetSide == "Left" ? "Right" : "Left";
 
-            _pendingBalance = new BalancePending
+            _pendingBalances.Add(new BalancePending
             {
                 Card = template.Clone(),
                 PlacedSide = targetSide,
                 PlacedIndex = placedIndex,
                 HandIndex = handIndex,
                 HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
-            };
+            });
 
             if (UsesPlayableHandDisplay)
             {
                 _activeHandSlot = handIndex;
             }
 
-            MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
+            MessageChanged?.Invoke("? appeared on the other side — other side/hand stays free to play.");
             BoardChanged?.Invoke();
-            if (UsesPlayableHandDisplay && !UsesDualHandPanelDisplay)
-            {
-                HandChanged?.Invoke();
-            }
-
+            HandChanged?.Invoke();
             return true;
         }
 
         private bool TryCompleteBalance(int handIndex, string targetSide, BoardCard template)
         {
-            if (handIndex != _pendingBalance.HandIndex)
+            BalancePending pending = FindPendingBalanceForHole(targetSide, template, handIndex);
+            if (pending == null)
             {
-                MessageChanged?.Invoke("Fill the ? hole first — finish the tile you started.");
-                return false;
-            }
-
-            if (targetSide != _pendingBalance.HoleSide)
-            {
-                MessageChanged?.Invoke("Drag the same card to the hole on the other side.");
-                return false;
-            }
-
-            if (!_pendingBalance.Matches(template))
-            {
-                MessageChanged?.Invoke("The card must match the hole. Click to flip light/dark if needed.");
+                MessageChanged?.Invoke("Drag a matching tile onto the ? hole, or play on the other side.");
                 return false;
             }
 
             PushUndo();
             BoardSide balancedSide = Board.GetSide(targetSide);
-            int insertIndex = _pendingBalance.HoleInsertIndex;
+            int insertIndex = pending.HoleInsertIndex;
             if (insertIndex < 0 || insertIndex > balancedSide.Cards.Count)
             {
                 insertIndex = balancedSide.Cards.Count;
             }
 
             balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
-            int holePlacedIndex = insertIndex;
-            string placedSide = _pendingBalance.PlacedSide;
-            int placedBoardIndex = _pendingBalance.PlacedIndex;
-            _pendingBalance = null;
+            _pendingBalances.Remove(pending);
             if (UsesPlayableHandDisplay)
             {
                 if (UsesReusableVariableHandCards)
@@ -911,7 +920,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool CanPresentWin()
         {
-            return _pendingBalance == null
+            return _pendingBalances.Count == 0
                 && _pendingCancels.Count == 0
                 && _activeMergeAnimations == 0;
         }
@@ -928,7 +937,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            if (!WinChecker.CanWin(Board, Moves.Moves, _pendingBalance != null, _pendingCancels.Count,
+            if (!WinChecker.CanWin(Board, Moves.Moves, _pendingBalances.Count > 0, _pendingCancels.Count,
                     _activeMergeAnimations, UsesExtraOppositeTileLevel, UsesVariableXGoalWin))
             {
                 return;
@@ -1020,7 +1029,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void PushUndo()
         {
-            _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
+            _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalances, _pendingCancels,
                 _spentHandIndices));
         }
 
