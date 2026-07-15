@@ -39,8 +39,6 @@ namespace DragonBoxAlgebra.UI
 
         /// <summary>Pixels before a press counts as drag instead of click — higher = flip is easier.</summary>
         private const float FlipDragThresholdPixels = 150f;
-        private const float OppositeSnapRadius = 130f;
-        private const float OppositeSnapLockRadius = 72f;
         private const float OppositeHitPaddingPixels = 36f;
         private const float DragScale = 1.08f;
 
@@ -579,22 +577,34 @@ namespace DragonBoxAlgebra.UI
 
         private CardWidget ResolveBoardDropTarget(PointerEventData eventData)
         {
-            CardWidget underPointer = SideName == "Hand"
-                ? FindHandBoardTarget(eventData)
-                : FindBoardMergeTarget(eventData);
-
-            if (underPointer != null
-                && CombineRules.GetCombineAction(Card, underPointer.Card) == CombineActionType.OppositeCancel)
+            // Prefer an opposite currently under the pointer — never merge with a different tile.
+            foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
             {
-                return underPointer;
+                if (widget == null || widget == this || widget.SideName == "Hand")
+                {
+                    continue;
+                }
+
+                if (SideName != "Hand" && widget.SideName != SideName)
+                {
+                    continue;
+                }
+
+                if (CombineRules.GetCombineAction(Card, widget.Card) == CombineActionType.OppositeCancel)
+                {
+                    return widget;
+                }
             }
 
-            if (_snapTarget != null)
+            if (_snapTarget != null
+                && CombineRules.GetCombineAction(Card, _snapTarget.Card) == CombineActionType.OppositeCancel)
             {
                 return _snapTarget;
             }
 
-            return underPointer;
+            return SideName == "Hand"
+                ? FindHandBoardTarget(eventData)
+                : FindBoardMergeTarget(eventData);
         }
 
         private void ClearSnapHighlight()
