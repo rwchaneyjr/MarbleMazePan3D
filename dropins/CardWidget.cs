@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace DragonBoxAlgebra.UI
 {
     public class CardWidget : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
-        IPointerClickHandler
+        IPointerClickHandler, IPointerDownHandler, IPointerUpHandler
     {
         public BoardCard Card { get; private set; }
         public int Index { get; private set; }
@@ -34,11 +34,44 @@ namespace DragonBoxAlgebra.UI
         private bool _dropHandled;
         private bool _handPlayHandled;
         private bool _handFlipHandled;
+        private bool _handPointerActive;
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
         /// <summary>Drag to board only after this much movement — taps stay flips.</summary>
         private const float DragStartThresholdPixels = 40f;
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (SideName != "Hand")
+            {
+                return;
+            }
+
+            _handPointerActive = true;
+            _handFlipHandled = false;
+            _handPlayHandled = false;
+            _dragPressScreenPosition = eventData.position;
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (SideName != "Hand" || !_handPointerActive)
+            {
+                return;
+            }
+
+            _handPointerActive = false;
+            if (_handPlayHandled || _handFlipHandled || _dragStarted)
+            {
+                return;
+            }
+
+            if (!ExceededDragStartThreshold(eventData))
+            {
+                TryFlipHandOnTap();
+            }
+        }
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -61,7 +94,10 @@ namespace DragonBoxAlgebra.UI
             }
 
             _handFlipHandled = true;
+            Card = _controller.GetHandDisplayCard(Index);
+            RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
+            StartCoroutine(PlayHandFlip());
         }
 
         public void Bind(BoardCard card, int index, string sideName, AlgebraGameController controller, Canvas canvas,
@@ -79,6 +115,9 @@ namespace DragonBoxAlgebra.UI
         public void SetHandCard(BoardCard card)
         {
             Card = card;
+            _handFlipHandled = false;
+            _handPlayHandled = false;
+            _handPointerActive = false;
             if (_canvasGroup != null)
             {
                 _canvasGroup.blocksRaycasts = true;
@@ -258,7 +297,6 @@ namespace DragonBoxAlgebra.UI
         {
             if (_rect == null)
             {
-                RefreshVisual();
                 yield break;
             }
 
@@ -268,10 +306,20 @@ namespace DragonBoxAlgebra.UI
             float elapsed = 0f;
             while (elapsed < halfDuration)
             {
+                if (_rect == null)
+                {
+                    yield break;
+                }
+
                 elapsed += Time.deltaTime;
                 float n = elapsed / halfDuration;
                 _rect.localScale = new Vector3(Mathf.Lerp(scale.x, 0.05f, n), scale.y, scale.z);
                 yield return null;
+            }
+
+            if (_rect == null)
+            {
+                yield break;
             }
 
             RefreshVisual();
@@ -279,25 +327,26 @@ namespace DragonBoxAlgebra.UI
             elapsed = 0f;
             while (elapsed < halfDuration)
             {
+                if (_rect == null)
+                {
+                    yield break;
+                }
+
                 elapsed += Time.deltaTime;
                 float n = elapsed / halfDuration;
                 _rect.localScale = new Vector3(Mathf.Lerp(0.05f, scale.x, n), scale.y, scale.z);
                 yield return null;
             }
 
-            _rect.localScale = scale;
+            if (_rect != null)
+            {
+                _rect.localScale = scale;
+            }
         }
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (SideName == "Hand")
-            {
-                if (!CanFlipHand() && !CanDrag())
-                {
-                    return;
-                }
-            }
-            else if (!CanDrag())
+            if (SideName != "Hand" && !CanDrag())
             {
                 return;
             }
@@ -890,6 +939,7 @@ namespace DragonBoxAlgebra.UI
             labelText.alignment = TextAnchor.MiddleCenter;
             labelText.fontSize = 13;
             labelText.color = Color.white;
+            labelText.raycastTarget = false;
             widget._labelText = labelText;
 
             var layoutElement = root.AddComponent<LayoutElement>();

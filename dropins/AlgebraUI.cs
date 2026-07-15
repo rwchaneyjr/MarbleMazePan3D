@@ -150,6 +150,7 @@ namespace DragonBoxAlgebra.UI
 
             var handPanel = CreatePanel(background.transform, "Hand", new Color(0.08f, 0.18f, 0.24f, 0.85f),
                 new Vector2(0.12f, 0.06f), new Vector2(0.88f, 0.22f), Vector2.zero, Vector2.zero);
+            handPanel.GetComponent<Image>().raycastTarget = false;
             var handView = gameObject.AddComponent<HandView>();
             handView.Initialize(Controller, handPanel, _canvas, _dragRoot);
 
