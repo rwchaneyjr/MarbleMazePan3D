@@ -768,28 +768,8 @@ namespace DragonBoxAlgebra.UI
             return Card.IsDraggableFromBoard;
         }
 
-        private bool CanFlipHand()
-        {
-            if (_controller == null || SideName != "Hand" || _controller.IsLevelComplete)
-            {
-                return false;
-            }
-
-            if (Index < 0 || Index >= _controller.Hand.Count)
-            {
-                return false;
-            }
-
-            BoardCard card = _controller.Hand[Index];
-            if (!CardFlipRules.CanFlip(card))
-            {
-                return false;
-            }
-
-            return _controller.CurrentLevel.Chapter < 5
-                || card.VariableLetter != '\0'
-                || _controller.CurrentLevel.Chapter >= 7;
-        }
+        private bool CanFlipHand() =>
+            _controller != null && SideName == "Hand" && _controller.CanFlipHandCard(Index);
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
