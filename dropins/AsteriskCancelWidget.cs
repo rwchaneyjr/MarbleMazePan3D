@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace DragonBoxAlgebra.UI
 {
-    public class AsteriskCancelWidget : MonoBehaviour, IPointerClickHandler
+    public class AsteriskCancelWidget : MonoBehaviour, IPointerClickHandler, IDropHandler
     {
         private const float MergeDuration = 1.15f;
         private const float MergeHalfOffset = 28f;
@@ -73,6 +73,16 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
+        /// <summary>
+        /// Swirls must not eat hand drops — forward onto the side drop zone so the other
+        /// (and same) side stays playable while asterisks spin.
+        /// </summary>
+        public void OnDrop(PointerEventData eventData)
+        {
+            BoardDropZone zone = GetComponentInParent<BoardDropZone>();
+            zone?.OnDrop(eventData);
+        }
+
         private static Sprite GetSwirlingLightSprite()
         {
             if (_swirlingLightSprite == null)
@@ -102,7 +112,9 @@ namespace DragonBoxAlgebra.UI
             image.color = UsesSwirlingLight
                 ? new Color(0.04f, 0.05f, 0.14f, 0.94f)
                 : new Color(0.98f, 0.84f, 0.14f, 0.92f);
-            image.raycastTarget = true;
+            // Keep the tile visible but let drops pass to the side / other cards.
+            // Clicks still hit the swirl symbol below.
+            image.raycastTarget = false;
 
             var borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
             borderGo.transform.SetParent(transform, false);
@@ -119,7 +131,7 @@ namespace DragonBoxAlgebra.UI
                 ? new Color(0.35f, 0.55f, 1f, 0.95f)
                 : new Color(0.72f, 0.48f, 0.04f, 1f);
 
-            var symbolGo = new GameObject("SwirlSymbol", typeof(RectTransform), typeof(CanvasGroup));
+            var symbolGo = new GameObject("SwirlSymbol", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
             symbolGo.transform.SetParent(transform, false);
             _symbolRect = symbolGo.GetComponent<RectTransform>();
             _symbolRect.anchorMin = Vector2.zero;
@@ -128,6 +140,9 @@ namespace DragonBoxAlgebra.UI
             _symbolRect.offsetMax = UsesSwirlingLight ? new Vector2(-6f, -6f) : Vector2.zero;
             _symbolGroup = symbolGo.GetComponent<CanvasGroup>();
             _symbolGroup.alpha = 0f;
+            var symbolHit = symbolGo.GetComponent<Image>();
+            symbolHit.color = new Color(1f, 1f, 1f, 0.01f);
+            symbolHit.raycastTarget = true;
 
             Sprite swirl = GetSwirlingLightSprite();
             if (swirl != null)

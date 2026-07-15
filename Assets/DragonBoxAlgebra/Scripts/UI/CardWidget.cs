@@ -139,11 +139,8 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            bool completed = _controller.IsHandBalanceComplete(Index);
-            bool waitingTurn = _controller.UsesDualHandPanelDisplay
-                && !completed
-                && !_controller.IsHandSlotPlayable(Index);
-            _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
+            // Keep hand tiles fully visible/draggable while swirls spin on either side.
+            _canvasGroup.alpha = 1f;
             _canvasGroup.blocksRaycasts = true;
         }
 
@@ -490,13 +487,35 @@ namespace DragonBoxAlgebra.UI
                 if (HandleDropOnCard(target))
                 {
                     RestoreDragRaycasts();
-                    Destroy(gameObject);
+                    // Board refresh owns cleanup when combine succeeded; only destroy if still on DragRoot.
+                    if (this != null && gameObject != null && transform.parent == _dragRoot)
+                    {
+                        Destroy(gameObject);
+                    }
+
                     return;
                 }
             }
 
-            transform.SetParent(_originalParent, false);
-            transform.SetSiblingIndex(_originalSiblingIndex);
+            // Put the free tile back cleanly so later board drags keep working.
+            if (_originalParent != null)
+            {
+                transform.SetParent(_originalParent, false);
+                transform.SetSiblingIndex(_originalSiblingIndex);
+            }
+
+            if (_rect != null)
+            {
+                _rect.anchoredPosition = Vector2.zero;
+                _rect.localRotation = Quaternion.identity;
+                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+            }
+
+            if (_originalParent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+            }
+
             RestoreDragRaycasts();
         }
 
@@ -750,10 +769,15 @@ namespace DragonBoxAlgebra.UI
                 return nearest;
             }
 
-            CardWidget fallback = null;
+            // Only accept a hovered free tile that can actually combine — never a dead fallback.
             foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
             {
                 if (widget == this || widget.SideName != SideName)
+                {
+                    continue;
+                }
+
+                if (_controller != null && _controller.IsCardPendingCancelOnSide(widget.Card.Id, widget.SideName))
                 {
                     continue;
                 }
@@ -762,14 +786,9 @@ namespace DragonBoxAlgebra.UI
                 {
                     return widget;
                 }
-
-                if (fallback == null && widget.Card.Kind != CardKind.Box)
-                {
-                    fallback = widget;
-                }
             }
 
-            return fallback;
+            return null;
         }
 
         private void ApplyOppositeSnap(PointerEventData eventData)

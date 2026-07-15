@@ -118,12 +118,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesDualHandPanelDisplay)
-            {
-                return _pendingBalance == null || handIndex == _pendingBalance.HandIndex;
-            }
-
-            return handIndex == CurrentPlayableHandSlotIndex();
+            // Hand slots stay independently playable while swirls spin on either side.
+            return true;
         }
 
         public BoardCard GetHandDisplayCard(int handIndex)
@@ -484,9 +480,8 @@ namespace DragonBoxAlgebra.Gameplay
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
-                    MessageChanged?.Invoke(_pendingBalance != null
-                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — click *. The ? hole stays until you fill it."
-                        : $"{Capitalize(LightTerm)} met {DarkTerm} — click the spinning * to dismiss.");
+                    MessageChanged?.Invoke(
+                        $"{Capitalize(LightTerm)} met {DarkTerm} — click the swirl to dismiss. Other free tiles stay playable.");
                 }
                 else
                 {
@@ -507,12 +502,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return true;
             }
 
-            if (_pendingBalance != null)
-            {
-                MessageChanged?.Invoke("Fill the balance hole first.");
-                return false;
-            }
-
+            // Free opposite merges already handled above. Other combine types stay available
+            // even while a ? hole or swirl exists on the other side.
             PushUndo();
             if (!Board.TryCombineOnSide(side, indexA, indexB, out CombineActionType resolved))
             {
@@ -605,20 +596,6 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (_spentHandIndices.Contains(handIndex))
             {
-                return false;
-            }
-
-            if (UsesDualHandPanelDisplay)
-            {
-                if (_pendingBalance != null && handIndex != _pendingBalance.HandIndex)
-                {
-                    MessageChanged?.Invoke("Fill the ? hole first — finish the tile you started.");
-                    return false;
-                }
-            }
-            else if (UsesPlayableHandDisplay && handIndex != CurrentPlayableHandSlotIndex())
-            {
-                MessageChanged?.Invoke("Play the highlighted hand card first.");
                 return false;
             }
 
@@ -753,14 +730,23 @@ namespace DragonBoxAlgebra.Gameplay
                 side.Cards.Insert(insertAt, handCard.CloneForPlacement());
                 BoardCard placed = side.Cards[insertAt];
                 TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
-                _spentHandIndices.Add(handIndex);
+                if (ShouldMarkHandSpentAfterPlay(handIndex))
+                {
+                    _spentHandIndices.Add(handIndex);
+                }
+
                 Moves.RegisterCombine();
-                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
+                MessageChanged?.Invoke(
+                    $"{Capitalize(LightTerm)} met {DarkTerm} — click the swirl to dismiss. Other side stays free.");
             }
             else
             {
                 CombineRules.RemoveCardById(side, targetCard.Id);
-                _spentHandIndices.Add(handIndex);
+                if (ShouldMarkHandSpentAfterPlay(handIndex))
+                {
+                    _spentHandIndices.Add(handIndex);
+                }
+
                 Moves.RegisterCombine();
                 CombineOccurred?.Invoke(new CombineEvent
                 {
@@ -946,9 +932,10 @@ namespace DragonBoxAlgebra.Gameplay
         {
             if (_pendingCancels.Count > 0)
             {
+                // Swirls never lock play — only delay the win until the player clicks them.
                 MessageChanged?.Invoke(_pendingCancels.Count > 1
-                    ? "Tap each swirl to dismiss — clear them in any order."
-                    : "Tap the swirl to dismiss it.");
+                    ? "Click each swirl to dismiss. You can keep dragging on either side."
+                    : "Click the swirl to dismiss. You can keep dragging on either side.");
                 return;
             }
 
@@ -1300,12 +1287,7 @@ namespace DragonBoxAlgebra.Gameplay
         {
             for (int i = 0; i < _hand.Count; i++)
             {
-                if (_hand[i].VariableLetter == '\0')
-                {
-                    continue;
-                }
-
-                if (HandLetterStillNeededOnBoard(i))
+                if (HandTileStillNeededOnBoard(i))
                 {
                     _spentHandIndices.Remove(i);
                 }
@@ -1316,7 +1298,14 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        private bool HandLetterStillNeededOnBoard(int handIndex)
+        /// <summary>
+        /// Keep the same hand slot playable while matching board lights remain.
+        /// Does not add/remove hand cards — only the spent flag.
+        /// </summary>
+        private bool ShouldMarkHandSpentAfterPlay(int handIndex) =>
+            !UsesReusableVariableHandCards || !HandTileStillNeededOnBoard(handIndex);
+
+        private bool HandTileStillNeededOnBoard(int handIndex)
         {
             if (handIndex < 0 || handIndex >= _hand.Count)
             {
@@ -1324,12 +1313,37 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             char letter = _hand[handIndex].VariableLetter;
-            if (letter == '\0')
+            if (letter != '\0')
             {
-                return false;
+                return CountPositiveVariablesOnBoard(letter) > 0;
             }
 
-            return CountPositiveVariablesOnBoard(letter) > 0;
+            return CountLightSeaCreaturesOnBoard() > 0;
+        }
+
+        private bool HandLetterStillNeededOnBoard(int handIndex) =>
+            HandTileStillNeededOnBoard(handIndex);
+
+        private int CountLightSeaCreaturesOnBoard()
+        {
+            int count = 0;
+            foreach (BoardCard card in Board.Left.Cards)
+            {
+                if (card.Kind == CardKind.DayCreature && card.VariableLetter == '\0')
+                {
+                    count++;
+                }
+            }
+
+            foreach (BoardCard card in Board.Right.Cards)
+            {
+                if (card.Kind == CardKind.DayCreature && card.VariableLetter == '\0')
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private int CountPositiveVariablesOnBoard(char letter)
