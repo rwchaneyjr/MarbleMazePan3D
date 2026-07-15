@@ -33,6 +33,46 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>First global level number (1-based) for Chapter 7 / Sea Creatures.</summary>
         public const int Chapter7StartLevel = Chapter6StartLevel + Chapter6LevelCount;
 
+        /// <summary>Curriculum stopping points — first question in each chapter (1-based global level).</summary>
+        public const int Chapter1StartLevel = 1;
+        public const int Chapter2StartLevel = Chapter1LevelCount + 1;
+        public const int Chapter3StartLevel = Chapter1LevelCount + Chapter2LevelCount + 1;
+
+        /// <summary>0-based level index for the first question in each chapter (stopping points 1–7).</summary>
+        public static int StartLevelIndexForChapter(int chapter)
+        {
+            if (chapter < 1)
+            {
+                return 0;
+            }
+
+            if (chapter > ChapterCount)
+            {
+                chapter = ChapterCount;
+            }
+
+            int cursor = 0;
+            for (int i = 0; i < chapter - 1; i++)
+            {
+                cursor += ChapterLevelCounts[i];
+            }
+
+            return cursor;
+        }
+
+        /// <summary>1-based global level number for the first question in a chapter.</summary>
+        public static int StartLevelNumberForChapter(int chapter) => StartLevelIndexForChapter(chapter) + 1;
+
+        public static string NameForChapter(int chapter)
+        {
+            if (chapter < 1 || chapter > ChapterCount)
+            {
+                return $"Chapter {chapter}";
+            }
+
+            return ChapterNames[chapter - 1];
+        }
+
         /// <summary>Ch7 levels 1–6: x + sea creature light/dark images.</summary>
         public const int Chapter7SeaXLevelCount = 6;
 

@@ -370,6 +370,15 @@ namespace DragonBoxAlgebra.Gameplay
             MessageChanged?.Invoke($"Random puzzle — {CreatureArt.ThemeName}!");
         }
 
+        public void JumpToChapter(int chapter)
+        {
+            int index = ChapterLevelGenerator.StartLevelIndexForChapter(chapter);
+            LoadLevel(index);
+            MessageChanged?.Invoke(
+                $"Chapter {chapter} — {ChapterLevelGenerator.NameForChapter(chapter)} " +
+                $"(question {index + 1})");
+        }
+
         public void RestartLevel()
         {
             LoadLevel(_levelIndex);

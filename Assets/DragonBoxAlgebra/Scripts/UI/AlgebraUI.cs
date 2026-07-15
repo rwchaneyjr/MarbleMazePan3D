@@ -106,6 +106,11 @@ namespace DragonBoxAlgebra.UI
             Controller.LoadRandomLevel();
         }
 
+        public void OnChapterJumpClicked(int chapter)
+        {
+            Controller.JumpToChapter(chapter);
+        }
+
         private void BuildUI()
         {
             var canvasGo = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -162,6 +167,8 @@ namespace DragonBoxAlgebra.UI
             CreateRoundButton(background.transform, "Undo", new Vector2(0.88f, 0.92f), OnUndoClicked, "↩");
             CreateRoundButton(background.transform, "Rewind", new Vector2(0.94f, 0.92f), OnRewindClicked, "⏪");
 
+            BuildChapterJumpButtons(background.transform);
+
             var completePanel = CreatePanel(background.transform, "CompletePanel", new Color(0.05f, 0.12f, 0.18f, 0.92f),
                 new Vector2(0.2f, 0.25f), new Vector2(0.8f, 0.75f), Vector2.zero, Vector2.zero);
             var starsText = CreateText(completePanel.transform, "Stars", "Level Complete",
@@ -178,6 +185,61 @@ namespace DragonBoxAlgebra.UI
                 new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem),
                     typeof(UnityEngine.EventSystems.StandaloneInputModule));
             }
+        }
+
+        private void BuildChapterJumpButtons(Transform parent)
+        {
+            const float rowY = 0.235f;
+            const float left = 0.14f;
+            const float right = 0.86f;
+            int count = ChapterLevelGenerator.ChapterCount;
+            float step = (right - left) / (count - 1);
+
+            for (int chapter = 1; chapter <= count; chapter++)
+            {
+                int startLevel = ChapterLevelGenerator.StartLevelNumberForChapter(chapter);
+                float anchorX = count == 1 ? 0.5f : left + (chapter - 1) * step;
+                CreateChapterJumpButton(parent, chapter, startLevel, new Vector2(anchorX, rowY));
+            }
+        }
+
+        private void CreateChapterJumpButton(Transform parent, int chapter, int startLevel, Vector2 anchor)
+        {
+            var go = new GameObject($"Chapter{chapter}Button", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(56f, 40f);
+
+            var image = go.GetComponent<Image>();
+            image.sprite = SpriteFactory.RoundedButton;
+            image.type = Image.Type.Sliced;
+            image.color = new Color(0.18f, 0.45f, 0.55f);
+
+            int capturedChapter = chapter;
+            go.GetComponent<Button>().onClick.AddListener(() => OnChapterJumpClicked(capturedChapter));
+
+            var label = CreateText(go.transform, "Label", chapter.ToString(),
+                Vector2.zero, Vector2.one, Vector2.zero, 20, TextAnchor.MiddleCenter);
+            label.fontStyle = FontStyle.Bold;
+
+            var sub = new GameObject("StartLevel", typeof(RectTransform), typeof(Text));
+            sub.transform.SetParent(parent, false);
+            var subRect = sub.GetComponent<RectTransform>();
+            subRect.anchorMin = anchor;
+            subRect.anchorMax = anchor;
+            subRect.pivot = new Vector2(0.5f, 1f);
+            subRect.anchoredPosition = new Vector2(0f, -22f);
+            subRect.sizeDelta = new Vector2(56f, 16f);
+            var subText = sub.GetComponent<Text>();
+            subText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            subText.text = startLevel.ToString();
+            subText.fontSize = 11;
+            subText.alignment = TextAnchor.UpperCenter;
+            subText.color = new Color(0.75f, 0.9f, 0.95f);
+            subText.raycastTarget = false;
         }
 
         private static RectTransform CreateTexturedPanel(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
