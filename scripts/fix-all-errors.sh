@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ONE command to fix Unity compile errors (CS8300 CardWidget merge junk, duplicates, etc.)
+# ONE command to fix Unity compile errors (CS8300, CS1061 mismatched scripts, etc.)
 #
 # Usage:
 #   cd /c/Users/rober/SymbolAlgebra
@@ -33,15 +33,18 @@ if [[ $fetched -eq 0 ]]; then
 fi
 
 if [[ $fetched -eq 1 ]]; then
-  echo "==> Step 3: Pull clean dropins from remote (no merge)"
-  for f in dropins/CardWidget.cs dropins/AlgebraUI.cs dropins/AlgebraGameController.cs; do
-    if git show "$FETCH_REMOTE/$BRANCH:$f" > "$ROOT/$f.tmp" 2>/dev/null; then
-      mv "$ROOT/$f.tmp" "$ROOT/$f"
-      echo "    Updated $f"
+  echo "==> Step 3: Pull ALL dropins from remote (no merge — keeps scripts in sync)"
+  mkdir -p "$ROOT/dropins"
+  while IFS= read -r -d '' path; do
+    base="${path#dropins/}"
+    dest="$ROOT/dropins/$base"
+    if git show "$FETCH_REMOTE/$BRANCH:$path" > "$dest.tmp" 2>/dev/null; then
+      mv "$dest.tmp" "$dest"
+      echo "    $base"
     else
-      rm -f "$ROOT/$f.tmp"
+      rm -f "$dest.tmp"
     fi
-  done
+  done < <(git ls-tree -r --name-only -z "$FETCH_REMOTE/$BRANCH" dropins/ 2>/dev/null | grep '\.cs$' || true)
 else
   echo "==> Step 3: Skipped remote pull (offline?)"
 fi
@@ -49,11 +52,24 @@ fi
 echo "==> Step 4: Force-fix CardWidget.cs"
 bash "$SCRIPT_DIR/force-fix-cardwidget.sh"
 
-echo "==> Step 5: Full unity compile fix (dropins import + duplicate cleanup)"
+echo "==> Step 5: Full unity compile fix (import ALL dropins + duplicate cleanup)"
 bash "$SCRIPT_DIR/fix-unity-compile.sh" "$ROOT"
 
-echo "==> Step 6: Verify"
+echo "==> Step 6: Verify scripts match"
 bash "$SCRIPT_DIR/verify-no-conflict-markers.sh" "$ROOT"
+
+CONTROLLER="$ROOT/Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs"
+if [[ -f "$CONTROLLER" ]] && ! grep -q 'CanFlipHandCard' "$CONTROLLER"; then
+  echo "" >&2
+  echo "ERROR: AlgebraGameController.cs is still OLD (missing CanFlipHandCard)." >&2
+  echo "Run this to switch to the clean branch:" >&2
+  echo "  git checkout -B $BRANCH $FETCH_REMOTE/$BRANCH" >&2
+  exit 1
+fi
+
+if [[ -f "$CONTROLLER" ]] && grep -q 'CanFlipHandCard' "$CONTROLLER"; then
+  echo "OK — AlgebraGameController has CanFlipHandCard"
+fi
 
 echo ""
 echo "============================================"
