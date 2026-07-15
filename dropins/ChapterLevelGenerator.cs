@@ -522,11 +522,11 @@ namespace DragonBoxAlgebra.Gameplay
         {
             if (displayNumber <= Chapter7SeaXLevelCount)
             {
-                int seaTheme = displayNumber - 1;
-                bool xOnLeft = displayNumber % 2 == 1;
-                string creature = SeaCreatureNames[seaTheme];
-                string title = $"Ch7 • {ChapterNames[6]} {displayNumber} (x + {creature})";
-                return MakeCh7SeaXBalanceLevel(title, seaTheme, xOnLeft);
+                int creatureTheme = displayNumber - 1;
+                bool xLeft = displayNumber % 2 == 1;
+                string creature = SeaCreatureNames[creatureTheme];
+                string levelTitle = $"Ch7 • {ChapterNames[6]} {displayNumber} (x + {creature})";
+                return MakeCh7SeaXBalanceLevel(levelTitle, creatureTheme, xLeft);
             }
 
             if (displayNumber <= Chapter7SeaXLevelCount + Chapter7VariableLevelCount)
@@ -536,20 +536,20 @@ namespace DragonBoxAlgebra.Gameplay
                 int countSeed = globalLevel * 7919 + 47;
                 int letterCount = VariableLetterCountForGlobalLevel(globalLevel, countSeed);
                 List<char> letters = PickDistinctVariableLetters(letterSeed, letterCount);
-                int seaTheme = (variableIndex - 1) % SeaCreatureNames.Length;
-                string title =
+                int variableTheme = (variableIndex - 1) % SeaCreatureNames.Length;
+                string variableTitle =
                     $"Ch7 • {ChapterNames[6]} {displayNumber} (x + {FormatVariableLettersLabel(letters)})";
-                bool xOnLeft = variableIndex % 2 == 1;
-                return MakeCh7VariableBalanceLevel(title, seaTheme, letters, xOnLeft);
+                bool variableXLeft = variableIndex % 2 == 1;
+                return MakeCh7VariableBalanceLevel(variableTitle, variableTheme, letters, variableXLeft);
             }
 
             int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
-            int seaTheme = mixedIndex % SeaCreatureNames.Length;
+            int mixedTheme = mixedIndex % SeaCreatureNames.Length;
             int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
-            bool xOnLeft = mixedIndex % 2 == 0;
-            string title =
+            bool mixedXLeft = mixedIndex % 2 == 0;
+            string mixedTitle =
                 $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
-            return MakeCh7MixedSeaVariableLevel(title, globalLevel, seaTheme, xOnLeft, tileCount);
+            return MakeCh7MixedSeaVariableLevel(mixedTitle, globalLevel, mixedTheme, mixedXLeft, tileCount);
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
