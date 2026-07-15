@@ -22,6 +22,8 @@ namespace DragonBoxAlgebra.UI
         private static int _boxPriority;
         private static readonly Dictionary<long, Sprite> VariableSprites = new();
         private static readonly Dictionary<long, int> VariablePriorities = new();
+        private static readonly Dictionary<long, Sprite> ConstantSprites = new();
+        private static readonly Dictionary<long, int> ConstantPriorities = new();
         private static bool _initialized;
 
         private static readonly List<string> DebugFilesFound = new();
@@ -52,6 +54,8 @@ namespace DragonBoxAlgebra.UI
             _boxPriority = 0;
             VariableSprites.Clear();
             VariablePriorities.Clear();
+            ConstantSprites.Clear();
+            ConstantPriorities.Clear();
             _initialized = false;
             DebugFilesFound.Clear();
             DebugRegistered.Clear();
@@ -158,11 +162,34 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
+            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature
+                && card.IsVariableXGoal)
+            {
+                Sprite variable = GetVariableSprite('x', card.Kind == CardKind.DayCreature);
+                if (variable != null)
+                {
+                    return variable;
+                }
+            }
+
             return card.Kind switch
             {
                 CardKind.DayCreature => GetThemed(theme, light: true),
                 CardKind.NightCreature => GetThemed(theme, light: false),
                 CardKind.Box => _box,
+                CardKind.PositiveConstant => GetConstantSprite(card.Value, positive: true),
+                CardKind.NegativeConstant => GetConstantSprite(card.Value, positive: false),
+                _ => null
+            };
+        }
+
+        public static Sprite ForConstant(BoardCard card)
+        {
+            EnsureLoaded();
+            return card.Kind switch
+            {
+                CardKind.PositiveConstant => GetConstantSprite(card.Value, positive: true),
+                CardKind.NegativeConstant => GetConstantSprite(card.Value, positive: false),
                 _ => null
             };
         }
@@ -180,6 +207,27 @@ namespace DragonBoxAlgebra.UI
         {
             VariableSprites.TryGetValue(VariableKey(letter, positive), out Sprite sprite);
             return sprite;
+        }
+
+        private static long ConstantKey(int value, bool positive) =>
+            ((long)value << 1) | (positive ? 1L : 0L);
+
+        private static Sprite GetConstantSprite(int value, bool positive)
+        {
+            ConstantSprites.TryGetValue(ConstantKey(value, positive), out Sprite sprite);
+            return sprite;
+        }
+
+        private static void RegisterConstant(int value, bool positive, Sprite sprite, int priority)
+        {
+            long key = ConstantKey(value, positive);
+            if (ConstantPriorities.TryGetValue(key, out int existing) && priority < existing)
+            {
+                return;
+            }
+
+            ConstantSprites[key] = sprite;
+            ConstantPriorities[key] = priority;
         }
 
         private static void RegisterVariable(char letter, bool positive, Sprite sprite, int priority)
@@ -290,6 +338,14 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            if (TryParseConstantName(name, out int constantValue, out bool constantPositive))
+            {
+                RegisterConstant(constantValue, constantPositive, sprite, priority);
+                DebugRegistered.Add(
+                    $"{folder}/{sprite.name} -> constant {(constantPositive ? "+" : "-")}{constantValue}");
+                return;
+            }
+
             if (TryParseThemePairName(name, out int theme, out bool light))
             {
                 RegisterThemed(theme, light, sprite, priority);
@@ -359,6 +415,39 @@ namespace DragonBoxAlgebra.UI
                     positive = false;
                     return letter is 'a' or 'b' or 'c' or 'r' or 'x';
                 }
+            }
+
+            return false;
+        }
+
+        private static bool TryParseConstantName(string name, out int value, out bool positive)
+        {
+            value = 0;
+            positive = true;
+
+            if (string.IsNullOrEmpty(name))
+            {
+                return false;
+            }
+
+            if (name[0] == '-')
+            {
+                string digits = name.Substring(1);
+                if (digits.Length == 0 || !int.TryParse(digits, out int parsed) || parsed < 0 || parsed > 9)
+                {
+                    return false;
+                }
+
+                value = parsed;
+                positive = false;
+                return true;
+            }
+
+            if (name.Length == 1 && char.IsDigit(name[0]))
+            {
+                value = name[0] - '0';
+                positive = true;
+                return true;
             }
 
             return false;

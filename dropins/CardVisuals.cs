@@ -151,6 +151,15 @@ namespace DragonBoxAlgebra.UI
                 return creature;
             }
 
+            if (card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+            {
+                Sprite constant = CardSpriteLoader.ForConstant(card);
+                if (constant != null)
+                {
+                    return constant;
+                }
+            }
+
             return card.Kind switch
             {
                 CardKind.PositiveConstant => SpriteFactory.DiceSprite,

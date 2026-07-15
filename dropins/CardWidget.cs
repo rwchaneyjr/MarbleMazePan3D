@@ -55,18 +55,19 @@ namespace DragonBoxAlgebra.UI
 
         private void TryFlipHandOnTap()
         {
-            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
-            {
-                return;
-            }
-
             if (Time.frameCount == _lastFlipFrame)
             {
                 return;
             }
 
+            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
+            {
+                return;
+            }
+
             _lastFlipFrame = Time.frameCount;
-            Card = _controller.GetHandDisplayCard(Index);
+            Card = _controller.Hand[Index];
+            RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
             StartCoroutine(PlayHandFlip());
         }
@@ -109,12 +110,7 @@ namespace DragonBoxAlgebra.UI
             ApplyCreatureVisual();
             if (_labelText != null)
             {
-                bool showHandSlotLabel = SideName == "Hand"
-                    && _controller != null
-                    && _controller.Hand.Count > 1
-                    && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
-                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled
-                    && !showHandSlotLabel;
+                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled;
 
                 if (showIconOnly)
                 {
@@ -153,14 +149,12 @@ namespace DragonBoxAlgebra.UI
         {
             Sprite icon = CardVisuals.IconSprite(Card);
             bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
-            bool showHandSlotLabel = SideName == "Hand"
-                && _controller != null
-                && _controller.Hand.Count > 1
-                && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
-            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card) && !showHandSlotLabel;
+            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card);
 
             if (_creatureImage != null)
             {
+                // Clear first so Unity repaints when switching light/dark or +/- art.
+                _creatureImage.sprite = null;
                 _creatureImage.sprite = icon;
                 _creatureImage.enabled = icon != null;
                 _creatureImage.color = Color.white;
@@ -289,6 +283,11 @@ namespace DragonBoxAlgebra.UI
             if (_rect == null)
             {
                 yield break;
+            }
+
+            if (_controller != null && SideName == "Hand")
+            {
+                Card = _controller.Hand[Index];
             }
 
             RefreshVisual();
