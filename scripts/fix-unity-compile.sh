@@ -4,11 +4,17 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="${1:-.}"
+if [[ "$ROOT" == "." ]]; then
+  ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
+
 SCRIPTS="$ROOT/Assets/DragonBoxAlgebra/Scripts"
 DROPINS="$ROOT/dropins"
 CARD_WIDGET="$SCRIPTS/UI/CardWidget.cs"
 CARD_DROPIN="$DROPINS/CardWidget.cs"
+VERIFY="$SCRIPT_DIR/verify-no-conflict-markers.sh"
 
 if [[ ! -d "$SCRIPTS" ]]; then
   echo "Not found: $SCRIPTS" >&2
@@ -19,14 +25,22 @@ has_conflict_markers() {
   [[ -f "$1" ]] && grep -qE '^(<<<<<<<|=======|>>>>>>>)' "$1"
 }
 
-echo "==> Restoring clean CardWidget.cs (fixes merge conflict markers)..."
-if [[ -f "$CARD_DROPIN" ]]; then
+restore_cardwidget() {
+  if [[ ! -f "$CARD_DROPIN" ]]; then
+    echo "WARNING: $CARD_DROPIN not found — cannot restore CardWidget.cs" >&2
+    return 1
+  fi
+
   mkdir -p "$SCRIPTS/UI"
   cp "$CARD_DROPIN" "$CARD_WIDGET"
   echo "    Copied dropins/CardWidget.cs -> UI/CardWidget.cs"
-else
-  echo "    WARNING: $CARD_DROPIN not found — skipping CardWidget restore"
+}
+
+echo "==> Restoring clean CardWidget.cs (fixes CS8300 merge conflict markers)..."
+if has_conflict_markers "$CARD_WIDGET"; then
+  echo "    CardWidget.cs has conflict markers — replacing from dropins/"
 fi
+restore_cardwidget
 
 if has_conflict_markers "$CARD_WIDGET"; then
   echo "ERROR: CardWidget.cs still has merge conflict markers after restore." >&2
@@ -50,10 +64,18 @@ else
   echo "sync-dropins.sh not found — only restored CardWidget."
 fi
 
+echo "==> Final CardWidget restore (ensures dropins wins over any bad merge)..."
+restore_cardwidget
+
 if has_conflict_markers "$CARD_WIDGET"; then
   echo "ERROR: CardWidget.cs has merge conflict markers. Run: bash scripts/fix-unity-compile.sh" >&2
   exit 1
 fi
 
+if [[ -f "$VERIFY" ]]; then
+  bash "$VERIFY" "$ROOT"
+fi
+
 echo ""
-echo "Done. Return to Unity — errors should clear. Then Play (expect 128/128)."
+echo "Done. Return to Unity — CS8300 errors should be gone. Then Play (expect 128/128)."
+echo "Tip: run once: bash scripts/install-git-hooks.sh  (auto-fix after future merges)"

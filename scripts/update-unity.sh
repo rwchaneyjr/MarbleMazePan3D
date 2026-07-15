@@ -30,5 +30,10 @@ echo "==> Importing drop-ins into Unity project"
 SYMBOL_ALGEBRA_DIR="$SYMBOL_ALGEBRA_DIR" bash "$SCRIPT_DIR/sync-dropins.sh" import
 
 echo ""
+echo "==> Restore clean CardWidget + verify no conflict markers"
+bash "$SCRIPT_DIR/fix-unity-compile.sh" "$SYMBOL_ALGEBRA_DIR"
+
+echo ""
 echo "Done. Open Unity, wait for compile, press Play."
+echo "One-time: bash scripts/install-git-hooks.sh  (prevents CardWidget merge conflicts)"
 echo "Do NOT commit random .meta files from GitHub Desktop unless you know why."

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Block commits that still contain merge conflict markers.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+VERIFY="$ROOT/scripts/verify-no-conflict-markers.sh"
+
+if [[ -f "$VERIFY" ]]; then
+  bash "$VERIFY" "$ROOT"
+fi

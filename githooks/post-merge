@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# After git merge, restore clean scripts so Unity never sees conflict markers.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+FIX="$ROOT/scripts/fix-unity-compile.sh"
+
+if [[ -x "$FIX" || -f "$FIX" ]]; then
+  bash "$FIX" "$ROOT" || true
+fi

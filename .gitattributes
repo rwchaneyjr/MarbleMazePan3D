@@ -1,0 +1,3 @@
+# CardWidget.cs always resolves from dropins/ during merges (see scripts/install-git-hooks.sh).
+Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs merge=dropins-cardwidget
+dropins/CardWidget.cs merge=dropins-cardwidget
