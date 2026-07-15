@@ -161,12 +161,8 @@ namespace DragonBoxAlgebra.UI
         {
             Sprite icon = CardVisuals.IconSprite(Card);
             bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
-            // Match flip-working / correct-images hand layout (preserveAspect PNGs).
-            bool showHandSlotLabel = SideName == "Hand"
-                && _controller != null
-                && _controller.Hand.Count > 1
-                && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
-            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card) && !showHandSlotLabel;
+            // Always show full creature/variable PNGs in hand (never shrink to label mode).
+            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card);
 
             if (_creatureImage != null)
             {
