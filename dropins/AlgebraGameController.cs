@@ -244,24 +244,18 @@ namespace DragonBoxAlgebra.Gameplay
                 _pendingBalance = null;
                 BoardCard cardA = side.Cards[indexA];
                 BoardCard cardB = side.Cards[indexB];
-                if (CombineRules.UsesAsteriskCancel(cardA, cardB))
+                CombineRules.RemovePair(side, indexA, indexB);
+                Moves.RegisterCombine();
+                CombineOccurred?.Invoke(new CombineEvent
                 {
-                    TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
-                    MessageChanged?.Invoke("Light met dark — click the spinning * to dismiss.");
-                }
-                else
-                {
-                    CombineRules.RemovePair(side, indexA, indexB);
-                    Moves.RegisterCombine();
-                    CombineOccurred?.Invoke(new CombineEvent
-                    {
-                        SideName = sideName,
-                        Action = CombineActionType.OppositeCancel,
-                        IndexA = indexA,
-                        IndexB = indexB
-                    });
-                    MessageChanged?.Invoke("Dice canceled.");
-                }
+                    SideName = sideName,
+                    Action = CombineActionType.OppositeCancel,
+                    IndexA = indexA,
+                    IndexB = indexB
+                });
+                MessageChanged?.Invoke(CombineRules.UsesAsteriskCancel(cardA, cardB)
+                    ? "Light met dark — swirled away!"
+                    : "Dice canceled.");
 
                 BoardChanged?.Invoke();
                 CheckWin();
@@ -470,9 +464,7 @@ namespace DragonBoxAlgebra.Gameplay
             ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
 
             Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke(_pendingCancels.Count > 0
-                ? "Balanced! Click the spinning * to dismiss creatures."
-                : "Balanced!");
+            MessageChanged?.Invoke("Balanced!");
             PruneInvalidCancelMarkers();
             ResolveCombines();
             return true;
@@ -499,7 +491,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (_pendingCancels.Count > 0)
             {
-                MessageChanged?.Invoke("Click all spinning * tiles first.");
+                MessageChanged?.Invoke("Finish dismissing remaining cancel markers.");
                 return;
             }
 
@@ -571,11 +563,6 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void ActivateOppositePairForCard(string sideName, int cardIndex)
         {
-            if (SideAlreadyHasCancelMarker(sideName))
-            {
-                return;
-            }
-
             BoardSide side = Board.GetSide(sideName);
             if (cardIndex < 0 || cardIndex >= side.Cards.Count)
             {
@@ -583,10 +570,34 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             int partner = FindAvailableOppositePartnerIndex(side, sideName, cardIndex);
-            if (partner >= 0)
+            if (partner < 0)
             {
-                TryCreateCancelMarker(sideName, side.Cards[cardIndex].Id, side.Cards[partner].Id);
+                return;
             }
+
+            InstantCancelCreaturePair(sideName, cardIndex, partner);
+        }
+
+        private void InstantCancelCreaturePair(string sideName, int indexA, int indexB)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            if (indexA < 0 || indexB < 0 || indexA >= side.Cards.Count || indexB >= side.Cards.Count)
+            {
+                return;
+            }
+
+            string idA = side.Cards[indexA].Id;
+            string idB = side.Cards[indexB].Id;
+            CombineRules.RemovePairById(side, idA, idB);
+            Moves.RegisterCombine();
+            CombineOccurred?.Invoke(new CombineEvent
+            {
+                SideName = sideName,
+                Action = CombineActionType.OppositeCancel,
+                IndexA = indexA,
+                IndexB = indexB
+            });
+            MessageChanged?.Invoke("Light met dark — swirled away!");
         }
 
         private void ActivatePreplacedOppositePairs()
@@ -597,23 +608,14 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void ActivateAllOppositePairsOnSide(string sideName)
         {
-            if (SideAlreadyHasCancelMarker(sideName))
-            {
-                return;
-            }
-
             BoardSide side = Board.GetSide(sideName);
             for (int i = 0; i < side.Cards.Count; i++)
             {
-                if (IsCardPendingCancelOnSide(side.Cards[i].Id, sideName))
-                {
-                    continue;
-                }
-
                 int partner = FindAvailableOppositePartnerIndex(side, sideName, i);
                 if (partner > i)
                 {
-                    TryCreateCancelMarker(sideName, side.Cards[i].Id, side.Cards[partner].Id);
+                    InstantCancelCreaturePair(sideName, i, partner);
+                    return;
                 }
             }
         }
