@@ -512,8 +512,8 @@ namespace DragonBoxAlgebra.Gameplay
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
                     MessageChanged?.Invoke(HasPendingBalance
-                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. Other side stays free to play."
-                        : $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
+                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — click the swirl to dismiss. Other side stays free."
+                        : $"{Capitalize(LightTerm)} met {DarkTerm} — click the swirl to dismiss.");
                 }
                 else
                 {
@@ -772,7 +772,7 @@ namespace DragonBoxAlgebra.Gameplay
 
                 _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
-                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
+                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — click the swirl to dismiss.");
             }
             else
             {
@@ -955,9 +955,10 @@ namespace DragonBoxAlgebra.Gameplay
         {
             if (_pendingCancels.Count > 0)
             {
+                // Swirls never lock play — only delay the win until the player clicks them.
                 MessageChanged?.Invoke(_pendingCancels.Count > 1
-                    ? "Swirls clearing…"
-                    : "Swirl clearing…");
+                    ? "Click each swirl to dismiss. You can keep dragging on either side."
+                    : "Click the swirl to dismiss. You can keep dragging on either side.");
                 return;
             }
 
