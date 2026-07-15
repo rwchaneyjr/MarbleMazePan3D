@@ -106,11 +106,6 @@ namespace DragonBoxAlgebra.UI
             Controller.LoadRandomLevel();
         }
 
-        public void OnChapterJumpClicked(int chapter)
-        {
-            Controller.JumpToChapter(chapter);
-        }
-
         private void BuildUI()
         {
             var canvasGo = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
