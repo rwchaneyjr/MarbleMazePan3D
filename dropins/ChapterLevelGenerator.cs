@@ -5,7 +5,7 @@ namespace DragonBoxAlgebra.Gameplay
 {
     /// <summary>
     /// DragonBox-style intro: Ch1–Ch4 through level 62; Ch5 (63–80) variable images + red box;
-    /// Ch6 (81–100) x + variables; Ch7 (101–120) sea creatures + variables.
+    /// Ch6 (81–100) x + variables; Ch7 (101–128) sea + variables (+ between tiles from 113).
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -16,7 +16,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter4LevelCount = 19;
         public const int Chapter5LevelCount = 18;
         public const int Chapter6LevelCount = 20;
-        public const int Chapter7LevelCount = 20;
+        public const int Chapter7LevelCount = 28;
         public const int ChapterCount = 7;
         public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
             + Chapter4LevelCount + Chapter5LevelCount + Chapter6LevelCount + Chapter7LevelCount;
@@ -79,11 +79,11 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Ch7 levels 7–12: x + variable letter images.</summary>
         public const int Chapter7VariableLevelCount = 6;
 
-        /// <summary>Ch7 levels 13–20: one level per sea creature (Fish … Starfish).</summary>
-        public const int Chapter7SeaShowcaseLevelCount = 8;
+        /// <summary>Ch7 levels 13–28 (global 113–128): sea + variable mix, + between tiles.</summary>
+        public const int Chapter7MixedPlusStartDisplay = 13;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-ch7-plus-120";
+        public const string CurriculumVersion = "2026-07-ch7-mixed-128";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -94,9 +94,9 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>From global level 86: random 2 or 3 variable letters (one tile each).</summary>
         public const int HighVariableLetterCountStartLevel = 86;
 
-        /// <summary>Levels 100–112 show a + sign between each board tile image.</summary>
-        public const int PlusBetweenTilesStartLevel = 100;
-        public const int PlusBetweenTilesEndLevel = 112;
+        /// <summary>Levels 113–128 show a + sign between each board tile image.</summary>
+        public const int PlusBetweenTilesStartLevel = 113;
+        public const int PlusBetweenTilesEndLevel = 128;
 
         public static bool UsesPlusBetweenBoardTiles(int globalLevel) =>
             globalLevel >= PlusBetweenTilesStartLevel && globalLevel <= PlusBetweenTilesEndLevel;
@@ -516,7 +516,7 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Ch7 (101–120): 6 sea+x, 6 variables, 8 sea creature showcase levels.
+        /// Ch7 (101–128): 6 sea+x, 6 variables, 16 mixed sea+variable levels with + between tiles.
         /// </summary>
         private static LevelDefinition BuildChapter7Level(int globalLevel, int theme, int displayNumber)
         {
@@ -543,12 +543,13 @@ namespace DragonBoxAlgebra.Gameplay
                 return MakeCh7VariableBalanceLevel(title, seaTheme, letters, xOnLeft);
             }
 
-            int showcaseIndex = displayNumber - Chapter7SeaXLevelCount - Chapter7VariableLevelCount - 1;
-            int showcaseTheme = showcaseIndex % SeaCreatureNames.Length;
-            string showcaseCreature = SeaCreatureNames[showcaseTheme];
-            bool showcaseXOnLeft = showcaseIndex % 2 == 0;
-            string showcaseTitle = $"Ch7 • {ChapterNames[6]} {displayNumber} ({showcaseCreature})";
-            return MakeCh7SeaShowcaseLevel(showcaseTitle, showcaseTheme, showcaseXOnLeft);
+            int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
+            int seaTheme = mixedIndex % SeaCreatureNames.Length;
+            int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
+            bool xOnLeft = mixedIndex % 2 == 0;
+            string title =
+                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
+            return MakeCh7MixedSeaVariableLevel(title, globalLevel, seaTheme, xOnLeft, tileCount);
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
@@ -625,40 +626,99 @@ namespace DragonBoxAlgebra.Gameplay
             return level;
         }
 
-        /// <summary>One sea creature pair beside x; merge and dismiss to leave x alone.</summary>
-        private static LevelDefinition MakeCh7SeaShowcaseLevel(string title, int seaTheme, bool xOnLeft)
+        /// <summary>
+        /// Global 113–128: x + mix of sea creature images and variable symbols (2–3 per side);
+        /// hand has creature negatives only (never number tiles).
+        /// </summary>
+        private static LevelDefinition MakeCh7MixedSeaVariableLevel(string title, int globalLevel, int seaTheme,
+            bool xOnLeft, int tileCount)
         {
+            int letterSeed = globalLevel * 7919 + 31;
+            int variableSlotCount = tileCount == 2 ? 1 : (globalLevel % 2 == 0 ? 2 : 1);
+            int seaSlotCount = tileCount - variableSlotCount;
+            List<char> letters = PickDistinctVariableLetters(letterSeed, variableSlotCount);
+
             var level = new LevelDefinition
             {
                 Title = title,
                 Chapter = 7,
                 CreatureTheme = seaTheme,
-                ParMoves = 1,
-                ParCards = 0
+                ParMoves = 2 + tileCount * 2,
+                ParCards = tileCount
             };
 
-            var xSideCards = new List<CardKind> { CardKind.DayCreature };
-            var xSideLetters = new List<char> { VariableGoalRules.GoalLetter };
-            xSideCards.Add(CardKind.DayCreature);
-            xSideCards.Add(CardKind.NightCreature);
-            xSideLetters.Add('\0');
-            xSideLetters.Add('\0');
+            var slots = new List<bool>();
+            for (int i = 0; i < variableSlotCount; i++)
+            {
+                slots.Add(true);
+            }
 
+            for (int i = 0; i < seaSlotCount; i++)
+            {
+                slots.Add(false);
+            }
+
+            ShuffleSlots(slots, globalLevel * 7919 + 59);
+
+            int letterIndex = 0;
             if (xOnLeft)
             {
-                level.LeftCards.AddRange(xSideCards);
-                level.LeftVariableLetters.AddRange(xSideLetters);
+                level.LeftCards.Add(CardKind.DayCreature);
+                level.LeftVariableLetters.Add(VariableGoalRules.GoalLetter);
+                letterIndex = 0;
+                AddMixedSlotsToSide(level.LeftCards, level.LeftVariableLetters, slots, letters, ref letterIndex);
+                letterIndex = 0;
+                AddMixedSlotsToSide(level.RightCards, level.RightVariableLetters, slots, letters, ref letterIndex);
             }
             else
             {
-                level.RightCards.AddRange(xSideCards);
-                level.RightVariableLetters.AddRange(xSideLetters);
+                letterIndex = 0;
+                AddMixedSlotsToSide(level.LeftCards, level.LeftVariableLetters, slots, letters, ref letterIndex);
+                level.RightCards.Add(CardKind.DayCreature);
+                level.RightVariableLetters.Add(VariableGoalRules.GoalLetter);
+                letterIndex = 0;
+                AddMixedSlotsToSide(level.RightCards, level.RightVariableLetters, slots, letters, ref letterIndex);
+            }
+
+            letterIndex = 0;
+            foreach (bool isVariable in slots)
+            {
+                if (isVariable)
+                {
+                    level.HandCards.Add(CardKind.NightCreature);
+                    level.HandVariableLetters.Add(letters[letterIndex++]);
+                }
+                else
+                {
+                    level.HandCards.Add(CardKind.NightCreature);
+                    level.HandVariableLetters.Add('\0');
+                }
             }
 
             level.LeftValues = ValuesFor(level.LeftCards);
             level.RightValues = ValuesFor(level.RightCards);
             level.HandValues = ValuesFor(level.HandCards);
             return level;
+        }
+
+        private static void AddMixedSlotsToSide(List<CardKind> cards, List<char> letters, List<bool> slots,
+            IReadOnlyList<char> variableLetters, ref int letterIndex)
+        {
+            foreach (bool isVariable in slots)
+            {
+                cards.Add(CardKind.DayCreature);
+                letters.Add(isVariable ? variableLetters[letterIndex++] : '\0');
+            }
+        }
+
+        private static void ShuffleSlots(List<bool> slots, int seed)
+        {
+            var rng = new System.Random(seed);
+            for (int i = slots.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (slots[i], slots[j]) = (slots[j], slots[i]);
+            }
         }
 
         private static void AddPairOnSide(List<CardKind> cards, List<char> letters, char pairLetter)

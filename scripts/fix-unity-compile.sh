@@ -56,4 +56,4 @@ if has_conflict_markers "$CARD_WIDGET"; then
 fi
 
 echo ""
-echo "Done. Return to Unity — errors should clear. Then Play (expect 120/120)."
+echo "Done. Return to Unity — errors should clear. Then Play (expect 128/128)."

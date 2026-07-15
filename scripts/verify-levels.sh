@@ -31,9 +31,9 @@ grep -E 'Chapter[1-6]LevelCount|ChapterCount|TotalLevels' "$GEN" | head -8
 echo ""
 
 if [[ "$ch6" -ge 1 && "$gen6" -ge 1 && "$ch7" -ge 1 && "$gen7" -ge 1 ]]; then
-  echo "OK — this copy includes Chapter 7 (should be 120 levels in Unity)."
+  echo "OK — this copy includes Chapter 7 (should be 128 levels in Unity)."
 else
-  echo "OLD — missing Chapter 7. This file may only have 100 levels."
+  echo "OLD — missing Chapter 7. This file may only have 100 or 120 levels."
   echo ""
   echo "Fix (SymbolAlgebra):"
   echo "  git remote add source https://github.com/rwchaneyjr/MarbleMazePan3D.git"
