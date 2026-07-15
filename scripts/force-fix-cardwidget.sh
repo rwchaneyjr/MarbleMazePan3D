@@ -22,9 +22,25 @@ has_markers() {
 echo "==> Force-fix CardWidget.cs (no merge needed)"
 
 if has_markers "$DROPIN"; then
-  echo "    dropins/CardWidget.cs has conflict markers — fetching clean copy from $REMOTE..."
-  git -C "$ROOT" fetch "$REMOTE" "$REMOTE_BRANCH" 2>/dev/null || git -C "$ROOT" fetch origin "$REMOTE_BRANCH"
-  git -C "$ROOT" show "$REMOTE/$REMOTE_BRANCH:dropins/CardWidget.cs" > "$DROPIN"
+  echo "    dropins/CardWidget.cs has conflict markers — fetching clean copy..."
+  fetched=0
+  for remote in "$REMOTE" origin source; do
+    for branch in "$REMOTE_BRANCH" cursor/extreme-hand-flip-3fe3 cursor/ch7-sea-variable-120-3fe3; do
+      if git -C "$ROOT" fetch "$remote" "$branch" 2>/dev/null \
+        && git -C "$ROOT" show "$remote/$branch:dropins/CardWidget.cs" > "$DROPIN" 2>/dev/null \
+        && ! has_markers "$DROPIN"; then
+        echo "    Got clean copy from $remote/$branch"
+        fetched=1
+        break 2
+      fi
+    done
+  done
+  if [[ $fetched -eq 0 ]]; then
+    echo "    Stripping conflict marker lines as last resort..."
+    sed -i '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' "$DROPIN" 2>/dev/null \
+      || sed -i '' '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' "$DROPIN" 2>/dev/null \
+      || true
+  fi
 fi
 
 if [[ ! -f "$DROPIN" ]]; then
@@ -39,6 +55,14 @@ fi
 
 mkdir -p "$(dirname "$TARGET")"
 cp "$DROPIN" "$TARGET"
+
+# Emergency: strip any leftover marker lines in the Unity copy
+if has_markers "$TARGET"; then
+  sed -i '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' "$TARGET" 2>/dev/null \
+    || sed -i '' '/^<<<<<<< /d; /^=======$/d; /^>>>>>>> /d' "$TARGET" 2>/dev/null \
+    || true
+fi
+
 echo "    Wrote: $TARGET"
 
 if has_markers "$TARGET"; then
