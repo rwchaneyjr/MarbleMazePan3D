@@ -505,7 +505,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
             int mixedTheme = mixedIndex % SeaCreatureNames.Length;
-            int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
+            const int tileCount = 2;
             bool mixedXLeft = mixedIndex % 2 == 0;
             string mixedTitle =
                 $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
@@ -587,14 +587,17 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Global 113–128: x + mix of sea creature images and variable symbols (2–3 per side);
-        /// hand shows each dark tile needed to balance (sea or variable).
+        /// Global 113–128: x + mix of sea creature images and variable symbols (2 per side);
+        /// hand matches Ch5/Ch6: one reusable dark per variable letter, plus one dark sea if needed.
         /// </summary>
         private static LevelDefinition MakeCh7MixedSeaVariableLevel(string title, int globalLevel, int seaTheme,
             bool xOnLeft, int tileCount)
         {
+            // Dual-hand levels use 2 board tiles per side so the hand stays at the right count
+            // (one variable dark + one sea dark), not one hand tile per board slot.
+            tileCount = 2;
             int letterSeed = globalLevel * 7919 + 31;
-            int variableSlotCount = tileCount == 2 ? 1 : (globalLevel % 2 == 0 ? 2 : 1);
+            const int variableSlotCount = 1;
             int seaSlotCount = tileCount - variableSlotCount;
             List<char> letters = PickDistinctVariableLetters(letterSeed, variableSlotCount);
 
@@ -604,7 +607,7 @@ namespace DragonBoxAlgebra.Gameplay
                 Chapter = 7,
                 CreatureTheme = seaTheme,
                 ParMoves = 2 + tileCount * 2,
-                ParCards = tileCount
+                ParCards = variableSlotCount + (seaSlotCount > 0 ? 1 : 0)
             };
 
             var slots = new List<bool>();
@@ -640,11 +643,17 @@ namespace DragonBoxAlgebra.Gameplay
                 AddMixedSlotsToSide(level.RightCards, level.RightVariableLetters, slots, letters, ref letterIndex);
             }
 
-            letterIndex = 0;
-            foreach (bool isVariable in slots)
+            // One reusable dark per letter (same as Ch5/Ch6), plus one dark sea if the board has sea tiles.
+            foreach (char letter in letters)
             {
                 level.HandCards.Add(CardKind.NightCreature);
-                level.HandVariableLetters.Add(isVariable ? letters[letterIndex++] : '\0');
+                level.HandVariableLetters.Add(letter);
+            }
+
+            if (seaSlotCount > 0)
+            {
+                level.HandCards.Add(CardKind.NightCreature);
+                level.HandVariableLetters.Add('\0');
             }
 
             level.LeftValues = ValuesFor(level.LeftCards);

@@ -161,7 +161,7 @@ namespace DragonBoxAlgebra.UI
         {
             Sprite icon = CardVisuals.IconSprite(Card);
             bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
-            // Always show full creature/variable PNGs in hand (never shrink to label mode).
+            // Full PNG icons in hand (same as correct-images / flip-working restore).
             bool usesFullIcon = CardVisuals.ShowsIconOnly(Card);
 
             if (_creatureImage != null)
