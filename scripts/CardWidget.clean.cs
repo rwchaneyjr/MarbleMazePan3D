@@ -55,18 +55,19 @@ namespace DragonBoxAlgebra.UI
 
         private void TryFlipHandOnTap()
         {
-            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
-            {
-                return;
-            }
-
             if (Time.frameCount == _lastFlipFrame)
             {
                 return;
             }
 
+            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
+            {
+                return;
+            }
+
             _lastFlipFrame = Time.frameCount;
-            Card = _controller.GetHandDisplayCard(Index);
+            Card = _controller.Hand[Index];
+            RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
             StartCoroutine(PlayHandFlip());
         }
