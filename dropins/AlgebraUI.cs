@@ -116,13 +116,6 @@ namespace DragonBoxAlgebra.UI
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1280f, 720f);
 
-            _dragRoot = new GameObject("DragRoot", typeof(RectTransform)).GetComponent<RectTransform>();
-            _dragRoot.SetParent(canvasGo.transform, false);
-            _dragRoot.anchorMin = Vector2.zero;
-            _dragRoot.anchorMax = Vector2.one;
-            _dragRoot.offsetMin = Vector2.zero;
-            _dragRoot.offsetMax = Vector2.zero;
-
             var background = CreatePanel(canvasGo.transform, "Background", new Color(0.12f, 0.34f, 0.42f),
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
@@ -146,12 +139,10 @@ namespace DragonBoxAlgebra.UI
                 new Vector2(0.505f, 0f), new Vector2(1f, 1f));
 
             var boardView = gameObject.AddComponent<BoardView>();
-            boardView.Initialize(Controller, leftPanel, rightPanel, _canvas, _dragRoot);
 
             var handPanel = CreatePanel(background.transform, "Hand", new Color(0.08f, 0.18f, 0.24f, 0.85f),
                 new Vector2(0.12f, 0.06f), new Vector2(0.88f, 0.22f), Vector2.zero, Vector2.zero);
             var handView = gameObject.AddComponent<HandView>();
-            handView.Initialize(Controller, handPanel, _canvas, _dragRoot);
 
             _messageText = CreateText(background.transform, "Message",
                 "Drag cards together on the same side, or drag from your hand to the board.",
@@ -172,6 +163,18 @@ namespace DragonBoxAlgebra.UI
 
             _completeView = gameObject.AddComponent<LevelCompleteView>();
             _completeView.Initialize(Controller, completePanel.gameObject, starsText, creatureText);
+
+            // DragRoot above all UI so dragged cards stay visible while merging onto opposites.
+            _dragRoot = new GameObject("DragRoot", typeof(RectTransform)).GetComponent<RectTransform>();
+            _dragRoot.SetParent(canvasGo.transform, false);
+            _dragRoot.anchorMin = Vector2.zero;
+            _dragRoot.anchorMax = Vector2.one;
+            _dragRoot.offsetMin = Vector2.zero;
+            _dragRoot.offsetMax = Vector2.zero;
+            _dragRoot.SetAsLastSibling();
+
+            boardView.Initialize(Controller, leftPanel, rightPanel, _canvas, _dragRoot);
+            handView.Initialize(Controller, handPanel, _canvas, _dragRoot);
 
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {

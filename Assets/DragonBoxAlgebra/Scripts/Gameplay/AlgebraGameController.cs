@@ -656,30 +656,31 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesOppositeHandPlay)
+            BoardSide side = Board.GetSide(sideName);
+            if (boardIndex < 0 || boardIndex >= side.Cards.Count)
             {
-                BoardSide side = Board.GetSide(sideName);
-                if (boardIndex < 0 || boardIndex >= side.Cards.Count)
-                {
-                    return false;
-                }
-
-                BoardCard targetCard = side.Cards[boardIndex];
-                if (IsCardPendingCancelOnSide(targetCard.Id, sideName))
-                {
-                    return false;
-                }
-
-                return CombineRules.GetCombineAction(_hand[handIndex], targetCard)
-                    == CombineActionType.OppositeCancel;
+                return false;
             }
 
-            return true;
+            BoardCard targetCard = side.Cards[boardIndex];
+            if (IsCardPendingCancelOnSide(targetCard.Id, sideName))
+            {
+                return false;
+            }
+
+            if (CombineRules.GetCombineAction(_hand[handIndex], targetCard)
+                == CombineActionType.OppositeCancel)
+            {
+                return true;
+            }
+
+            return !UsesOppositeHandPlay;
         }
 
         public bool TryPlayHandOntoOppositeOnSide(int handIndex, string sideName)
         {
-            if (!UsesOppositeHandPlay)
+            if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count
+                || _spentHandIndices.Contains(handIndex))
             {
                 return false;
             }
@@ -687,6 +688,12 @@ namespace DragonBoxAlgebra.Gameplay
             BoardSide side = Board.GetSide(sideName);
             for (int i = 0; i < side.Cards.Count; i++)
             {
+                if (CombineRules.GetCombineAction(_hand[handIndex], side.Cards[i])
+                        != CombineActionType.OppositeCancel)
+                {
+                    continue;
+                }
+
                 if (CanPlayHandOntoBoardCard(handIndex, sideName, i)
                     && TryPlayHandOntoOpposite(handIndex, sideName, i))
                 {
@@ -694,9 +701,13 @@ namespace DragonBoxAlgebra.Gameplay
                 }
             }
 
-            MessageChanged?.Invoke(side.Cards.Count == 0
-                ? "That side is empty — drag onto the side with the opposite creature."
-                : "Drag onto the opposite light or dark creature.");
+            if (UsesOppositeHandPlay)
+            {
+                MessageChanged?.Invoke(side.Cards.Count == 0
+                    ? "That side is empty — drag onto the side with the opposite creature."
+                    : "Drag onto the opposite light or dark creature.");
+            }
+
             return false;
         }
 
@@ -708,11 +719,6 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             if (_spentHandIndices.Contains(handIndex))
-            {
-                return false;
-            }
-
-            if (CurrentLevel.Chapter >= 3)
             {
                 return false;
             }
@@ -743,12 +749,13 @@ namespace DragonBoxAlgebra.Gameplay
             _pendingBalance = null;
             if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
             {
-                side.Cards.Add(handCard.CloneForPlacement());
-                BoardCard placed = side.Cards[side.Cards.Count - 1];
+                int insertAt = Math.Clamp(targetBoardIndex + 1, 0, side.Cards.Count);
+                side.Cards.Insert(insertAt, handCard.CloneForPlacement());
+                BoardCard placed = side.Cards[insertAt];
                 TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
                 _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
-                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — click the spinning * to dismiss.");
+                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
             }
             else
             {
