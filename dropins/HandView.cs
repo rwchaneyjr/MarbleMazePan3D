@@ -98,7 +98,7 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (_controller.UsesDualHandPanelDisplay)
+            if (_controller.UsesMultiHandPanelDisplay)
             {
                 SyncDualHandPanel(preserveDragRoot);
                 return;

@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace DragonBoxAlgebra.UI
 {
     public class CardWidget : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
-        IPointerClickHandler
+        IPointerClickHandler, IPointerUpHandler
     {
         public BoardCard Card { get; private set; }
         public int Index { get; private set; }
@@ -39,7 +39,11 @@ namespace DragonBoxAlgebra.UI
 
         private const float FlipDragThresholdPixels = 12f;
 
-        public void OnPointerClick(PointerEventData eventData)
+        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick();
+
+        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnClick();
+
+        private void TryFlipHandOnClick()
         {
             if (_didDrag || _dragStarted || SideName != "Hand" || _controller == null || !CanFlipHand())
             {
@@ -137,7 +141,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             bool completed = _controller.IsHandBalanceComplete(Index);
-            bool waitingTurn = _controller.UsesDualHandPanelDisplay
+            bool waitingTurn = _controller.UsesMultiHandPanelDisplay
                 && !completed
                 && !_controller.IsHandSlotPlayable(Index);
             _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
