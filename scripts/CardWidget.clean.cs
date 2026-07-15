@@ -37,8 +37,10 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        /// <summary>Hand drag only starts after this much movement — keeps taps as flips.</summary>
-        private const float DragStartThresholdPixels = 50f;
+        /// <summary>Must move this many pixels before drag steals the click — keeps tap = flip.</summary>
+        private const float DragStartThresholdPixels = 100f;
+
+        public void OnPointerDown(PointerEventData eventData) => TryFlipHandOnClick(eventData);
 
         public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick(eventData);
 
@@ -51,7 +53,7 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (_dragStarted && ExceededDragStartThreshold(eventData))
+            if (eventData != null && PointerMovementPixels(eventData) > DragStartThresholdPixels)
             {
                 return;
             }
@@ -789,26 +791,8 @@ namespace DragonBoxAlgebra.UI
             return Card.IsDraggableFromBoard;
         }
 
-        private bool CanFlipHand()
-        {
-            if (_controller == null || SideName != "Hand" || _controller.IsLevelComplete)
-            {
-                return false;
-            }
-
-            if (Index < 0 || Index >= _controller.Hand.Count)
-            {
-                return false;
-            }
-
-            BoardCard card = _controller.Hand[Index];
-            if (!CardFlipRules.CanFlip(card))
-            {
-                return false;
-            }
-
-            return true;
-        }
+        private bool CanFlipHand() =>
+            _controller != null && SideName == "Hand" && _controller.CanFlipHandCard(Index);
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
