@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace DragonBoxAlgebra.UI
 {
     public class CardWidget : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
-        IPointerClickHandler, IPointerUpHandler
+        IPointerClickHandler
     {
         public BoardCard Card { get; private set; }
         public int Index { get; private set; }
@@ -37,33 +37,20 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        /// <summary>Must move this many pixels before drag steals the click — keeps tap = flip.</summary>
-        private const float DragStartThresholdPixels = 100f;
+        /// <summary>Drag to board only after this much movement — taps stay flips.</summary>
+        private const float DragStartThresholdPixels = 40f;
 
-        public void OnPointerDown(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnClick(eventData);
-
-        private void TryFlipHandOnClick(PointerEventData eventData)
+        public void OnPointerClick(PointerEventData eventData)
         {
-            if (SideName != "Hand" || _controller == null || _handPlayHandled || _handFlipHandled || !CanFlipHand())
+            if (SideName == "Hand")
             {
-                return;
+                TryFlipHandOnTap();
             }
-
-            if (eventData != null && PointerMovementPixels(eventData) > DragStartThresholdPixels)
-            {
-                return;
-            }
-
-            TryFlipHandOnTap();
         }
 
         private void TryFlipHandOnTap()
         {
-            if (_handFlipHandled)
+            if (SideName != "Hand" || _controller == null || _handPlayHandled || _handFlipHandled || !CanFlipHand())
             {
                 return;
             }
@@ -400,7 +387,7 @@ namespace DragonBoxAlgebra.UI
         }
 
         private float PointerMovementPixels(PointerEventData eventData) =>
-            eventData != null ? Vector2.Distance(_dragPressScreenPosition, eventData.position) : 0f;
+            eventData != null ? Vector2.Distance(eventData.pressPosition, eventData.position) : 0f;
 
         private bool ExceededDragStartThreshold(PointerEventData eventData) =>
             PointerMovementPixels(eventData) > DragStartThresholdPixels;
