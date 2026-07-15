@@ -62,7 +62,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         private string GoalAlonePhrase => UsesVariableXGoalWin ? "Leave x alone!" : "Leave the red box alone!";
 
-        private static readonly Random Rng = new();
+        private static readonly System.Random Rng = new();
 
         public int LevelIndex => _levelIndex;
         public int LevelCount => LevelLibrary.Levels.Count;
@@ -71,11 +71,8 @@ namespace DragonBoxAlgebra.Gameplay
         public bool UsesPlayableHandDisplay =>
             LevelIndex + 1 >= ChapterLevelGenerator.Chapter4StartLevel;
 
-        public bool UsesMultiHandPanelDisplay =>
-            _hand.Count >= 2 && CurrentLevel.Chapter >= 4;
-
         public bool UsesDualHandPanelDisplay =>
-            UsesMultiHandPanelDisplay && CurrentLevel.Chapter >= 5;
+            _hand.Count >= 2 && CurrentLevel.Chapter >= 5;
 
         private bool UsesReusableVariableHandCards =>
             UsesDualHandPanelDisplay && CurrentLevel.Chapter >= 5;
@@ -159,7 +156,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesMultiHandPanelDisplay)
+            if (UsesDualHandPanelDisplay)
             {
                 return true;
             }
@@ -479,8 +476,8 @@ namespace DragonBoxAlgebra.Gameplay
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
                     MessageChanged?.Invoke(_pendingBalance != null
-                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — click *. The ? hole stays until you fill it."
-                        : $"{Capitalize(LightTerm)} met {DarkTerm} — click the spinning * to dismiss.");
+                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. The ? hole stays until you fill it."
+                        : $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
                 }
                 else
                 {
@@ -650,25 +647,27 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesOppositeHandPlay)
+            BoardSide side = Board.GetSide(sideName);
+            if (boardIndex < 0 || boardIndex >= side.Cards.Count)
             {
-                BoardSide side = Board.GetSide(sideName);
-                if (boardIndex < 0 || boardIndex >= side.Cards.Count)
-                {
-                    return false;
-                }
-
-                BoardCard targetCard = side.Cards[boardIndex];
-                if (IsCardPendingCancelOnSide(targetCard.Id, sideName))
-                {
-                    return false;
-                }
-
-                return CombineRules.GetCombineAction(_hand[handIndex], targetCard)
-                    == CombineActionType.OppositeCancel;
+                return false;
             }
 
-            return true;
+            BoardCard targetCard = side.Cards[boardIndex];
+            if (IsCardPendingCancelOnSide(targetCard.Id, sideName))
+            {
+                return false;
+            }
+
+            // Snap / drop-on-top only targets true opposites (any chapter).
+            if (CombineRules.GetCombineAction(_hand[handIndex], targetCard)
+                == CombineActionType.OppositeCancel)
+            {
+                return true;
+            }
+
+            // Older opposite-only chapters reject non-opposites; balance chapters still allow side drops elsewhere.
+            return !UsesOppositeHandPlay;
         }
 
         public bool TryPlayHandOntoOppositeOnSide(int handIndex, string sideName)
@@ -706,11 +705,6 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (CurrentLevel.Chapter >= 3)
-            {
-                return false;
-            }
-
             BoardSide side = Board.GetSide(sideName);
             if (targetBoardIndex < 0 || targetBoardIndex >= side.Cards.Count)
             {
@@ -737,12 +731,26 @@ namespace DragonBoxAlgebra.Gameplay
             _pendingBalance = null;
             if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
             {
-                side.Cards.Add(handCard.CloneForPlacement());
-                BoardCard placed = side.Cards[side.Cards.Count - 1];
-                TryCreateCancelMarker(sideName, targetCard.Id, placed.Id);
+                // Place the hand clone beside the target so the swirl sits in that slot.
+                int insertAt = Math.Clamp(targetBoardIndex + 1, 0, side.Cards.Count);
+                side.Cards.Insert(insertAt, handCard.CloneForPlacement());
+                BoardCard placed = side.Cards[insertAt];
+                if (!TryCreateCancelMarker(sideName, targetCard.Id, placed.Id))
+                {
+                    // Marker failed — still cancel instantly so the drop never "pops to the side".
+                    CombineRules.RemovePairById(side, targetCard.Id, placed.Id);
+                    CombineOccurred?.Invoke(new CombineEvent
+                    {
+                        SideName = sideName,
+                        Action = CombineActionType.OppositeCancel,
+                        IndexA = targetBoardIndex,
+                        IndexB = insertAt
+                    });
+                }
+
                 _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
-                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — click the spinning * to dismiss.");
+                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
             }
             else
             {
@@ -934,8 +942,8 @@ namespace DragonBoxAlgebra.Gameplay
             if (_pendingCancels.Count > 0)
             {
                 MessageChanged?.Invoke(_pendingCancels.Count > 1
-                    ? "Tap each swirl to dismiss — clear them in any order."
-                    : "Tap the swirl to dismiss it.");
+                    ? "Swirls clearing…"
+                    : "Swirl clearing…");
                 return;
             }
 
@@ -1168,11 +1176,11 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        private void TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
+        private bool TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
         {
             if (IsCardPendingCancelOnSide(cardIdA, sideName) || IsCardPendingCancelOnSide(cardIdB, sideName))
             {
-                return;
+                return false;
             }
 
             BoardSide side = Board.GetSide(sideName);
@@ -1193,17 +1201,17 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (cardA == null || cardB == null || !CombineRules.UsesAsteriskCancel(cardA.Value, cardB.Value))
             {
-                return;
+                return false;
             }
 
             if (!SideContainsBothCards(side, cardIdA, cardIdB))
             {
-                return;
+                return false;
             }
 
             if (!CardExistsOnlyOnSide(sideName, cardIdA) || !CardExistsOnlyOnSide(sideName, cardIdB))
             {
-                return;
+                return false;
             }
 
             foreach (PendingCancelMarker marker in _pendingCancels)
@@ -1216,7 +1224,7 @@ namespace DragonBoxAlgebra.Gameplay
                 if ((marker.CardIdA == cardIdA && marker.CardIdB == cardIdB)
                     || (marker.CardIdA == cardIdB && marker.CardIdB == cardIdA))
                 {
-                    return;
+                    return false;
                 }
             }
 
@@ -1226,6 +1234,7 @@ namespace DragonBoxAlgebra.Gameplay
                 CardIdA = cardIdA,
                 CardIdB = cardIdB
             });
+            return true;
         }
 
         private static bool CardExistsOnlyOnSide(AlgebraBoard board, string sideName, string cardId)

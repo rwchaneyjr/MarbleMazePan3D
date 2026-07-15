@@ -116,13 +116,6 @@ namespace DragonBoxAlgebra.UI
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1280f, 720f);
 
-            _dragRoot = new GameObject("DragRoot", typeof(RectTransform)).GetComponent<RectTransform>();
-            _dragRoot.SetParent(canvasGo.transform, false);
-            _dragRoot.anchorMin = Vector2.zero;
-            _dragRoot.anchorMax = Vector2.one;
-            _dragRoot.offsetMin = Vector2.zero;
-            _dragRoot.offsetMax = Vector2.zero;
-
             var background = CreatePanel(canvasGo.transform, "Background", new Color(0.12f, 0.34f, 0.42f),
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
@@ -144,6 +137,15 @@ namespace DragonBoxAlgebra.UI
                 new Vector2(0f, 0f), new Vector2(0.495f, 1f));
             var rightPanel = CreateTexturedPanel(boardRow.transform, "RightPanel",
                 new Vector2(0.505f, 0f), new Vector2(1f, 1f));
+
+            // DragRoot above UI so hand/board tiles stay visible while dragging.
+            _dragRoot = new GameObject("DragRoot", typeof(RectTransform)).GetComponent<RectTransform>();
+            _dragRoot.SetParent(canvasGo.transform, false);
+            _dragRoot.anchorMin = Vector2.zero;
+            _dragRoot.anchorMax = Vector2.one;
+            _dragRoot.offsetMin = Vector2.zero;
+            _dragRoot.offsetMax = Vector2.zero;
+            _dragRoot.SetAsLastSibling();
 
             var boardView = gameObject.AddComponent<BoardView>();
             boardView.Initialize(Controller, leftPanel, rightPanel, _canvas, _dragRoot);
@@ -178,8 +180,14 @@ namespace DragonBoxAlgebra.UI
             {
                 var eventSystemGo = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem),
                     typeof(UnityEngine.EventSystems.StandaloneInputModule));
-                eventSystemGo.GetComponent<UnityEngine.EventSystems.EventSystem>().pixelDragThreshold = 80;
+                eventSystemGo.GetComponent<UnityEngine.EventSystems.EventSystem>().pixelDragThreshold = 150;
             }
+            else
+            {
+                FindObjectOfType<UnityEngine.EventSystems.EventSystem>().pixelDragThreshold = 150;
+            }
+
+            _dragRoot.SetAsLastSibling();
         }
 
         private static RectTransform CreateTexturedPanel(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)

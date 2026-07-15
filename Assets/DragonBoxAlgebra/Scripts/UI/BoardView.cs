@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using DragonBoxAlgebra.Core;
@@ -197,6 +198,44 @@ namespace DragonBoxAlgebra.UI
             {
                 DragonBoxAlgebra.Audio.AudioManager.Instance.PlayCombine();
             }
+
+            Vector3 worldPos = ResolveCombineWorldPosition(evt);
+            if (_dragRoot != null)
+            {
+                _dragRoot.SetAsLastSibling();
+                VortexEffect.Play(_dragRoot, worldPos);
+            }
+            else if (_canvas != null)
+            {
+                VortexEffect.Play(_canvas.transform, worldPos);
+            }
+        }
+
+        private Vector3 ResolveCombineWorldPosition(CombineEvent evt)
+        {
+            Vector3 sum = Vector3.zero;
+            int found = 0;
+            foreach (CardWidget widget in _widgets)
+            {
+                if (widget == null || widget.SideName != evt.SideName)
+                {
+                    continue;
+                }
+
+                if (widget.Index == evt.IndexA || widget.Index == evt.IndexB)
+                {
+                    sum += widget.transform.position;
+                    found++;
+                }
+            }
+
+            if (found > 0)
+            {
+                return sum / found;
+            }
+
+            RectTransform panel = evt.SideName == "Left" ? _leftPanel : _rightPanel;
+            return panel != null ? panel.position : Vector3.zero;
         }
 
         private void Refresh()
@@ -230,8 +269,9 @@ namespace DragonBoxAlgebra.UI
                 hole.transform.SetSiblingIndex(holeSlot);
             }
 
-            BuildCancelMarkers(_leftPanel, "Left", leftLayout);
-            BuildCancelMarkers(_rightPanel, "Right", rightLayout);
+            // SwirlOnly markers (cards already gone) still append at end of their side.
+            BuildSwirlOnlyMarkers(_leftPanel, "Left", leftLayout);
+            BuildSwirlOnlyMarkers(_rightPanel, "Right", rightLayout);
         }
 
         private int CountSlotsForSide(string sideName, BoardSide side)
@@ -344,43 +384,17 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private void BuildCancelMarkers(RectTransform panel, string sideName, TileLayout layout)
+        private void BuildSwirlOnlyMarkers(RectTransform panel, string sideName, TileLayout layout)
         {
-            BoardSide side = sideName == "Left" ? _controller.Board.Left : _controller.Board.Right;
             IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
             for (int i = 0; i < markers.Count; i++)
             {
-                if (markers[i].SideName != sideName)
+                if (markers[i].SideName != sideName || !markers[i].SwirlOnly)
                 {
                     continue;
                 }
 
                 AsteriskCancelWidget.Create(panel, _controller, i, layout.Width, layout.Height);
-            }
-        }
-
-        private void ClearOrphanedBoardDragWidgets()
-        {
-            if (_dragRoot == null || _playingWinSequence)
-            {
-                return;
-            }
-
-            var toRemove = new List<GameObject>();
-            for (int i = 0; i < _dragRoot.childCount; i++)
-            {
-                CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
-                if (widget == null || widget.SideName == "Hand")
-                {
-                    continue;
-                }
-
-                toRemove.Add(widget.gameObject);
-            }
-
-            foreach (GameObject go in toRemove)
-            {
-                Destroy(go);
             }
         }
 
@@ -412,11 +426,40 @@ namespace DragonBoxAlgebra.UI
 
             bool usePlus = _controller.UsesPlusBetweenBoardTiles;
             bool placedCard = false;
+            var placedMarkerIndexes = new HashSet<int>();
+
             for (int i = 0; i < side.Cards.Count; i++)
             {
                 BoardCard card = side.Cards[i];
-                if (_controller.IsCardPendingCancelOnSide(card.Id, sideName))
+                int markerIndex = FindPendingMarkerIndex(sideName, card.Id);
+                if (markerIndex >= 0)
                 {
+                    // Put the merge/swirl in the first pending card's slot so it stays where you dropped.
+                    if (!placedMarkerIndexes.Contains(markerIndex)
+                        && IsEarlierCardOfPendingPair(side, _controller.PendingCancels[markerIndex], card.Id))
+                    {
+                        if (usePlus && placedCard)
+                        {
+                            CreatePlusSeparator(panel, layout.Height);
+                        }
+
+                        PendingCancelMarker marker = _controller.PendingCancels[markerIndex];
+                        BoardCard? cardA = FindCardById(side, marker.CardIdA);
+                        BoardCard? cardB = FindCardById(side, marker.CardIdB);
+                        if (cardA.HasValue && cardB.HasValue)
+                        {
+                            AsteriskCancelWidget.CreateMergePair(panel, _controller, markerIndex,
+                                cardA.Value, cardB.Value, layout.Width, layout.Height);
+                        }
+                        else
+                        {
+                            AsteriskCancelWidget.Create(panel, _controller, markerIndex, layout.Width, layout.Height);
+                        }
+
+                        placedMarkerIndexes.Add(markerIndex);
+                        placedCard = true;
+                    }
+
                     continue;
                 }
 
@@ -430,6 +473,89 @@ namespace DragonBoxAlgebra.UI
                 widget.gameObject.AddComponent<CardDropZone>();
                 _widgets.Add(widget);
                 placedCard = true;
+            }
+        }
+
+        private int FindPendingMarkerIndex(string sideName, string cardId)
+        {
+            IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
+            for (int i = 0; i < markers.Count; i++)
+            {
+                if (markers[i].SideName != sideName || markers[i].SwirlOnly)
+                {
+                    continue;
+                }
+
+                if (markers[i].CardIdA == cardId || markers[i].CardIdB == cardId)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private static bool IsEarlierCardOfPendingPair(BoardSide side, PendingCancelMarker marker, string cardId)
+        {
+            int indexA = IndexOfCardId(side, marker.CardIdA);
+            int indexB = IndexOfCardId(side, marker.CardIdB);
+            if (indexA < 0 || indexB < 0)
+            {
+                return false;
+            }
+
+            int earlier = Math.Min(indexA, indexB);
+            return side.Cards[earlier].Id == cardId;
+        }
+
+        private static int IndexOfCardId(BoardSide side, string cardId)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (side.Cards[i].Id == cardId)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private static BoardCard? FindCardById(BoardSide side, string cardId)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (side.Cards[i].Id == cardId)
+                {
+                    return side.Cards[i];
+                }
+            }
+
+            return null;
+        }
+
+        private void ClearOrphanedBoardDragWidgets()
+        {
+            if (_dragRoot == null || _playingWinSequence)
+            {
+                return;
+            }
+
+            var toRemove = new List<GameObject>();
+            for (int i = 0; i < _dragRoot.childCount; i++)
+            {
+                CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
+                if (widget == null || widget.SideName == "Hand")
+                {
+                    continue;
+                }
+
+                toRemove.Add(widget.gameObject);
+            }
+
+            foreach (GameObject go in toRemove)
+            {
+                Destroy(go);
             }
         }
 

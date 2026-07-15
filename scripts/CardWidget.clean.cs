@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace DragonBoxAlgebra.UI
 {
     public class CardWidget : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
-        IPointerClickHandler, IPointerUpHandler
+        IPointerClickHandler
     {
         public BoardCard Card { get; private set; }
         public int Index { get; private set; }
@@ -37,13 +37,10 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        private const float FlipDragThresholdPixels = 12f;
+        /// <summary>Pixels before a press counts as drag instead of click — higher = flip is easier.</summary>
+        private const float FlipDragThresholdPixels = 150f;
 
-        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick();
-
-        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnClick();
-
-        private void TryFlipHandOnClick()
+        public void OnPointerClick(PointerEventData eventData)
         {
             if (_didDrag || _dragStarted || SideName != "Hand" || _controller == null || !CanFlipHand())
             {
@@ -55,18 +52,19 @@ namespace DragonBoxAlgebra.UI
 
         private void TryFlipHandOnTap()
         {
-            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
+            if (Time.frameCount == _lastFlipFrame)
             {
                 return;
             }
 
-            if (Time.frameCount == _lastFlipFrame)
+            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
             {
                 return;
             }
 
             _lastFlipFrame = Time.frameCount;
             Card = _controller.GetHandDisplayCard(Index);
+            RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
             StartCoroutine(PlayHandFlip());
         }
@@ -109,12 +107,7 @@ namespace DragonBoxAlgebra.UI
             ApplyCreatureVisual();
             if (_labelText != null)
             {
-                bool showHandSlotLabel = SideName == "Hand"
-                    && _controller != null
-                    && _controller.Hand.Count > 1
-                    && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
-                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled
-                    && !showHandSlotLabel;
+                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled;
 
                 if (showIconOnly)
                 {
@@ -141,7 +134,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             bool completed = _controller.IsHandBalanceComplete(Index);
-            bool waitingTurn = _controller.UsesMultiHandPanelDisplay
+            bool waitingTurn = _controller.UsesDualHandPanelDisplay
                 && !completed
                 && !_controller.IsHandSlotPlayable(Index);
             _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
@@ -289,6 +282,11 @@ namespace DragonBoxAlgebra.UI
             if (_rect == null)
             {
                 yield break;
+            }
+
+            if (_controller != null && SideName == "Hand")
+            {
+                Card = _controller.GetHandDisplayCard(Index);
             }
 
             RefreshVisual();

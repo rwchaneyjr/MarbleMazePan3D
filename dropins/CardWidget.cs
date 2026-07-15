@@ -9,11 +9,15 @@ using UnityEngine.UI;
 namespace DragonBoxAlgebra.UI
 {
     public class CardWidget : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
-        IPointerClickHandler, IPointerUpHandler
+        IPointerClickHandler
     {
         public BoardCard Card { get; private set; }
         public int Index { get; private set; }
         public string SideName { get; private set; }
+        public AlgebraGameController Controller => _controller;
+
+        /// <summary>Screen-pixel snap radius — forwarded to DraggableTile.snapDistance.</summary>
+        public float snapDistance = 180f;
 
         private AlgebraGameController _controller;
         private RectTransform _rect;
@@ -25,6 +29,7 @@ namespace DragonBoxAlgebra.UI
         private Text _creatureText;
         private Text _labelText;
         private CreatureReaction _reaction;
+        private DraggableTile _draggable;
         private Vector2 _dragOffset;
         private Transform _originalParent;
         private int _originalSiblingIndex;
@@ -37,13 +42,15 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        private const float FlipDragThresholdPixels = 12f;
+        /// <summary>Pixels before a press counts as drag instead of click — higher = flip is easier.</summary>
+        private const float FlipDragThresholdPixels = 150f;
+        private const float DragScale = 1.08f;
 
-        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick();
+        private Vector3 _originalScale;
+        private CardWidget _snapHighlight;
+        private Vector2 _lastDragScreenPosition;
 
-        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnClick();
-
-        private void TryFlipHandOnClick()
+        public void OnPointerClick(PointerEventData eventData)
         {
             if (_didDrag || _dragStarted || SideName != "Hand" || _controller == null || !CanFlipHand())
             {
@@ -55,18 +62,19 @@ namespace DragonBoxAlgebra.UI
 
         private void TryFlipHandOnTap()
         {
-            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
+            if (Time.frameCount == _lastFlipFrame)
             {
                 return;
             }
 
-            if (Time.frameCount == _lastFlipFrame)
+            if (!CanFlipHand() || !_controller.TryFlipHandCard(Index))
             {
                 return;
             }
 
             _lastFlipFrame = Time.frameCount;
             Card = _controller.GetHandDisplayCard(Index);
+            RefreshVisual();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
             StartCoroutine(PlayHandFlip());
         }
@@ -109,12 +117,7 @@ namespace DragonBoxAlgebra.UI
             ApplyCreatureVisual();
             if (_labelText != null)
             {
-                bool showHandSlotLabel = SideName == "Hand"
-                    && _controller != null
-                    && _controller.Hand.Count > 1
-                    && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
-                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled
-                    && !showHandSlotLabel;
+                bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled;
 
                 if (showIconOnly)
                 {
@@ -141,7 +144,7 @@ namespace DragonBoxAlgebra.UI
             }
 
             bool completed = _controller.IsHandBalanceComplete(Index);
-            bool waitingTurn = _controller.UsesMultiHandPanelDisplay
+            bool waitingTurn = _controller.UsesDualHandPanelDisplay
                 && !completed
                 && !_controller.IsHandSlotPlayable(Index);
             _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
@@ -291,6 +294,11 @@ namespace DragonBoxAlgebra.UI
                 yield break;
             }
 
+            if (_controller != null && SideName == "Hand")
+            {
+                Card = _controller.GetHandDisplayCard(Index);
+            }
+
             RefreshVisual();
 
             elapsed = 0f;
@@ -332,7 +340,11 @@ namespace DragonBoxAlgebra.UI
             _didDrag = false;
             _dropHandled = false;
             _handPlayHandled = false;
+            _snapHighlight = null;
             _dragPressScreenPosition = eventData.pressPosition;
+            _originalScale = _rect != null ? _rect.localScale : Vector3.one;
+            EnsureDraggable().RememberStart();
+            EnsureDraggable().snapDistance = snapDistance;
 
             if (SideName != "Hand")
             {
@@ -345,9 +357,20 @@ namespace DragonBoxAlgebra.UI
             _dragStarted = true;
             _originalParent = transform.parent;
             _originalSiblingIndex = transform.GetSiblingIndex();
+            if (_dragRoot != null)
+            {
+                _dragRoot.SetAsLastSibling();
+            }
+
             if (_canvasGroup != null)
             {
                 _canvasGroup.blocksRaycasts = false;
+                _canvasGroup.alpha = 0.95f;
+            }
+
+            if (_rect != null)
+            {
+                _rect.localScale = _originalScale * DragScale;
             }
 
             transform.SetParent(_dragRoot, true);
@@ -361,9 +384,20 @@ namespace DragonBoxAlgebra.UI
             _dragStarted = true;
             _originalParent = transform.parent;
             _originalSiblingIndex = transform.GetSiblingIndex();
+            if (_dragRoot != null)
+            {
+                _dragRoot.SetAsLastSibling();
+            }
+
             if (_canvasGroup != null)
             {
                 _canvasGroup.blocksRaycasts = false;
+                _canvasGroup.alpha = 0.95f;
+            }
+
+            if (_rect != null)
+            {
+                _rect.localScale = _originalScale * DragScale;
             }
 
             transform.SetParent(_dragRoot, true);
@@ -396,7 +430,9 @@ namespace DragonBoxAlgebra.UI
                         eventData.pressEventCamera, out Vector2 handLocalPoint))
                 {
                     _didDrag = true;
+                    _lastDragScreenPosition = eventData.position;
                     _rect.localPosition = handLocalPoint + _dragOffset;
+                    UpdateSnapHighlight(eventData);
                 }
 
                 return;
@@ -406,7 +442,9 @@ namespace DragonBoxAlgebra.UI
                     eventData.pressEventCamera, out Vector2 localPoint))
             {
                 _didDrag = true;
+                _lastDragScreenPosition = eventData.position;
                 _rect.localPosition = localPoint + _dragOffset;
+                UpdateSnapHighlight(eventData);
             }
         }
 
@@ -434,26 +472,29 @@ namespace DragonBoxAlgebra.UI
                         TryFlipHandOnTap();
                     }
 
-                    _isDragging = false;
                     return;
                 }
 
-                if (!_handPlayHandled)
+                if (!_handPlayHandled && ExceededFlipDragThreshold(eventData))
                 {
                     if (_canvasGroup != null)
                     {
                         _canvasGroup.blocksRaycasts = false;
                     }
 
-                    if (ExceededFlipDragThreshold(eventData))
+                    // DraggableTile pattern: snap to correct opposite, else return / balance.
+                    if (!TryToSnap(eventData))
                     {
                         TryPlayHandDrop(eventData);
                     }
-                    else if (CanFlipHand())
-                    {
-                        TryFlipHandOnTap();
-                    }
                 }
+                else if (!_handPlayHandled && CanFlipHand())
+                {
+                    TryFlipHandOnTap();
+                }
+
+                ClearSnapHighlight();
+                RestoreDragVisuals();
 
                 if (_handPlayHandled)
                 {
@@ -472,26 +513,122 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
-                transform.SetParent(_originalParent, false);
-                transform.SetSiblingIndex(_originalSiblingIndex);
-                RestoreDragRaycasts();
+                ReturnToStart();
                 return;
             }
 
-            CardWidget target = FindBoardMergeTarget(eventData);
-            if (target != null)
+            ClearSnapHighlight();
+            RestoreDragVisuals();
+            if (!TryToSnap(eventData))
             {
-                if (HandleDropOnCard(target))
-                {
-                    RestoreDragRaycasts();
-                    Destroy(gameObject);
-                    return;
-                }
+                ReturnToStart();
+            }
+            else if (_handPlayHandled || _dropHandled)
+            {
+                RestoreDragRaycasts();
+                Destroy(gameObject);
+            }
+            else
+            {
+                ReturnToStart();
+            }
+        }
+
+        /// <summary>
+        /// Uses DraggableTile + TileSnapTarget: closest correct opposite within snapDistance.
+        /// </summary>
+        private bool TryToSnap(PointerEventData eventData)
+        {
+            DraggableTile drag = EnsureDraggable();
+            Vector2 screen = eventData != null ? eventData.position : _lastDragScreenPosition;
+            Camera cam = eventData != null
+                ? eventData.pressEventCamera
+                : (_canvas != null ? _canvas.worldCamera : null);
+
+            TileSnapTarget target = drag.TryToSnap(screen, cam);
+            if (target == null || target.Widget == null)
+            {
+                return false;
             }
 
-            transform.SetParent(_originalParent, false);
-            transform.SetSiblingIndex(_originalSiblingIndex);
+            _snapHighlight = target.Widget;
+
+            if (SideName == "Hand")
+            {
+                TryPlayHandOnBoardTarget(target.Widget);
+            }
+            else if (HandleDropOnCard(target.Widget))
+            {
+                _dropHandled = true;
+            }
+
+            return _handPlayHandled || _dropHandled || drag.IsSnapped;
+        }
+
+        private void ReturnToStart()
+        {
+            ClearSnapHighlight();
+            EnsureDraggable().ReturnToStart();
+
+            if (_originalParent != null && transform.parent != _originalParent)
+            {
+                transform.SetParent(_originalParent, false);
+                transform.SetSiblingIndex(_originalSiblingIndex);
+            }
+
+            RestoreDragVisuals();
             RestoreDragRaycasts();
+        }
+
+        private void UpdateSnapHighlight(PointerEventData eventData)
+        {
+            ClearSnapHighlight();
+
+            TileSnapTarget closest = EnsureDraggable()
+                .FindClosestTarget(eventData.position, eventData.pressEventCamera);
+            if (closest?.Widget != null)
+            {
+                _snapHighlight = closest.Widget;
+                _snapHighlight.SetHighlight(true);
+            }
+        }
+
+        private void ClearSnapHighlight()
+        {
+            if (_snapHighlight != null)
+            {
+                _snapHighlight.SetHighlight(false);
+                _snapHighlight = null;
+            }
+        }
+
+        private DraggableTile EnsureDraggable()
+        {
+            if (_draggable == null)
+            {
+                _draggable = GetComponent<DraggableTile>() ?? gameObject.AddComponent<DraggableTile>();
+                _draggable.Bind(this);
+                _draggable.snapDistance = snapDistance;
+            }
+
+            return _draggable;
+        }
+
+        private void RestoreDragVisuals()
+        {
+            if (_rect != null)
+            {
+                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+            }
+
+            if (_canvasGroup != null && SideName == "Hand")
+            {
+                ApplyHandSlotDimming();
+            }
+            else if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 1f;
+            }
         }
 
         private void RestoreDragRaycasts()
@@ -504,6 +641,20 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandDrop(PointerEventData eventData)
         {
+            // 1) Opposite under the pointer → merge + swirl in that slot.
+            CardWidget opposite = FindOppositeBoardCardUnderPointer(eventData);
+            if (opposite == null && _snapHighlight != null
+                && CombineRules.GetCombineAction(Card, _snapHighlight.Card) == CombineActionType.OppositeCancel)
+            {
+                opposite = _snapHighlight;
+            }
+
+            if (opposite != null)
+            {
+                TryPlayHandOnBoardTarget(opposite);
+                return;
+            }
+
             if (_controller.HasPendingBalance)
             {
                 string holeSide = _controller.PendingBalance.HoleSide;
@@ -520,9 +671,9 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
-                BoardDropZone zone = FindBoardZone(eventData);
-                string dropSide = zone != null ? zone.SideName : SideUnderPointer(eventData);
-                if (dropSide == holeSide && _controller.TryPlayFromHand(Index, holeSide))
+                BoardDropZone boardZone = FindBoardZone(eventData);
+                string pendingSide = boardZone != null ? boardZone.SideName : SideUnderPointer(eventData);
+                if (pendingSide == holeSide && _controller.TryPlayFromHand(Index, holeSide))
                 {
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -531,20 +682,44 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            CardWidget targetCard = FindHandBoardTarget(eventData);
-            if (targetCard != null)
+            // 2) Empty board panel only → start balance. Never "side dump" when over a non-opposite tile.
+            if (FindHandBoardTarget(eventData) != null)
             {
-                TryPlayHandOnBoardTarget(targetCard);
+                return;
             }
-            else
+
+            BoardDropZone zone = FindBoardZone(eventData);
+            string dropSide = zone != null ? zone.SideName : SideUnderPointer(eventData);
+            if (dropSide != null)
             {
-                BoardDropZone zone = FindBoardZone(eventData);
-                string dropSide = zone != null ? zone.SideName : SideUnderPointer(eventData);
-                if (dropSide != null)
+                TryPlayHandOnSide(dropSide);
+            }
+        }
+
+        private CardWidget FindOppositeBoardCardUnderPointer(PointerEventData eventData)
+        {
+            foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
+            {
+                if (widget == null || widget == this || widget.SideName == "Hand")
                 {
-                    TryPlayHandOnSide(dropSide);
+                    continue;
                 }
+
+                if (CombineRules.GetCombineAction(Card, widget.Card) != CombineActionType.OppositeCancel)
+                {
+                    continue;
+                }
+
+                if (_controller != null
+                    && !_controller.CanPlayHandOntoBoardCard(Index, widget.SideName, widget.Index))
+                {
+                    continue;
+                }
+
+                return widget;
             }
+
+            return null;
         }
 
         private void TryPlayHandOnSide(string sideName)
@@ -617,10 +792,11 @@ namespace DragonBoxAlgebra.UI
 
                 if (target.SideName != "Hand")
                 {
-                    TryPlayHandOnBoardTarget(target);
-                    if (!_handPlayHandled)
+                    // Only merge when this tile is the opposite. Do not start balance from a card drop —
+                    // that appends at the end of the side and looks like the tile "went off to the side".
+                    if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
                     {
-                        TryPlayHandOnSide(target.SideName);
+                        TryPlayHandOnBoardTarget(target);
                     }
                 }
 
@@ -804,30 +980,33 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
-            if (_controller.UsesOppositeHandPlay)
+            if (target == null)
+            {
+                return;
+            }
+
+            // Dropping on top of an opposite always merges + swirl (all chapters).
+            if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
             {
                 if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index))
                 {
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                    return;
                 }
 
+                return;
+            }
+
+            if (_controller.UsesOppositeHandPlay)
+            {
                 if (_controller.TryPlayHandOntoOppositeOnSide(Index, target.SideName))
                 {
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
-
-                return;
             }
 
-            if (_controller.TryPlayFromHand(Index, target.SideName))
-            {
-                MarkHandPlayHandled();
-                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                return;
-            }
+            // Do not call TryPlayFromHand here — that parks the tile at the end of the side.
         }
 
         public static CardWidget Create(Transform parent, BoardCard card, int index, string sideName,
@@ -925,6 +1104,18 @@ namespace DragonBoxAlgebra.UI
             widget._canvasGroup = root.GetComponent<CanvasGroup>();
             widget._canvasGroup.blocksRaycasts = true;
             widget._canvasGroup.interactable = true;
+
+            var draggable = root.AddComponent<DraggableTile>();
+            draggable.Bind(widget);
+            draggable.snapDistance = widget.snapDistance;
+            widget._draggable = draggable;
+
+            if (sideName != "Hand")
+            {
+                var snapTarget = root.AddComponent<TileSnapTarget>();
+                snapTarget.Bind(widget);
+            }
+
             return widget;
         }
 
