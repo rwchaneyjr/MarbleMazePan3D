@@ -41,11 +41,13 @@ namespace DragonBoxAlgebra.UI
         private const float FlipDragThresholdPixels = 150f;
         private const float OppositeSnapRadius = 130f;
         private const float OppositeSnapLockRadius = 72f;
+        private const float OppositeHitPaddingPixels = 36f;
         private const float DragScale = 1.08f;
 
         private Vector3 _originalScale;
         private CardWidget _snapTarget;
         private BalanceHoleWidget _snapHole;
+        private Vector2 _lastDragScreenPosition;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -426,8 +428,9 @@ namespace DragonBoxAlgebra.UI
                         eventData.pressEventCamera, out Vector2 handLocalPoint))
                 {
                     _didDrag = true;
+                    _lastDragScreenPosition = eventData.position;
                     _rect.localPosition = handLocalPoint + _dragOffset;
-                    ApplyOppositeSnap();
+                    ApplyOppositeSnap(eventData);
                 }
 
                 return;
@@ -437,8 +440,9 @@ namespace DragonBoxAlgebra.UI
                     eventData.pressEventCamera, out Vector2 localPoint))
             {
                 _didDrag = true;
+                _lastDragScreenPosition = eventData.position;
                 _rect.localPosition = localPoint + _dragOffset;
-                ApplyOppositeSnap();
+                ApplyOppositeSnap(eventData);
             }
         }
 
@@ -513,7 +517,7 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            CardWidget target = _snapTarget != null ? _snapTarget : FindBoardMergeTarget(eventData);
+            CardWidget target = ResolveBoardDropTarget(eventData);
             ClearSnapHighlight();
             RestoreDragVisuals();
             if (target != null)
@@ -548,45 +552,49 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private void ApplyOppositeSnap()
+        private void ApplyOppositeSnap(PointerEventData eventData)
         {
             ClearSnapHighlight();
-            _snapTarget = FindNearestOppositeTarget(OppositeSnapRadius);
+            // Only snap onto the opposite currently under the pointer — never yank to another tile.
+            _snapTarget = FindOppositeUnderPointer(eventData);
             _snapHole = null;
 
             if (_snapTarget == null && SideName == "Hand" && _controller != null && _controller.HasPendingBalance)
             {
-                _snapHole = FindNearestBalanceHole(OppositeSnapRadius);
+                _snapHole = FindBalanceHoleUnderPointer(eventData);
             }
 
             if (_snapTarget != null)
             {
                 _snapTarget.SetHighlight(true);
-                float distance = Vector3.Distance(transform.position, _snapTarget.transform.position);
-                if (distance <= OppositeSnapLockRadius)
-                {
-                    transform.position = _snapTarget.transform.position;
-                }
-                else
-                {
-                    transform.position = Vector3.Lerp(transform.position, _snapTarget.transform.position, 0.55f);
-                }
-
+                transform.position = Vector3.Lerp(transform.position, _snapTarget.transform.position, 0.7f);
                 return;
             }
 
             if (_snapHole != null)
             {
-                float distance = Vector3.Distance(transform.position, _snapHole.transform.position);
-                if (distance <= OppositeSnapLockRadius)
-                {
-                    transform.position = _snapHole.transform.position;
-                }
-                else
-                {
-                    transform.position = Vector3.Lerp(transform.position, _snapHole.transform.position, 0.55f);
-                }
+                transform.position = Vector3.Lerp(transform.position, _snapHole.transform.position, 0.7f);
             }
+        }
+
+        private CardWidget ResolveBoardDropTarget(PointerEventData eventData)
+        {
+            CardWidget underPointer = SideName == "Hand"
+                ? FindHandBoardTarget(eventData)
+                : FindBoardMergeTarget(eventData);
+
+            if (underPointer != null
+                && CombineRules.GetCombineAction(Card, underPointer.Card) == CombineActionType.OppositeCancel)
+            {
+                return underPointer;
+            }
+
+            if (_snapTarget != null)
+            {
+                return _snapTarget;
+            }
+
+            return underPointer;
         }
 
         private void ClearSnapHighlight()
@@ -597,11 +605,14 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private CardWidget FindNearestOppositeTarget(float radius)
+        private CardWidget FindOppositeUnderPointer(PointerEventData eventData)
         {
-            CardWidget[] widgets = FindObjectsOfType<CardWidget>();
+            Vector2 screen = eventData != null ? eventData.position : _lastDragScreenPosition;
+            Camera cam = eventData != null ? eventData.pressEventCamera : (_canvas != null ? _canvas.worldCamera : null);
+
             CardWidget best = null;
-            float bestDistance = radius;
+            float bestDistance = float.MaxValue;
+            CardWidget[] widgets = FindObjectsOfType<CardWidget>();
 
             foreach (CardWidget other in widgets)
             {
@@ -610,33 +621,18 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                if (SideName == "Hand")
+                if (!IsValidOppositeSnapTarget(other))
                 {
-                    if (CombineRules.GetCombineAction(Card, other.Card) != CombineActionType.OppositeCancel)
-                    {
-                        continue;
-                    }
-
-                    if (_controller == null
-                        || !_controller.CanPlayHandOntoBoardCard(Index, other.SideName, other.Index))
-                    {
-                        continue;
-                    }
-                }
-                else
-                {
-                    if (other.SideName != SideName)
-                    {
-                        continue;
-                    }
-
-                    if (CombineRules.GetCombineAction(Card, other.Card) != CombineActionType.OppositeCancel)
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
-                float distance = Vector3.Distance(transform.position, other.transform.position);
+                var otherRect = other.transform as RectTransform;
+                if (otherRect == null || !ScreenPointInPaddedRect(otherRect, screen, cam, OppositeHitPaddingPixels))
+                {
+                    continue;
+                }
+
+                float distance = Vector2.Distance(screen, RectTransformUtility.WorldToScreenPoint(cam, otherRect.position));
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
@@ -647,7 +643,28 @@ namespace DragonBoxAlgebra.UI
             return best;
         }
 
-        private BalanceHoleWidget FindNearestBalanceHole(float radius)
+        private bool IsValidOppositeSnapTarget(CardWidget other)
+        {
+            if (SideName == "Hand")
+            {
+                if (CombineRules.GetCombineAction(Card, other.Card) != CombineActionType.OppositeCancel)
+                {
+                    return false;
+                }
+
+                return _controller != null
+                    && _controller.CanPlayHandOntoBoardCard(Index, other.SideName, other.Index);
+            }
+
+            if (other.SideName != SideName)
+            {
+                return false;
+            }
+
+            return CombineRules.GetCombineAction(Card, other.Card) == CombineActionType.OppositeCancel;
+        }
+
+        private BalanceHoleWidget FindBalanceHoleUnderPointer(PointerEventData eventData)
         {
             if (_controller == null || !_controller.HasPendingBalance)
             {
@@ -655,10 +672,10 @@ namespace DragonBoxAlgebra.UI
             }
 
             string holeSide = _controller.PendingBalance.HoleSide;
-            BalanceHoleWidget[] holes = FindObjectsOfType<BalanceHoleWidget>();
-            BalanceHoleWidget best = null;
-            float bestDistance = radius;
+            Vector2 screen = eventData != null ? eventData.position : _lastDragScreenPosition;
+            Camera cam = eventData != null ? eventData.pressEventCamera : (_canvas != null ? _canvas.worldCamera : null);
 
+            BalanceHoleWidget[] holes = FindObjectsOfType<BalanceHoleWidget>();
             foreach (BalanceHoleWidget hole in holes)
             {
                 if (hole == null || hole.SideName != holeSide)
@@ -666,15 +683,33 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                float distance = Vector3.Distance(transform.position, hole.transform.position);
-                if (distance < bestDistance)
+                var holeRect = hole.transform as RectTransform;
+                if (holeRect != null && ScreenPointInPaddedRect(holeRect, screen, cam, OppositeHitPaddingPixels))
                 {
-                    bestDistance = distance;
-                    best = hole;
+                    return hole;
                 }
             }
 
-            return best;
+            return null;
+        }
+
+        private static bool ScreenPointInPaddedRect(RectTransform rect, Vector2 screenPoint, Camera cam, float pad)
+        {
+            Vector3[] corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            Vector2 min = RectTransformUtility.WorldToScreenPoint(cam, corners[0]);
+            Vector2 max = min;
+            for (int i = 1; i < 4; i++)
+            {
+                Vector2 p = RectTransformUtility.WorldToScreenPoint(cam, corners[i]);
+                min = Vector2.Min(min, p);
+                max = Vector2.Max(max, p);
+            }
+
+            min -= Vector2.one * pad;
+            max += Vector2.one * pad;
+            return screenPoint.x >= min.x && screenPoint.x <= max.x
+                && screenPoint.y >= min.y && screenPoint.y <= max.y;
         }
 
         private void RestoreDragRaycasts()
@@ -687,16 +722,25 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandDrop(PointerEventData eventData)
         {
-            if (_snapTarget != null && _snapTarget != this && _snapTarget.SideName != "Hand")
+            CardWidget dropTarget = ResolveBoardDropTarget(eventData);
+            if (dropTarget != null && dropTarget != this && dropTarget.SideName != "Hand")
             {
-                TryPlayHandOnBoardTarget(_snapTarget);
+                TryPlayHandOnBoardTarget(dropTarget);
                 if (_handPlayHandled)
                 {
                     return;
                 }
 
-                TryPlayHandOnSide(_snapTarget.SideName);
-                if (_handPlayHandled)
+                // Only fall through to side-play if this wasn't an opposite merge attempt.
+                if (CombineRules.GetCombineAction(Card, dropTarget.Card) != CombineActionType.OppositeCancel)
+                {
+                    TryPlayHandOnSide(dropTarget.SideName);
+                    if (_handPlayHandled)
+                    {
+                        return;
+                    }
+                }
+                else
                 {
                     return;
                 }
