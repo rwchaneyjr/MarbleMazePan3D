@@ -36,7 +36,11 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        private const float FlipDragThresholdPixels = 12f;
+        /// <summary>Hand drag begins after this many screen pixels (lower = more sensitive).</summary>
+        private const float DragStartThresholdPixels = 5f;
+
+        /// <summary>Tap still counts as flip if movement stays within this (higher = easier flip).</summary>
+        private const float FlipTapThresholdPixels = 28f;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -352,12 +356,12 @@ namespace DragonBoxAlgebra.UI
             {
                 if (!_dragStarted)
                 {
-                    if (!CanDrag() || !ExceededFlipDragThreshold(eventData))
+                    if (CanDrag() && ExceededDragStartThreshold(eventData))
                     {
-                        return;
+                        BeginHandDrag(eventData);
                     }
 
-                    BeginHandDrag(eventData);
+                    return;
                 }
 
                 if (_dragStarted
@@ -379,9 +383,14 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private bool ExceededFlipDragThreshold(PointerEventData eventData) =>
-            eventData != null
-            && Vector2.Distance(_dragPressScreenPosition, eventData.position) > FlipDragThresholdPixels;
+        private float PointerMovementPixels(PointerEventData eventData) =>
+            eventData != null ? Vector2.Distance(_dragPressScreenPosition, eventData.position) : 0f;
+
+        private bool ExceededDragStartThreshold(PointerEventData eventData) =>
+            PointerMovementPixels(eventData) > DragStartThresholdPixels;
+
+        private bool WithinFlipTapThreshold(PointerEventData eventData) =>
+            PointerMovementPixels(eventData) <= FlipTapThresholdPixels;
 
         public void MarkHandPlayHandled() => _handPlayHandled = true;
 
@@ -398,7 +407,7 @@ namespace DragonBoxAlgebra.UI
             {
                 if (!_dragStarted)
                 {
-                    if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
+                    if (!_handPlayHandled && WithinFlipTapThreshold(eventData) && CanFlipHand())
                     {
                         TryFlipHandOnTap();
                     }
@@ -414,11 +423,11 @@ namespace DragonBoxAlgebra.UI
                         _canvasGroup.blocksRaycasts = false;
                     }
 
-                    if (ExceededFlipDragThreshold(eventData))
+                    if (ExceededDragStartThreshold(eventData))
                     {
                         TryPlayHandDrop(eventData);
                     }
-                    else if (CanFlipHand())
+                    else if (WithinFlipTapThreshold(eventData) && CanFlipHand())
                     {
                         TryFlipHandOnTap();
                     }
