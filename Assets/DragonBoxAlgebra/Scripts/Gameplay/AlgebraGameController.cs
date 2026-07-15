@@ -480,9 +480,8 @@ namespace DragonBoxAlgebra.Gameplay
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
-                    MessageChanged?.Invoke(_pendingBalance != null
-                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — click *. The ? hole stays until you fill it."
-                        : $"{Capitalize(LightTerm)} met {DarkTerm} — click the spinning * to dismiss.");
+                    MessageChanged?.Invoke(
+                        $"{Capitalize(LightTerm)} met {DarkTerm} — click the swirl to dismiss. Other free tiles stay playable.");
                 }
                 else
                 {
@@ -503,12 +502,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return true;
             }
 
-            if (_pendingBalance != null)
-            {
-                MessageChanged?.Invoke("Fill the balance hole first.");
-                return false;
-            }
-
+            // Free opposite merges already handled above. Other combine types stay available
+            // even while a ? hole or swirl exists on the other side.
             PushUndo();
             if (!Board.TryCombineOnSide(side, indexA, indexB, out CombineActionType resolved))
             {
