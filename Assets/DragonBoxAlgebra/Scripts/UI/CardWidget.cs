@@ -88,22 +88,21 @@ namespace DragonBoxAlgebra.UI
             _controller = controller;
             _canvas = canvas;
             _dragRoot = dragRoot;
+            EnsureFullyActive();
             RefreshVisual();
         }
 
         public void SetHandCard(BoardCard card)
         {
             Card = card;
-            if (_canvasGroup != null)
-            {
-                _canvasGroup.blocksRaycasts = true;
-            }
-
+            EnsureFullyActive();
             RefreshVisual();
         }
 
         public void RefreshVisual()
         {
+            EnsureFullyActive();
+
             if (_background != null)
             {
                 _background.color = CardVisuals.FaceBackground(Card, SideName);
@@ -132,24 +131,30 @@ namespace DragonBoxAlgebra.UI
                     }
                 }
             }
+        }
 
-            ApplyHandSlotDimming();
+        /// <summary>
+        /// Cards stay active and receiving input at all times (except mid-drag).
+        /// Never deactivate or dim used/waiting hand tiles.
+        /// </summary>
+        public void EnsureFullyActive()
+        {
+            if (!gameObject.activeSelf)
+            {
+                gameObject.SetActive(true);
+            }
+
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 1f;
+                _canvasGroup.blocksRaycasts = !_isDragging;
+                _canvasGroup.interactable = true;
+            }
         }
 
         private void ApplyHandSlotDimming()
         {
-            if (_canvasGroup == null || _controller == null || SideName != "Hand")
-            {
-                return;
-            }
-
-            bool completed = _controller.IsHandBalanceComplete(Index);
-            bool waitingTurn = _controller.UsesDualHandPanelDisplay
-                && !completed
-                && !_controller.IsHandSlotPlayable(Index);
-            _canvasGroup.alpha = completed || waitingTurn ? 0.55f : 1f;
-            _canvasGroup.blocksRaycasts = true;
-            _canvasGroup.interactable = true;
+            EnsureFullyActive();
         }
 
         private void ApplyCreatureVisual()
@@ -601,6 +606,7 @@ namespace DragonBoxAlgebra.UI
 
             RestoreDragVisuals();
             RestoreDragRaycasts();
+            EnsureFullyActive();
         }
 
         private void UpdateSnapHighlight(PointerEventData eventData)
@@ -644,22 +650,12 @@ namespace DragonBoxAlgebra.UI
                 _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
             }
 
-            if (_canvasGroup != null && SideName == "Hand")
-            {
-                ApplyHandSlotDimming();
-            }
-            else if (_canvasGroup != null)
-            {
-                _canvasGroup.alpha = 1f;
-            }
+            EnsureFullyActive();
         }
 
         private void RestoreDragRaycasts()
         {
-            if (_canvasGroup != null)
-            {
-                _canvasGroup.blocksRaycasts = true;
-            }
+            EnsureFullyActive();
         }
 
         private void TryPlayHandDrop(PointerEventData eventData)
@@ -1065,6 +1061,10 @@ namespace DragonBoxAlgebra.UI
             widget._rect = rect;
             widget._background = image;
             widget._border = borderImage;
+            widget._canvasGroup = root.GetComponent<CanvasGroup>();
+            widget._canvasGroup.alpha = 1f;
+            widget._canvasGroup.blocksRaycasts = true;
+            widget._canvasGroup.interactable = true;
 
             var creatureGo = new GameObject("Creature", typeof(RectTransform), typeof(CreatureReaction), typeof(RectMask2D));
             creatureGo.transform.SetParent(root.transform, false);

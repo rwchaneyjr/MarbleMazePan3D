@@ -275,12 +275,19 @@ namespace DragonBoxAlgebra.UI
 
             if (lightHalf != null)
             {
-                lightHalf.gameObject.SetActive(false);
+                // Keep halves in hierarchy as active objects; only hide visually.
+                var lightGroup = lightHalf.GetComponent<CanvasGroup>() ?? lightHalf.gameObject.AddComponent<CanvasGroup>();
+                lightGroup.alpha = 0f;
+                lightGroup.blocksRaycasts = false;
+                lightHalf.enabled = false;
             }
 
             if (darkHalf != null)
             {
-                darkHalf.gameObject.SetActive(false);
+                var darkGroup = darkHalf.GetComponent<CanvasGroup>() ?? darkHalf.gameObject.AddComponent<CanvasGroup>();
+                darkGroup.alpha = 0f;
+                darkGroup.blocksRaycasts = false;
+                darkHalf.enabled = false;
             }
 
             if (_symbolGroup != null)
