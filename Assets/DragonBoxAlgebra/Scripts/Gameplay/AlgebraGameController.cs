@@ -647,25 +647,27 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesOppositeHandPlay)
+            BoardSide side = Board.GetSide(sideName);
+            if (boardIndex < 0 || boardIndex >= side.Cards.Count)
             {
-                BoardSide side = Board.GetSide(sideName);
-                if (boardIndex < 0 || boardIndex >= side.Cards.Count)
-                {
-                    return false;
-                }
-
-                BoardCard targetCard = side.Cards[boardIndex];
-                if (IsCardPendingCancelOnSide(targetCard.Id, sideName))
-                {
-                    return false;
-                }
-
-                return CombineRules.GetCombineAction(_hand[handIndex], targetCard)
-                    == CombineActionType.OppositeCancel;
+                return false;
             }
 
-            return true;
+            BoardCard targetCard = side.Cards[boardIndex];
+            if (IsCardPendingCancelOnSide(targetCard.Id, sideName))
+            {
+                return false;
+            }
+
+            // Snap / drop-on-top only targets true opposites (any chapter).
+            if (CombineRules.GetCombineAction(_hand[handIndex], targetCard)
+                == CombineActionType.OppositeCancel)
+            {
+                return true;
+            }
+
+            // Older opposite-only chapters reject non-opposites; balance chapters still allow side drops elsewhere.
+            return !UsesOppositeHandPlay;
         }
 
         public bool TryPlayHandOntoOppositeOnSide(int handIndex, string sideName)
@@ -699,11 +701,6 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             if (_spentHandIndices.Contains(handIndex))
-            {
-                return false;
-            }
-
-            if (CurrentLevel.Chapter >= 3)
             {
                 return false;
             }

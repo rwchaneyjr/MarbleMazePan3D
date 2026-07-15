@@ -612,6 +612,11 @@ namespace DragonBoxAlgebra.UI
 
                 if (SideName == "Hand")
                 {
+                    if (CombineRules.GetCombineAction(Card, other.Card) != CombineActionType.OppositeCancel)
+                    {
+                        continue;
+                    }
+
                     if (_controller == null
                         || !_controller.CanPlayHandOntoBoardCard(Index, other.SideName, other.Index))
                     {
@@ -1007,7 +1012,8 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
-            if (_controller.UsesOppositeHandPlay)
+            // Dropping on top of an opposite always snaps into a swirl cancel (all chapters).
+            if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
             {
                 if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index))
                 {
@@ -1015,7 +1021,10 @@ namespace DragonBoxAlgebra.UI
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                     return;
                 }
+            }
 
+            if (_controller.UsesOppositeHandPlay)
+            {
                 if (_controller.TryPlayHandOntoOppositeOnSide(Index, target.SideName))
                 {
                     MarkHandPlayHandled();
@@ -1029,7 +1038,6 @@ namespace DragonBoxAlgebra.UI
             {
                 MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                return;
             }
         }
 
