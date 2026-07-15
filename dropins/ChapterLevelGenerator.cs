@@ -587,17 +587,15 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Global 113–128: x + mix of sea creature images and variable symbols (2 per side);
-        /// hand matches Ch5/Ch6: one reusable dark per variable letter, plus one dark sea if needed.
+        /// Global 113–128: x + mix of sea + variable (2 tiles each side).
+        /// Hand: one dark variable + one dark sea (same count/layout as correct dual-hand levels).
         /// </summary>
         private static LevelDefinition MakeCh7MixedSeaVariableLevel(string title, int globalLevel, int seaTheme,
             bool xOnLeft, int tileCount)
         {
-            // Dual-hand levels use 2 board tiles per side so the hand stays at the right count
-            // (one variable dark + one sea dark), not one hand tile per board slot.
             tileCount = 2;
             int letterSeed = globalLevel * 7919 + 31;
-            const int variableSlotCount = 1;
+            int variableSlotCount = 1;
             int seaSlotCount = tileCount - variableSlotCount;
             List<char> letters = PickDistinctVariableLetters(letterSeed, variableSlotCount);
 
@@ -607,7 +605,7 @@ namespace DragonBoxAlgebra.Gameplay
                 Chapter = 7,
                 CreatureTheme = seaTheme,
                 ParMoves = 2 + tileCount * 2,
-                ParCards = variableSlotCount + (seaSlotCount > 0 ? 1 : 0)
+                ParCards = tileCount
             };
 
             var slots = new List<bool>();
@@ -643,17 +641,13 @@ namespace DragonBoxAlgebra.Gameplay
                 AddMixedSlotsToSide(level.RightCards, level.RightVariableLetters, slots, letters, ref letterIndex);
             }
 
-            // One reusable dark per letter (same as Ch5/Ch6), plus one dark sea if the board has sea tiles.
-            foreach (char letter in letters)
+            // Same hand construction as the known-good flip/correct-images dual hand:
+            // one night per board slot type (1 variable letter + 1 sea).
+            letterIndex = 0;
+            foreach (bool isVariable in slots)
             {
                 level.HandCards.Add(CardKind.NightCreature);
-                level.HandVariableLetters.Add(letter);
-            }
-
-            if (seaSlotCount > 0)
-            {
-                level.HandCards.Add(CardKind.NightCreature);
-                level.HandVariableLetters.Add('\0');
+                level.HandVariableLetters.Add(isVariable ? letters[letterIndex++] : '\0');
             }
 
             level.LeftValues = ValuesFor(level.LeftCards);
