@@ -1,3 +1,4 @@
+using DragonBoxAlgebra.Core;
 using DragonBoxAlgebra.Gameplay;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -22,10 +23,12 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (ui.Controller.HasPendingBalance)
+            AlgebraGameController controller = ui.Controller;
+
+            if (controller.HasPendingBalance)
             {
-                if (ui.Controller.PendingBalance.HoleSide == SideName
-                    && ui.Controller.TryPlayFromHand(dragged.Index, SideName))
+                if (controller.PendingBalance.HoleSide == SideName
+                    && controller.TryPlayFromHand(dragged.Index, SideName))
                 {
                     dragged.MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -34,9 +37,15 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (ui.Controller.UsesOppositeHandPlay)
+            // Prefer merging onto the opposite under the pointer — never dump onto the side end.
+            if (TryMergeOntoOppositeUnderPointer(controller, dragged, eventData))
             {
-                if (ui.Controller.TryPlayHandOntoOppositeOnSide(dragged.Index, SideName))
+                return;
+            }
+
+            if (controller.UsesOppositeHandPlay)
+            {
+                if (controller.TryPlayHandOntoOppositeOnSide(dragged.Index, SideName))
                 {
                     dragged.MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -45,11 +54,72 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (ui.Controller.TryPlayFromHand(dragged.Index, SideName))
+            if (controller.TryPlayFromHand(dragged.Index, SideName))
             {
                 dragged.MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
             }
+        }
+
+        private static bool TryMergeOntoOppositeUnderPointer(AlgebraGameController controller,
+            CardWidget dragged, PointerEventData eventData)
+        {
+            CardWidget opposite = FindOppositeUnderPointer(controller, dragged, eventData);
+            if (opposite == null)
+            {
+                return false;
+            }
+
+            if (controller.TryPlayHandOntoOpposite(dragged.Index, opposite.SideName, opposite.Index))
+            {
+                dragged.MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                return true;
+            }
+
+            return false;
+        }
+
+        private static CardWidget FindOppositeUnderPointer(AlgebraGameController controller,
+            CardWidget dragged, PointerEventData eventData)
+        {
+            if (eventData == null || EventSystem.current == null)
+            {
+                return null;
+            }
+
+            var results = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(eventData, results);
+
+            foreach (RaycastResult result in results)
+            {
+                if (result.gameObject == null)
+                {
+                    continue;
+                }
+
+                CardWidget widget = result.gameObject.GetComponent<CardWidget>()
+                    ?? result.gameObject.GetComponentInParent<CardWidget>();
+                if (widget == null || widget == dragged || widget.SideName == "Hand")
+                {
+                    continue;
+                }
+
+                if (CombineRules.GetCombineAction(dragged.Card, widget.Card)
+                    != CombineActionType.OppositeCancel)
+                {
+                    continue;
+                }
+
+                if (!controller.CanPlayHandOntoBoardCard(dragged.Index, widget.SideName, widget.Index))
+                {
+                    continue;
+                }
+
+                return widget;
+            }
+
+            return null;
         }
     }
 

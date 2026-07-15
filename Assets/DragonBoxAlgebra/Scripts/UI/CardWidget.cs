@@ -732,28 +732,18 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandDrop(PointerEventData eventData)
         {
-            CardWidget dropTarget = ResolveBoardDropTarget(eventData);
-            if (dropTarget != null && dropTarget != this && dropTarget.SideName != "Hand")
+            // 1) Opposite under the pointer → merge + swirl in that slot.
+            CardWidget opposite = FindOppositeBoardCardUnderPointer(eventData);
+            if (opposite == null && _snapTarget != null
+                && CombineRules.GetCombineAction(Card, _snapTarget.Card) == CombineActionType.OppositeCancel)
             {
-                TryPlayHandOnBoardTarget(dropTarget);
-                if (_handPlayHandled)
-                {
-                    return;
-                }
+                opposite = _snapTarget;
+            }
 
-                // Only fall through to side-play if this wasn't an opposite merge attempt.
-                if (CombineRules.GetCombineAction(Card, dropTarget.Card) != CombineActionType.OppositeCancel)
-                {
-                    TryPlayHandOnSide(dropTarget.SideName);
-                    if (_handPlayHandled)
-                    {
-                        return;
-                    }
-                }
-                else
-                {
-                    return;
-                }
+            if (opposite != null)
+            {
+                TryPlayHandOnBoardTarget(opposite);
+                return;
             }
 
             if (_snapHole != null
@@ -782,9 +772,9 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
-                BoardDropZone zone = FindBoardZone(eventData);
-                string dropSide = zone != null ? zone.SideName : SideUnderPointer(eventData);
-                if (dropSide == holeSide && _controller.TryPlayFromHand(Index, holeSide))
+                BoardDropZone boardZone = FindBoardZone(eventData);
+                string pendingSide = boardZone != null ? boardZone.SideName : SideUnderPointer(eventData);
+                if (pendingSide == holeSide && _controller.TryPlayFromHand(Index, holeSide))
                 {
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -793,20 +783,44 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            CardWidget targetCard = FindHandBoardTarget(eventData);
-            if (targetCard != null)
+            // 2) Empty board panel only → start balance. Never "side dump" when over a non-opposite tile.
+            if (FindHandBoardTarget(eventData) != null)
             {
-                TryPlayHandOnBoardTarget(targetCard);
+                return;
             }
-            else
+
+            BoardDropZone zone = FindBoardZone(eventData);
+            string dropSide = zone != null ? zone.SideName : SideUnderPointer(eventData);
+            if (dropSide != null)
             {
-                BoardDropZone zone = FindBoardZone(eventData);
-                string dropSide = zone != null ? zone.SideName : SideUnderPointer(eventData);
-                if (dropSide != null)
+                TryPlayHandOnSide(dropSide);
+            }
+        }
+
+        private CardWidget FindOppositeBoardCardUnderPointer(PointerEventData eventData)
+        {
+            foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
+            {
+                if (widget == null || widget == this || widget.SideName == "Hand")
                 {
-                    TryPlayHandOnSide(dropSide);
+                    continue;
                 }
+
+                if (CombineRules.GetCombineAction(Card, widget.Card) != CombineActionType.OppositeCancel)
+                {
+                    continue;
+                }
+
+                if (_controller != null
+                    && !_controller.CanPlayHandOntoBoardCard(Index, widget.SideName, widget.Index))
+                {
+                    continue;
+                }
+
+                return widget;
             }
+
+            return null;
         }
 
         private void TryPlayHandOnSide(string sideName)
