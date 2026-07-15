@@ -36,9 +36,14 @@ namespace DragonBoxAlgebra.UI
         private int _lastFlipFrame = -1;
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
+        private CardWidget _magneticSnapTarget;
+        private Vector3 _dragRestScale = Vector3.one;
 
         /// <summary>Pixels before a press counts as drag instead of click — higher = flip is easier.</summary>
         private const float FlipDragThresholdPixels = 150f;
+        /// <summary>Hand card snaps when the pointer is within this many pixels of a valid target.</summary>
+        private const float HandSnapRadiusPixels = 110f;
+        private const float HandDragScale = 1.08f;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -357,6 +362,7 @@ namespace DragonBoxAlgebra.UI
         private void BeginHandDrag(PointerEventData eventData)
         {
             _dragStarted = true;
+            _magneticSnapTarget = null;
             _originalParent = transform.parent;
             _originalSiblingIndex = transform.GetSiblingIndex();
             if (_canvasGroup != null)
@@ -365,6 +371,9 @@ namespace DragonBoxAlgebra.UI
             }
 
             transform.SetParent(_dragRoot, true);
+            transform.SetAsLastSibling();
+            _dragRestScale = _rect.localScale;
+            _rect.localScale = _dragRestScale * HandDragScale;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                 eventData.pressEventCamera, out _dragOffset);
             _dragOffset = (Vector2)transform.localPosition - _dragOffset;
@@ -395,6 +404,23 @@ namespace DragonBoxAlgebra.UI
                 {
                     _didDrag = true;
                     _rect.localPosition = handLocalPoint + _dragOffset;
+
+                    CardWidget magneticCard = FindMagneticHandTarget(eventData);
+                    BalanceHoleWidget magneticHole = magneticCard == null ? FindMagneticBalanceHole(eventData) : null;
+                    if (magneticCard != null)
+                    {
+                        _magneticSnapTarget = magneticCard;
+                        SnapOnto(magneticCard);
+                    }
+                    else if (magneticHole != null)
+                    {
+                        _magneticSnapTarget = null;
+                        SnapOnto(magneticHole.transform as RectTransform);
+                    }
+                    else
+                    {
+                        _magneticSnapTarget = null;
+                    }
                 }
 
                 return;
@@ -445,7 +471,15 @@ namespace DragonBoxAlgebra.UI
 
                     if (ExceededFlipDragThreshold(eventData))
                     {
-                        TryPlayHandDrop(eventData);
+                        if (_magneticSnapTarget != null)
+                        {
+                            SnapOnto(_magneticSnapTarget);
+                            TryPlayHandOnBoardTarget(_magneticSnapTarget);
+                        }
+                        else
+                        {
+                            TryPlayHandDrop(eventData);
+                        }
                     }
                     else if (CanFlipHand())
                     {
@@ -472,6 +506,11 @@ namespace DragonBoxAlgebra.UI
 
                 transform.SetParent(_originalParent, false);
                 transform.SetSiblingIndex(_originalSiblingIndex);
+                if (_rect != null)
+                {
+                    _rect.localScale = _dragRestScale;
+                }
+
                 RestoreDragRaycasts();
                 return;
             }
@@ -506,7 +545,7 @@ namespace DragonBoxAlgebra.UI
             {
                 string holeSide = _controller.PendingBalance.HoleSide;
 
-                BalanceHoleWidget balanceHole = FindBalanceHole(eventData);
+                BalanceHoleWidget balanceHole = FindMagneticBalanceHole(eventData) ?? FindBalanceHole(eventData);
                 if (balanceHole != null && balanceHole.SideName == holeSide)
                 {
                     if (_controller.TryPlayFromHand(Index, holeSide))
@@ -529,7 +568,7 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            CardWidget targetCard = FindHandBoardTarget(eventData);
+            CardWidget targetCard = FindMagneticHandTarget(eventData) ?? FindHandBoardTarget(eventData);
             if (targetCard != null)
             {
                 TryPlayHandOnBoardTarget(targetCard);
@@ -643,13 +682,15 @@ namespace DragonBoxAlgebra.UI
 
         private void SnapOnto(CardWidget target)
         {
-            if (_rect == null || _dragRoot == null)
+            if (target != null)
             {
-                return;
+                SnapOnto(target.transform as RectTransform);
             }
+        }
 
-            var targetRect = target.transform as RectTransform;
-            if (targetRect == null)
+        private void SnapOnto(RectTransform targetRect)
+        {
+            if (_rect == null || _dragRoot == null || targetRect == null)
             {
                 return;
             }
@@ -660,6 +701,85 @@ namespace DragonBoxAlgebra.UI
             {
                 _rect.localPosition = local;
             }
+        }
+
+        private CardWidget FindMagneticHandTarget(PointerEventData eventData)
+        {
+            if (eventData == null || _controller == null)
+            {
+                return null;
+            }
+
+            CardWidget best = null;
+            float bestDistance = HandSnapRadiusPixels;
+            Vector2 pointer = eventData.position;
+            Camera cam = eventData.pressEventCamera;
+
+            CardWidget[] widgets = FindObjectsOfType<CardWidget>();
+            foreach (CardWidget widget in widgets)
+            {
+                if (widget == null || widget == this || widget.SideName == "Hand")
+                {
+                    continue;
+                }
+
+                if (!_controller.CanPlayHandOntoBoardCard(Index, widget.SideName, widget.Index))
+                {
+                    continue;
+                }
+
+                float distance = ScreenDistanceTo(widget.transform as RectTransform, pointer, cam);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = widget;
+                }
+            }
+
+            return best;
+        }
+
+        private BalanceHoleWidget FindMagneticBalanceHole(PointerEventData eventData)
+        {
+            if (eventData == null || _controller == null || !_controller.HasPendingBalance)
+            {
+                return null;
+            }
+
+            string holeSide = _controller.PendingBalance.HoleSide;
+            BalanceHoleWidget best = null;
+            float bestDistance = HandSnapRadiusPixels;
+            Vector2 pointer = eventData.position;
+            Camera cam = eventData.pressEventCamera;
+
+            foreach (BalanceHoleWidget hole in FindObjectsOfType<BalanceHoleWidget>())
+            {
+                if (hole == null || hole.SideName != holeSide)
+                {
+                    continue;
+                }
+
+                float distance = ScreenDistanceTo(hole.transform as RectTransform, pointer, cam);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = hole;
+                }
+            }
+
+            return best;
+        }
+
+        private static float ScreenDistanceTo(RectTransform rect, Vector2 screenPoint, Camera cam)
+        {
+            if (rect == null)
+            {
+                return float.MaxValue;
+            }
+
+            Vector3 worldCenter = rect.TransformPoint(rect.rect.center);
+            Vector2 screenCenter = RectTransformUtility.WorldToScreenPoint(cam, worldCenter);
+            return Vector2.Distance(screenPoint, screenCenter);
         }
 
         private BalanceHoleWidget FindBalanceHole(PointerEventData eventData)
@@ -802,6 +922,8 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
+            SnapOnto(target);
+
             if (_controller.UsesOppositeHandPlay)
             {
                 if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index))

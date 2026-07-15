@@ -44,6 +44,11 @@ namespace DragonBoxAlgebra.UI
             Build(tileWidth, tileHeight);
             _symbolGroup.alpha = 1f;
             _symbolRect.localScale = Vector3.one;
+            if (_symbolImage != null)
+            {
+                _symbolImage.color = Color.white;
+            }
+
             StartSymbolAnimation();
         }
 
