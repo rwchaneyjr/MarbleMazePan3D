@@ -1,22 +1,41 @@
-# working128variable-images--x / working128-correct-images-1412
+# Working hand + scene drag
 
-This branch combines:
+## Correct hand images (with all CreatureSprites PNGs)
 
-1. **Correct hand tile count** — dual hand like Ch5/Ch6: one reusable dark
-   variable + one dark sea on mixed Ch7 levels (not 3 copies of the same image).
+Use either of these (same tip / same sprites):
 
-2. **Dragging mechanism from the working128 opposite-snap work**:
-   - DraggableTile + TileSnapTarget magnetic snap onto opposites
-   - Hand or board tile → opposite → merge + swirl
-   - Left/right sides independent (swirls/? on one side do not lock the other)
-   - Drag freeze fix (no ghost tile blocking later drags)
-   - Cards stay active/visible
+- `cursor/working128variable-images--x`
+- `cursor/working128-correct-images-1412`
 
-Pull:
+Tip: `e5452db` — flip-working hand PNG layout + dual-hand Ch7 count.
+Sprites live in `Assets/DragonBoxAlgebra/Resources/CreatureSprites/` (light/dark sea, letters, X, swirl).
+
+Also correct sprites (hand layout baseline):  
+`cursor/flip-working-tiles-correct-click-sensitivity-3fe3` (`fa8b097`) — hand drag good, scene drag weaker.
+
+## This combined branch
+
+`cursor/working-hand-and-scene-drag-1412`
+
+Built from `working128variable-images--x` (scene drag + correct hand images) plus a safer board hover-merge when magnetic snap misses.
+
+- Hand drag onto opposite → swirl
+- Scene/board drag onto opposite → swirl
+- No reparent-under-target ghost freeze
+- Left/right independent while swirls spin
+- Hand images stay on flip-working / working128 correct layout (no BuildHandFromBoardCancels rewrite)
+
+## Pull
 
 ```bash
 cd /c/Users/rober/SymbolAlgebra
+git merge --abort 2>/dev/null
 git fetch origin
-git checkout cursor/working128variable-images--x
-git pull origin cursor/working128variable-images--x
+git checkout cursor/working-hand-and-scene-drag-1412
+git reset --hard origin/cursor/working-hand-and-scene-drag-1412
 ```
+
+Same content aliases (kept in sync when updated):
+
+- `cursor/hand-images-baseline-1412`
+- `cursor/saved-working-hand-and-scene-drag-1412`

@@ -529,6 +529,19 @@ namespace DragonBoxAlgebra.UI
 
             if (!TryToSnap(eventData))
             {
+                // Fallback when magnetic snap misses: still merge if dropped on a free opposite.
+                CardWidget hover = FindBoardMergeTarget(eventData);
+                if (hover != null && HandleDropOnCard(hover))
+                {
+                    _dropHandled = true;
+                    if (this != null && gameObject != null && transform.parent == _dragRoot)
+                    {
+                        Destroy(gameObject);
+                    }
+
+                    return;
+                }
+
                 ReturnToStart();
                 return;
             }
@@ -915,10 +928,15 @@ namespace DragonBoxAlgebra.UI
 
         private CardWidget FindBoardMergeTarget(PointerEventData eventData)
         {
-            CardWidget fallback = null;
+            // Only accept a hovered free tile that can actually combine — never a dead fallback.
             foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
             {
                 if (widget == this || widget.SideName != SideName)
+                {
+                    continue;
+                }
+
+                if (_controller != null && _controller.IsCardPendingCancelOnSide(widget.Card.Id, widget.SideName))
                 {
                     continue;
                 }
@@ -927,14 +945,9 @@ namespace DragonBoxAlgebra.UI
                 {
                     return widget;
                 }
-
-                if (fallback == null && widget.Card.Kind != CardKind.Box)
-                {
-                    fallback = widget;
-                }
             }
 
-            return fallback;
+            return null;
         }
 
         private IEnumerable<CardWidget> GetHoveredCardWidgets(PointerEventData eventData)
