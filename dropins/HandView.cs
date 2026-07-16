@@ -47,9 +47,16 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Always refresh. Skipping while a hand tile is on DragRoot left stale/duplicate
-            // tiles and broke the opposite-snap drag flow.
+            // Drag functionality only (from working-except-for-scene-drag-not-yet):
+            // do not rebuild the hand while a hand tile is mid-drag. HandChanged fires
+            // during opposite-play before OnEndDrag finishes; rebuilding would destroy
+            // the dragged tile. Does NOT change which cards are in the hand or their order.
             bool preserveDragRoot = HasHandWidgetOnDragRoot() && _controller.KeepHandSlotVisibleDuringDrag();
+            if (HasHandWidgetOnDragRoot() && !preserveDragRoot)
+            {
+                return;
+            }
+
             Refresh(preserveDragRoot);
         }
 
