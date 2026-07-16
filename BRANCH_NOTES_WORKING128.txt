@@ -1,22 +1,29 @@
-# working128variable-images--x / working128-correct-images-1412
+# Combined: correct hand images + hand drag + scene drag
 
-This branch combines:
+Branch: `cursor/working--scene-drag-1412`
+Alias:  `cursor/working128-correct-images-1412` (same tip)
 
-1. **Correct hand tile count** — dual hand like Ch5/Ch6: one reusable dark
-   variable + one dark sea on mixed Ch7 levels (not 3 copies of the same image).
+## Sources
 
-2. **Dragging mechanism from the working128 opposite-snap work**:
-   - DraggableTile + TileSnapTarget magnetic snap onto opposites
-   - Hand or board tile → opposite → merge + swirl
-   - Left/right sides independent (swirls/? on one side do not lock the other)
-   - Drag freeze fix (no ghost tile blocking later drags)
-   - Cards stay active/visible
+| Branch | Kept from it |
+|--------|----------------|
+| `cursor/working128variable-images--x` | Correct hand tile count + PNG images, flippable hand tiles, dual-hand Ch7, CreatureSprites |
+| `cursor/working-except-for-scene-drag-not-yet` | Hand→scene drag survival (`HandView` does not rebuild mid-drag; EventSystem drag threshold 150) |
+| Scene opposite-snap (from working128--x scene path; remote had no `working--scene-drag-1412` tip yet) | `DraggableTile` never reparents under target; board end-drag merge + hover fallback |
 
-Pull:
+## Pull
 
 ```bash
 cd /c/Users/rober/SymbolAlgebra
+git merge --abort 2>/dev/null
 git fetch origin
-git checkout cursor/working128variable-images--x
-git pull origin cursor/working128variable-images--x
+git checkout cursor/working--scene-drag-1412
+git reset --hard origin/cursor/working--scene-drag-1412
+```
+
+Or:
+
+```bash
+git checkout cursor/working128-correct-images-1412
+git reset --hard origin/cursor/working128-correct-images-1412
 ```
