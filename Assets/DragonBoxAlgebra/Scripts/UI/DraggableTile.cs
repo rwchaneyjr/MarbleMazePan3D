@@ -12,7 +12,7 @@ namespace DragonBoxAlgebra.UI
     {
         [Header("Snapping")]
         [Tooltip("Max screen-pixel distance to snap onto a correct opposite.")]
-        public float snapDistance = 180f;
+        public float snapDistance = 220f;
 
         private CardWidget _owner;
         private Vector3 _startingPosition;

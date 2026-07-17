@@ -17,7 +17,7 @@ namespace DragonBoxAlgebra.UI
         public AlgebraGameController Controller => _controller;
 
         /// <summary>Screen-pixel snap radius — forwarded to DraggableTile.snapDistance.</summary>
-        public float snapDistance = 180f;
+        public float snapDistance = 220f;
 
         private AlgebraGameController _controller;
         private RectTransform _rect;
@@ -42,8 +42,8 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        /// <summary>Pixels before a press counts as drag instead of click — higher = flip is easier.</summary>
-        private const float FlipDragThresholdPixels = 150f;
+        /// <summary>Pixels before a press counts as drag instead of flip — lower = drag is easier.</summary>
+        private const float FlipDragThresholdPixels = 28f;
         private const float DragScale = 1.08f;
 
         private Vector3 _originalScale;
