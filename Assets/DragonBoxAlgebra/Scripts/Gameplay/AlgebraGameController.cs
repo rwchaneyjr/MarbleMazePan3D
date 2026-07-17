@@ -78,9 +78,7 @@ namespace DragonBoxAlgebra.Gameplay
             CurrentLevel.Chapter >= 5;
 
         public bool ShouldKeepHandCardInPanel(int handIndex) =>
-            !_levelComplete
-            && handIndex >= 0
-            && handIndex < _hand.Count;
+            handIndex >= 0 && handIndex < _hand.Count;
 
         public bool IsHandBalanceComplete(int handIndex) =>
             handIndex >= 0 && _spentHandIndices.Contains(handIndex);
@@ -112,12 +110,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            // Spent blocks replay only — never remove/hide the slot.
             if (_spentHandIndices.Contains(handIndex))
             {
                 return false;
             }
 
-            // Dual-hand / multi-hand: never lock other cards while one is mid-balance.
             return true;
         }
 
@@ -141,13 +139,8 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool ShouldDisplayHandCard(int handIndex)
         {
-            // Keep every hand slot visible and present until the level ends.
-            if (handIndex < 0 || handIndex >= _hand.Count)
-            {
-                return false;
-            }
-
-            return !_levelComplete;
+            // Fixed hand count: never add/remove slots for spent or win state.
+            return handIndex >= 0 && handIndex < _hand.Count;
         }
 
         private int CurrentPlayableHandSlotIndex()
@@ -389,7 +382,8 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool CanFlipHandCard(int handIndex)
         {
-            if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
+            // Flippable before, during, and after play — including spent tiles and after win.
+            if (handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;
             }
@@ -571,17 +565,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesDualHandPanelDisplay)
+            if (_pendingBalance != null && handIndex != _pendingBalance.HandIndex)
             {
-                if (_pendingBalance != null && handIndex != _pendingBalance.HandIndex)
-                {
-                    MessageChanged?.Invoke("Fill the ? hole first — finish the tile you started.");
-                    return false;
-                }
-            }
-            else if (UsesPlayableHandDisplay && handIndex != CurrentPlayableHandSlotIndex())
-            {
-                MessageChanged?.Invoke("Play the highlighted hand card first.");
+                MessageChanged?.Invoke("Fill the ? hole first — finish the tile you started.");
                 return false;
             }
 

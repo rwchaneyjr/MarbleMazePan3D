@@ -522,17 +522,10 @@ namespace DragonBoxAlgebra.UI
 
                 if (_handPlayHandled)
                 {
-                    if (_controller.ShouldKeepHandCardInPanel(Index))
-                    {
-                        transform.SetParent(_originalParent, false);
-                        transform.SetSiblingIndex(_originalSiblingIndex);
-                        SetHandCard(_controller.GetHandDisplayCard(Index));
-                    }
-                    else
-                    {
-                        DestroyImmediate(gameObject);
-                    }
-
+                    // Fixed hand count: always return the slot to the tray — never destroy it.
+                    transform.SetParent(_originalParent, false);
+                    transform.SetSiblingIndex(_originalSiblingIndex);
+                    SetHandCard(_controller.GetHandDisplayCard(Index));
                     _controller.RefreshHandPresentation();
                     return;
                 }

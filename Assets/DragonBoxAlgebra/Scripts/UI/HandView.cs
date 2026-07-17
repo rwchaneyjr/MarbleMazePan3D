@@ -36,17 +36,12 @@ namespace DragonBoxAlgebra.UI
 
         private void OnWinSequenceStarted(int stars, int moves)
         {
-            ClearHandOnly();
+            // Keep the fixed hand visible and flippable after the win — do not remove cards.
+            Refresh(preserveDragRoot: false);
         }
 
         private void RefreshHandInPlace()
         {
-            if (_controller.IsLevelComplete)
-            {
-                ClearHandOnly();
-                return;
-            }
-
             bool preserveDragRoot = HasHandWidgetOnDragRoot() && _controller.KeepHandSlotVisibleDuringDrag();
             if (HasHandWidgetOnDragRoot() && !preserveDragRoot)
             {
@@ -92,13 +87,8 @@ namespace DragonBoxAlgebra.UI
 
         private void Refresh(bool preserveDragRoot = false)
         {
-            if (_controller.IsLevelComplete)
-            {
-                ClearHandOnly();
-                return;
-            }
-
-            if (_controller.UsesDualHandPanelDisplay)
+            // Always keep the same hand card count — never clear the tray on win/spent.
+            if (_controller.UsesDualHandPanelDisplay || _controller.UsesPlayableHandDisplay)
             {
                 SyncDualHandPanel(preserveDragRoot);
                 return;
@@ -181,6 +171,20 @@ namespace DragonBoxAlgebra.UI
                 {
                     CardWidget created = CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
                     created.SetHandCard(card);
+                }
+            }
+
+            // Drop only stale widgets from a previous level's larger hand — never mid-play removals.
+            foreach (KeyValuePair<int, CardWidget> entry in existing)
+            {
+                if (entry.Key >= 0 && entry.Key < _controller.Hand.Count)
+                {
+                    continue;
+                }
+
+                if (entry.Value != null)
+                {
+                    Object.DestroyImmediate(entry.Value.gameObject);
                 }
             }
         }
