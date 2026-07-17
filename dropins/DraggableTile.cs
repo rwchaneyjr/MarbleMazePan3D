@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace DragonBoxAlgebra.UI
 {
@@ -11,7 +12,7 @@ namespace DragonBoxAlgebra.UI
     {
         [Header("Snapping")]
         [Tooltip("Max screen-pixel distance to snap onto a correct opposite.")]
-        public float snapDistance = 180f;
+        public float snapDistance = 220f;
 
         private CardWidget _owner;
         private Vector3 _startingPosition;
@@ -95,8 +96,11 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            // Only move in place — never reparent under the target.
+            // Nesting under another card breaks layout and can leave a ghost tile
+            // covering the board so later drags never receive pointer events.
+            // It also destroys hand→opposite swirls when BoardChanged rebuilds the target.
             transform.position = target.GetSnapPosition();
-            transform.SetParent(target.transform, true);
             _snapped = true;
 
             if (target.Widget != null)
@@ -113,6 +117,17 @@ namespace DragonBoxAlgebra.UI
             {
                 transform.SetParent(_startingParent, false);
                 transform.SetSiblingIndex(_startingSiblingIndex);
+                if (transform is RectTransform rect)
+                {
+                    rect.anchoredPosition = Vector2.zero;
+                    rect.localRotation = Quaternion.identity;
+                    rect.localScale = Vector3.one;
+                }
+
+                if (_startingParent is RectTransform parentRect)
+                {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+                }
             }
             else
             {

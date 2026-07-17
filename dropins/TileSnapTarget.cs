@@ -43,7 +43,20 @@ namespace DragonBoxAlgebra.UI
                     && controller.CanPlayHandOntoBoardCard(tile.Index, Widget.SideName, Widget.Index);
             }
 
-            return tile.SideName == Widget.SideName;
+            if (tile.SideName != Widget.SideName)
+            {
+                return false;
+            }
+
+            AlgebraGameController boardController = tile.Controller ?? Widget.Controller;
+            if (boardController != null
+                && (boardController.IsCardPendingCancelOnSide(tile.Card.Id, tile.SideName)
+                    || boardController.IsCardPendingCancelOnSide(Widget.Card.Id, Widget.SideName)))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         public bool IsCorrectTile(GameObject tileObject)
