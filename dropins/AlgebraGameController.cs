@@ -82,7 +82,24 @@ namespace DragonBoxAlgebra.Gameplay
             UsesPlayableHandDisplay
             && handIndex >= 0
             && handIndex < _hand.Count
-            && (!UsesDualHandPanelDisplay || !_spentHandIndices.Contains(handIndex));
+            && (
+                // Always keep the tile that still needs to fill its ? hole.
+                HasPendingBalanceForHandIndex(handIndex)
+                || !UsesDualHandPanelDisplay
+                || !_spentHandIndices.Contains(handIndex));
+
+        private bool HasPendingBalanceForHandIndex(int handIndex)
+        {
+            foreach (BalancePending pending in _pendingBalances)
+            {
+                if (pending != null && pending.HandIndex == handIndex)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         public bool IsHandBalanceComplete(int handIndex) =>
             handIndex >= 0 && _spentHandIndices.Contains(handIndex);

@@ -487,8 +487,11 @@ namespace DragonBoxAlgebra.UI
                         _canvasGroup.blocksRaycasts = false;
                     }
 
-                    // DraggableTile pattern: snap to correct opposite, else return / balance.
-                    if (!TryToSnap(eventData))
+                    // Prefer finishing an open ? hole before magnetic opposite-snap.
+                    // Snap-to-opposite was stealing the second hand→hole drag.
+                    TryFillPendingHoleFromPointer(eventData);
+
+                    if (!_handPlayHandled && !TryToSnap(eventData))
                     {
                         TryPlayHandDrop(eventData);
                     }
@@ -569,6 +572,11 @@ namespace DragonBoxAlgebra.UI
 
             if (SideName == "Hand")
             {
+                if (TryFillPendingHoleOnSide(target.Widget.SideName))
+                {
+                    return true;
+                }
+
                 TryPlayHandOnBoardTarget(target.Widget);
             }
             else if (HandleDropOnCard(target.Widget))
@@ -660,7 +668,26 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandDrop(PointerEventData eventData)
         {
-            // 1) Opposite under the pointer → merge + swirl in that slot.
+            // Prefer filling this tile's open ? hole before opposite-merge or side dumps.
+            // Otherwise a creature already on the hole side steals the drop and the
+            // second drag never completes the balance.
+            if (_controller.HasPendingBalance)
+            {
+                BalanceHoleWidget balanceHole = FindBalanceHole(eventData);
+                if (balanceHole != null && TryFillPendingHoleOnSide(balanceHole.SideName))
+                {
+                    return;
+                }
+
+                BoardDropZone pendingZone = FindBoardZone(eventData);
+                string pendingSide = pendingZone != null ? pendingZone.SideName : SideUnderPointer(eventData);
+                if (pendingSide != null && TryFillPendingHoleOnSide(pendingSide))
+                {
+                    return;
+                }
+            }
+
+            // Opposite under the pointer → merge + swirl in that slot.
             CardWidget opposite = FindOppositeBoardCardUnderPointer(eventData);
             if (opposite == null && _snapHighlight != null
                 && CombineRules.GetCombineAction(Card, _snapHighlight.Card) == CombineActionType.OppositeCancel)
@@ -670,39 +697,24 @@ namespace DragonBoxAlgebra.UI
 
             if (opposite != null)
             {
+                if (TryFillPendingHoleOnSide(opposite.SideName))
+                {
+                    return;
+                }
+
                 TryPlayHandOnBoardTarget(opposite);
                 return;
             }
 
-            if (_controller.HasPendingBalance)
+            // Empty board panel only → start balance. Never "side dump" when over a non-opposite tile.
+            CardWidget boardTarget = FindHandBoardTarget(eventData);
+            if (boardTarget != null)
             {
-                BalanceHoleWidget balanceHole = FindBalanceHole(eventData);
-                if (balanceHole != null
-                    && _controller.CountPendingBalanceHolesOnSide(balanceHole.SideName) > 0
-                    && _controller.TryPlayFromHand(Index, balanceHole.SideName))
+                if (TryFillPendingHoleOnSide(boardTarget.SideName))
                 {
-                    MarkHandPlayHandled();
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                     return;
                 }
 
-                BoardDropZone boardZone = FindBoardZone(eventData);
-                string pendingSide = boardZone != null ? boardZone.SideName : SideUnderPointer(eventData);
-                if (pendingSide != null
-                    && _controller.CountPendingBalanceHolesOnSide(pendingSide) > 0
-                    && _controller.TryPlayFromHand(Index, pendingSide))
-                {
-                    MarkHandPlayHandled();
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                    return;
-                }
-
-                // Hole not filled — still allow playing the other side / other hand below.
-            }
-
-            // 2) Empty board panel only → start balance. Never "side dump" when over a non-opposite tile.
-            if (FindHandBoardTarget(eventData) != null)
-            {
                 return;
             }
 
@@ -711,6 +723,56 @@ namespace DragonBoxAlgebra.UI
             if (dropSide != null)
             {
                 TryPlayHandOnSide(dropSide);
+            }
+        }
+
+        /// <summary>
+        /// Completes an open ? hole on <paramref name="sideName"/> when this hand tile matches it.
+        /// </summary>
+        private bool TryFillPendingHoleOnSide(string sideName)
+        {
+            if (_controller == null || string.IsNullOrEmpty(sideName) || !_controller.HasPendingBalance)
+            {
+                return false;
+            }
+
+            BoardCard template = Index >= 0 && Index < _controller.Hand.Count
+                ? _controller.Hand[Index]
+                : Card;
+
+            if (_controller.FindPendingBalanceForHole(sideName, template, Index) == null)
+            {
+                return false;
+            }
+
+            if (!_controller.TryPlayFromHand(Index, sideName))
+            {
+                return false;
+            }
+
+            MarkHandPlayHandled();
+            DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+            return true;
+        }
+
+        private void TryFillPendingHoleFromPointer(PointerEventData eventData)
+        {
+            if (_controller == null || !_controller.HasPendingBalance)
+            {
+                return;
+            }
+
+            BalanceHoleWidget balanceHole = FindBalanceHole(eventData);
+            if (balanceHole != null && TryFillPendingHoleOnSide(balanceHole.SideName))
+            {
+                return;
+            }
+
+            BoardDropZone zone = FindBoardZone(eventData);
+            string side = zone != null ? zone.SideName : SideUnderPointer(eventData);
+            if (side != null)
+            {
+                TryFillPendingHoleOnSide(side);
             }
         }
 
@@ -798,6 +860,12 @@ namespace DragonBoxAlgebra.UI
             {
                 if (target.SideName != "Hand")
                 {
+                    if (_controller.HasPendingBalance
+                        && TryFillPendingHoleOnSide(target.SideName))
+                    {
+                        return false;
+                    }
+
                     // Opposite merge always allowed on either side, even with swirls/? holes elsewhere.
                     if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
                     {
@@ -995,6 +1063,12 @@ namespace DragonBoxAlgebra.UI
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
             if (target == null)
+            {
+                return;
+            }
+
+            // Open ? hole on this side wins over opposite-merge for the second hand drag.
+            if (TryFillPendingHoleOnSide(target.SideName))
             {
                 return;
             }
