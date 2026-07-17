@@ -75,7 +75,7 @@ namespace DragonBoxAlgebra.Gameplay
             _hand.Count >= 2 && CurrentLevel.Chapter >= 5;
 
         private bool UsesReusableVariableHandCards =>
-            UsesDualHandPanelDisplay && CurrentLevel.Chapter >= 5;
+            CurrentLevel.Chapter >= 5;
 
         public bool ShouldKeepHandCardInPanel(int handIndex) =>
             UsesPlayableHandDisplay
@@ -498,12 +498,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return true;
             }
 
-            if (_pendingBalance != null)
-            {
-                MessageChanged?.Invoke("Fill the balance hole first.");
-                return false;
-            }
-
+            // Free opposite merges already handled above. Other combine types stay available
+            // even while a ? hole or swirl exists on the other side.
             PushUndo();
             if (!Board.TryCombineOnSide(side, indexA, indexB, out CombineActionType resolved))
             {
@@ -765,6 +761,12 @@ namespace DragonBoxAlgebra.Gameplay
                     IndexB = -1
                 });
                 MessageChanged?.Invoke("Dice canceled.");
+            }
+
+            if (UsesReusableVariableHandCards)
+            {
+                // Unlock sea/variable hand tiles while matching board tiles remain.
+                RefreshHandSpentStateForReusableCards();
             }
 
             HandChanged?.Invoke();
@@ -1296,12 +1298,7 @@ namespace DragonBoxAlgebra.Gameplay
         {
             for (int i = 0; i < _hand.Count; i++)
             {
-                if (_hand[i].VariableLetter == '\0')
-                {
-                    continue;
-                }
-
-                if (HandLetterStillNeededOnBoard(i))
+                if (HandTileStillNeededOnBoard(i))
                 {
                     _spentHandIndices.Remove(i);
                 }
@@ -1312,7 +1309,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        private bool HandLetterStillNeededOnBoard(int handIndex)
+        private bool HandTileStillNeededOnBoard(int handIndex)
         {
             if (handIndex < 0 || handIndex >= _hand.Count)
             {
@@ -1320,12 +1317,38 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             char letter = _hand[handIndex].VariableLetter;
-            if (letter == '\0')
+            if (letter != '\0')
             {
-                return false;
+                return CountPositiveVariablesOnBoard(letter) > 0;
             }
 
-            return CountPositiveVariablesOnBoard(letter) > 0;
+            // Sea hand tile stays unlocked while any light sea remains on the board.
+            return CountLightSeaCreaturesOnBoard() > 0;
+        }
+
+        private bool HandLetterStillNeededOnBoard(int handIndex) =>
+            HandTileStillNeededOnBoard(handIndex);
+
+        private int CountLightSeaCreaturesOnBoard()
+        {
+            int count = 0;
+            foreach (BoardCard card in Board.Left.Cards)
+            {
+                if (card.Kind == CardKind.DayCreature && card.VariableLetter == '\0')
+                {
+                    count++;
+                }
+            }
+
+            foreach (BoardCard card in Board.Right.Cards)
+            {
+                if (card.Kind == CardKind.DayCreature && card.VariableLetter == '\0')
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private int CountPositiveVariablesOnBoard(char letter)
