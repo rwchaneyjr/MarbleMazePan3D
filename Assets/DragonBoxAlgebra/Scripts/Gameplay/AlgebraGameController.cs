@@ -230,7 +230,7 @@ namespace DragonBoxAlgebra.Gameplay
                 if (pending != null
                     && pending.HoleSide == holeSide
                     && pending.HandIndex == handIndex
-                    && pending.Matches(template))
+                    && pending.MatchesFamily(template))
                 {
                     return pending;
                 }
@@ -238,7 +238,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             foreach (BalancePending pending in _pendingBalances)
             {
-                if (pending != null && pending.HoleSide == holeSide && pending.Matches(template))
+                if (pending != null && pending.HoleSide == holeSide && pending.MatchesFamily(template))
                 {
                     return pending;
                 }
@@ -486,7 +486,7 @@ namespace DragonBoxAlgebra.Gameplay
             _hand[handIndex] = CardFlipRules.Flip(card);
             SyncHandTemplateForCard(_hand[handIndex]);
 
-            HandChanged?.Invoke();
+            // Do not rebuild the whole hand tray on flip — that fought the second side-drag.
             bool creatureOnly = _hand[handIndex].VariableLetter == '\0';
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
                 ? creatureOnly || !UsesVariablePositiveNegative
@@ -904,7 +904,9 @@ namespace DragonBoxAlgebra.Gameplay
                 insertIndex = balancedSide.Cards.Count;
             }
 
-            balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
+            // Always place the polarity that was started on the first side so the equation balances,
+            // even if the player flipped the hand tile in between.
+            balancedSide.Cards.Insert(insertIndex, pending.Card.CloneForPlacement());
             _pendingBalances.Remove(pending);
             if (UsesPlayableHandDisplay)
             {

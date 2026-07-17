@@ -715,6 +715,16 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
+                // Hole side may still complete via TryPlayFromHand even if the family pre-check missed.
+                if (_controller.HasPendingBalance
+                    && _controller.CountPendingBalanceHolesOnSide(boardTarget.SideName) > 0
+                    && _controller.TryPlayFromHand(Index, boardTarget.SideName))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    return;
+                }
+
                 return;
             }
 
