@@ -40,16 +40,22 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // 2) If the pointer is over ANY board tile, do nothing.
-            //    Falling through to TryPlayFromHand is what "pops the tile to the side".
-            if (FindAnyBoardCardUnderPointer(eventData, dragged) != null)
-            {
-                return;
-            }
-
             if (controller.UsesOppositeHandPlay)
             {
                 if (controller.TryPlayHandOntoOppositeOnSide(dragged.Index, SideName))
+                {
+                    dragged.MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+
+                return;
+            }
+
+            // 2) Balance chapters: allow starting/filling even when the side already has tiles
+            //    (129–139 addition boards are crowded — empty padding is easy to miss).
+            if (FindAnyBoardCardUnderPointer(eventData, dragged) != null)
+            {
+                if (controller.TryPlayFromHand(dragged.Index, SideName))
                 {
                     dragged.MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();

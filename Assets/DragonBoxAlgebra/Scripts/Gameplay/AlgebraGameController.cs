@@ -111,6 +111,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            // Still allow drag when this tile has an open ? to fill (never trap mid-balance).
+            if (HandIndexHasPendingBalance(handIndex))
+            {
+                return true;
+            }
+
             if (_spentHandIndices.Contains(handIndex))
             {
                 return false;
@@ -118,6 +124,19 @@ namespace DragonBoxAlgebra.Gameplay
 
             // Dual-hand / multi-hand: never lock other cards while one is mid-balance.
             return true;
+        }
+
+        public bool HandIndexHasPendingBalance(int handIndex)
+        {
+            foreach (BalancePending pending in _pendingBalances)
+            {
+                if (pending != null && pending.HandIndex == handIndex)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public BoardCard GetHandDisplayCard(int handIndex)
@@ -1288,6 +1307,14 @@ namespace DragonBoxAlgebra.Gameplay
         {
             for (int i = 0; i < _hand.Count; i++)
             {
+                // Number / sea tiles (no variable letter) are not reusable-gated — marking them
+                // spent when the board has no light sea was locking 129–139 number hand cards
+                // so they could flip but would not drag to the other side.
+                if (_hand[i].VariableLetter == '\0')
+                {
+                    continue;
+                }
+
                 if (HandTileStillNeededOnBoard(i))
                 {
                     _spentHandIndices.Remove(i);
@@ -1307,13 +1334,12 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             char letter = _hand[handIndex].VariableLetter;
-            if (letter != '\0')
+            if (letter == '\0')
             {
-                return CountPositiveVariablesOnBoard(letter) > 0;
+                return false;
             }
 
-            // Sea hand tile stays unlocked while any light sea remains on the board.
-            return CountLightSeaCreaturesOnBoard() > 0;
+            return CountPositiveVariablesOnBoard(letter) > 0;
         }
 
         private bool HandLetterStillNeededOnBoard(int handIndex) =>

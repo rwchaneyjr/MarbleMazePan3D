@@ -767,7 +767,8 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Empty board panel only → start balance. Never "side dump" when over a non-opposite tile.
+            // Over a board tile: fill ?, or start another balance on that side (addition levels
+            // already have tiles — requiring empty padding was locking the other side).
             CardWidget boardTarget = FindHandBoardTarget(eventData);
             if (boardTarget != null)
             {
@@ -776,7 +777,6 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
-                // Hole side may still complete via TryPlayFromHand even if the family pre-check missed.
                 if (_controller.HasPendingBalance
                     && _controller.CountPendingBalanceHolesOnSide(boardTarget.SideName) > 0
                     && _controller.TryPlayFromHand(Index, boardTarget.SideName))
@@ -784,6 +784,14 @@ namespace DragonBoxAlgebra.UI
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                     return;
+                }
+
+                if (!_controller.UsesOppositeHandPlay
+                    && CombineRules.GetCombineAction(Card, boardTarget.Card) != CombineActionType.OppositeCancel
+                    && _controller.TryPlayFromHand(Index, boardTarget.SideName))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
 
                 return;
@@ -1101,7 +1109,18 @@ namespace DragonBoxAlgebra.UI
 
             if (SideName == "Hand")
             {
-                return Card.IsPlayableFromHand && _controller.IsHandSlotPlayable(Index);
+                if (!Card.IsPlayableFromHand)
+                {
+                    return false;
+                }
+
+                // Open ? for this tile must stay draggable even if spent-state got confused.
+                if (_controller.HandIndexHasPendingBalance(Index))
+                {
+                    return true;
+                }
+
+                return _controller.IsHandSlotPlayable(Index);
             }
 
             return Card.IsDraggableFromBoard;
