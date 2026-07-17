@@ -519,19 +519,28 @@ namespace DragonBoxAlgebra.UI
 
             ClearSnapHighlight();
             RestoreDragVisuals();
+            RestoreDragRaycasts();
+
             if (!TryToSnap(eventData))
             {
                 ReturnToStart();
+                return;
             }
-            else if (_handPlayHandled || _dropHandled)
+
+            if (_dropHandled)
             {
-                RestoreDragRaycasts();
-                Destroy(gameObject);
+                // Board refresh owns cleanup when combine succeeded; only destroy if still on DragRoot.
+                if (this != null && gameObject != null && transform.parent == _dragRoot)
+                {
+                    Destroy(gameObject);
+                }
+
+                return;
             }
-            else
-            {
-                ReturnToStart();
-            }
+
+            // Snapped visually but merge did not apply — put the tile back.
+            EnsureDraggable().ClearSnappedFlag();
+            ReturnToStart();
         }
 
         /// <summary>
@@ -562,7 +571,8 @@ namespace DragonBoxAlgebra.UI
                 _dropHandled = true;
             }
 
-            return _handPlayHandled || _dropHandled || drag.IsSnapped;
+            // Only treat as handled when a real merge/play happened — not merely a visual snap.
+            return _handPlayHandled || _dropHandled;
         }
 
         private void ReturnToStart()
@@ -574,6 +584,18 @@ namespace DragonBoxAlgebra.UI
             {
                 transform.SetParent(_originalParent, false);
                 transform.SetSiblingIndex(_originalSiblingIndex);
+            }
+
+            if (_rect != null)
+            {
+                _rect.anchoredPosition = Vector2.zero;
+                _rect.localRotation = Quaternion.identity;
+                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+            }
+
+            if (_originalParent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
             }
 
             RestoreDragVisuals();
@@ -900,10 +922,15 @@ namespace DragonBoxAlgebra.UI
 
         private CardWidget FindBoardMergeTarget(PointerEventData eventData)
         {
-            CardWidget fallback = null;
+            // Only accept a hovered free tile that can actually combine — never a dead fallback.
             foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
             {
                 if (widget == this || widget.SideName != SideName)
+                {
+                    continue;
+                }
+
+                if (_controller != null && _controller.IsCardPendingCancelOnSide(widget.Card.Id, widget.SideName))
                 {
                     continue;
                 }
@@ -912,14 +939,9 @@ namespace DragonBoxAlgebra.UI
                 {
                     return widget;
                 }
-
-                if (fallback == null && widget.Card.Kind != CardKind.Box)
-                {
-                    fallback = widget;
-                }
             }
 
-            return fallback;
+            return null;
         }
 
         private IEnumerable<CardWidget> GetHoveredCardWidgets(PointerEventData eventData)
