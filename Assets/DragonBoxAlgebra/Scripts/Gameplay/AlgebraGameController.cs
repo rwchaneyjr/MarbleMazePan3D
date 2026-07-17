@@ -78,9 +78,7 @@ namespace DragonBoxAlgebra.Gameplay
             CurrentLevel.Chapter >= 5;
 
         public bool ShouldKeepHandCardInPanel(int handIndex) =>
-            !_levelComplete
-            && handIndex >= 0
-            && handIndex < _hand.Count;
+            handIndex >= 0 && handIndex < _hand.Count;
 
         public bool IsHandBalanceComplete(int handIndex) =>
             handIndex >= 0 && _spentHandIndices.Contains(handIndex);
@@ -141,13 +139,8 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool ShouldDisplayHandCard(int handIndex)
         {
-            // Keep every hand slot visible and present until the level ends.
-            if (handIndex < 0 || handIndex >= _hand.Count)
-            {
-                return false;
-            }
-
-            return !_levelComplete;
+            // Fixed hand count: keep every slot visible before, during, and after win.
+            return handIndex >= 0 && handIndex < _hand.Count;
         }
 
         private int CurrentPlayableHandSlotIndex()
@@ -388,7 +381,8 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool CanFlipHandCard(int handIndex)
         {
-            if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
+            // Flippable before, during, and after play — including spent tiles and after win.
+            if (handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;
             }
@@ -410,7 +404,7 @@ namespace DragonBoxAlgebra.Gameplay
             _hand[handIndex] = CardFlipRules.Flip(card);
             SyncHandTemplateForCard(_hand[handIndex]);
 
-            HandChanged?.Invoke();
+            // Do not rebuild the hand tray on flip — widget shows the opposite image in place.
             bool creatureOnly = _hand[handIndex].VariableLetter == '\0';
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
                 ? creatureOnly || !UsesVariablePositiveNegative

@@ -36,17 +36,11 @@ namespace DragonBoxAlgebra.UI
 
         private void OnWinSequenceStarted(int stars, int moves)
         {
-            ClearHandOnly();
+            // Keep the fixed hand visible and flippable after the win — do not remove cards.
         }
 
         private void RefreshHandInPlace()
         {
-            if (_controller.IsLevelComplete)
-            {
-                ClearHandOnly();
-                return;
-            }
-
             bool preserveDragRoot = HasHandWidgetOnDragRoot() && _controller.KeepHandSlotVisibleDuringDrag();
             if (HasHandWidgetOnDragRoot() && !preserveDragRoot)
             {
@@ -92,12 +86,7 @@ namespace DragonBoxAlgebra.UI
 
         private void Refresh(bool preserveDragRoot = false)
         {
-            if (_controller.IsLevelComplete)
-            {
-                ClearHandOnly();
-                return;
-            }
-
+            // Always keep the same hand card count — never clear the tray on win/spent.
             if (_controller.UsesDualHandPanelDisplay)
             {
                 SyncDualHandPanel(preserveDragRoot);

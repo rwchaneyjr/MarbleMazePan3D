@@ -157,14 +157,14 @@ namespace DragonBoxAlgebra.UI
         {
             Sprite icon = CardVisuals.IconSprite(Card);
             bool isCreature = Card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box;
-            bool showHandSlotLabel = SideName == "Hand"
-                && _controller != null
-                && _controller.Hand.Count > 1
-                && Card.Kind is CardKind.DayCreature or CardKind.NightCreature;
-            bool usesFullIcon = CardVisuals.ShowsIconOnly(Card) && !showHandSlotLabel;
+            // Always full opposite-image PNGs in hand (never shrink to label mode).
+            bool isHand = SideName == "Hand";
+            bool usesCoverIcon = CardVisuals.ShowsIconOnly(Card) && !isHand;
 
             if (_creatureImage != null)
             {
+                // Clear first so Unity repaints light/dark (opposite side of the tile).
+                _creatureImage.sprite = null;
                 _creatureImage.sprite = icon;
                 _creatureImage.enabled = icon != null;
                 _creatureImage.color = Color.white;
@@ -172,27 +172,29 @@ namespace DragonBoxAlgebra.UI
                 var creatureRect = _creatureImage.rectTransform.parent as RectTransform;
                 if (creatureRect != null)
                 {
-                    if (usesFullIcon && isCreature)
+                    if (usesCoverIcon && isCreature)
                     {
                         creatureRect.offsetMin = new Vector2(3f, 3f);
                         creatureRect.offsetMax = new Vector2(-3f, -3f);
                     }
                     else
                     {
-                        creatureRect.offsetMin = new Vector2(8f, 28f);
-                        creatureRect.offsetMax = new Vector2(-8f, -8f);
+                        float pad = isHand ? 3f : 8f;
+                        float top = isHand ? 3f : 28f;
+                        creatureRect.offsetMin = new Vector2(pad, top);
+                        creatureRect.offsetMax = new Vector2(-pad, -pad);
                     }
                 }
 
                 if (icon != null && _creatureImage.rectTransform != null)
                 {
-                    if (usesFullIcon && isCreature && creatureRect != null)
+                    if (usesCoverIcon && isCreature && creatureRect != null)
                     {
                         ApplyCoverSpriteLayout(_creatureImage, icon, creatureRect);
                     }
                     else
                     {
-                        var inset = usesFullIcon ? new Vector2(6f, 6f) : new Vector2(8f, 28f);
+                        var inset = isHand ? new Vector2(3f, 3f) : new Vector2(8f, 28f);
                         StretchSpriteLayout(_creatureImage.rectTransform, inset);
                         _creatureImage.preserveAspect = true;
                     }
