@@ -8,7 +8,7 @@ namespace DragonBoxAlgebra.UI
 {
     /// <summary>
     /// Pending-balance marker: a plain "?" symbol (same family as the board "+"),
-    /// shown above the x / red box instead of a yellow hole tile.
+    /// placed in the middle of the opposite side's equation.
     /// </summary>
     public class BalanceHoleWidget : MonoBehaviour, IDropHandler
     {
@@ -33,43 +33,12 @@ namespace DragonBoxAlgebra.UI
         }
 
         /// <summary>
-        /// Places a "+"–style "?" above the isolation goal (x or red box) on the hole side.
-        /// </summary>
-        public static BalanceHoleWidget CreateAboveGoal(CardWidget goalCard, AlgebraGameController controller,
-            string holeSide)
-        {
-            var go = new GameObject($"BalanceQuestion_{holeSide}", typeof(RectTransform), typeof(Text));
-            go.transform.SetParent(goalCard.transform, false);
-
-            var rect = go.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 1f);
-            rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 0f);
-            rect.sizeDelta = new Vector2(36f, 36f);
-            rect.anchoredPosition = new Vector2(0f, 4f);
-
-            var text = go.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.text = "?";
-            text.fontSize = 34;
-            text.fontStyle = FontStyle.Bold;
-            text.alignment = TextAnchor.MiddleCenter;
-            text.color = new Color(0.95f, 0.95f, 0.88f);
-            text.raycastTarget = true;
-
-            var hole = go.AddComponent<BalanceHoleWidget>();
-            hole._controller = controller;
-            hole._sideName = holeSide;
-            return hole;
-        }
-
-        /// <summary>
-        /// Fallback when the hole side has no x/box: slim in-row "?" like the "+" separator.
+        /// Slim in-row "?" like the "+" separator — sits in the middle of that side's equation.
         /// </summary>
         public static BalanceHoleWidget CreateInlineSymbol(Transform parent, AlgebraGameController controller,
             string holeSide, float tileHeight)
         {
-            var go = new GameObject($"BalanceQuestionInline_{holeSide}", typeof(RectTransform), typeof(Text),
+            var go = new GameObject($"BalanceQuestion_{holeSide}", typeof(RectTransform), typeof(Text),
                 typeof(LayoutElement));
             go.transform.SetParent(parent, false);
 
@@ -98,7 +67,6 @@ namespace DragonBoxAlgebra.UI
             return hole;
         }
 
-        // Kept for any older call sites; routes to the inline symbol style (not the yellow card).
         public static BalanceHoleWidget Create(Transform parent, AlgebraGameController controller, string sideName,
             BoardCard card, float tileWidth = 110f, float tileHeight = 120f)
         {

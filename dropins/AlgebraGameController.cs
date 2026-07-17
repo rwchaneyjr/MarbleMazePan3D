@@ -117,13 +117,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return true;
             }
 
-            if (_spentHandIndices.Contains(handIndex))
-            {
-                return false;
-            }
-
             // Dual-hand / multi-hand: never lock other cards while one is mid-balance.
-            return true;
+            // Spent tiles stay inactive only after their play is fully done.
+            return !_spentHandIndices.Contains(handIndex);
         }
 
         public bool HandIndexHasPendingBalance(int handIndex)
@@ -657,19 +653,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            // Allow opposite-snap only when this tile is not mid-balance on that side's ?.
-            // Otherwise magnetic snap steals the second drag meant for the hole (128+).
-            if (HandIndexHasPendingBalance(handIndex))
-            {
-                foreach (BalancePending pending in _pendingBalances)
-                {
-                    if (pending != null && pending.HandIndex == handIndex && pending.HoleSide == sideName)
-                    {
-                        return false;
-                    }
-                }
-            }
-
+            // Keep every hand tile active while a ? is open — opposite matches stay allowed
+            // on either side. Hole fill still wins on end-drag via TryFillPendingHoleFromPointer.
             if (_spentHandIndices.Contains(handIndex) && !HandIndexHasPendingBalance(handIndex))
             {
                 return false;
@@ -879,7 +864,8 @@ namespace DragonBoxAlgebra.Gameplay
                 _activeHandSlot = handIndex;
             }
 
-            MessageChanged?.Invoke("? appeared above x (or the red box) on the other side — drag the same tile there.");
+            MessageChanged?.Invoke(
+                "? appeared in the middle of the other side — tiles stay active; match opposites or fill the ?.");
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             return true;
