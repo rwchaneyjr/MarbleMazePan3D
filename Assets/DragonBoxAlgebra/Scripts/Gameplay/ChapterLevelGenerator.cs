@@ -7,7 +7,7 @@ namespace DragonBoxAlgebra.Gameplay
     /// <summary>
     /// DragonBox-style intro: Ch1–Ch4 through level 62; Ch5 (63–80) variable images + red box;
     /// Ch6 (81–100) x + variables; Ch7 (101–139) sea + variables + number images
-    /// (+ between tiles from 113; 129–139 reuse the 113–128 layout with number/variable images).
+    /// (+ between tiles from 113; 129–139 = 3-hand addition from 113–128 with number/variable images).
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -44,11 +44,11 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Ch7 levels 13–28 (global 113–128): sea + variable mix, + between tiles.</summary>
         public const int Chapter7MixedPlusStartDisplay = 13;
 
-        /// <summary>Ch7 levels 29–39 (global 129–139): same template as 113–128 with number + variable images.</summary>
+        /// <summary>Ch7 levels 29–39 (global 129–139): 3-hand addition from 113–128 template; number + variable images.</summary>
         public const int Chapter7AdditionStartDisplay = 29;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-ch7-mixed-template-129-139";
+        public const string CurriculumVersion = "2026-07-ch7-addition-3hand-129-139";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -482,7 +482,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         /// <summary>
         /// Ch7 (101–139): 6 sea+x, 6 variables, 16 mixed + (113–128),
-        /// then 11 more levels (129–139) using that same mixed template with number + variable images.
+        /// then 11 addition levels (129–139) from the 3-hand 113–128 template with number + variable images.
         /// </summary>
         private static LevelDefinition BuildChapter7Level(int globalLevel, int theme, int displayNumber)
         {
@@ -520,16 +520,14 @@ namespace DragonBoxAlgebra.Gameplay
                 return MakeCh7MixedSeaVariableLevel(mixedTitle, globalLevel, mixedTheme, mixedXLeft, tileCount);
             }
 
-            // 129–139: same layout rules as 113–128 (tile count, x side, slot shuffle, hand count),
-            // but content images are numbers + variables instead of sea + variables.
+            // 129–139: same 3-hand addition layout as the 3-tile levels in 113–128; images are
+            // numbers + variables only (no sea creatures).
             int additionIndex = displayNumber - Chapter7AdditionStartDisplay;
             int additionTheme = additionIndex % SeaCreatureNames.Length;
-            int additionTileCount = additionIndex % 2 == 0 ? 2 : 3;
             bool additionXLeft = additionIndex % 2 == 0;
             string additionTitle =
-                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + numbers + vars, {additionTileCount} each side)";
-            return MakeCh7NumberVariableFromMixedTemplate(additionTitle, globalLevel, additionTheme,
-                additionXLeft, additionTileCount);
+                $"Ch7 • {ChapterNames[6]} {displayNumber} (addition: x + numbers + vars, 3 hand)";
+            return MakeCh7AdditionNumberVariableLevel(additionTitle, globalLevel, additionTheme, additionXLeft);
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
@@ -683,25 +681,33 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        /// <summary>
-        /// Global 129–139: same template as 113–128 (x + 2–3 content tiles each side, matching hand,
-        /// + between tiles). Sea creature slots become number PNGs (1…9 / -1…-9); variable slots
-        /// keep letter PNGs (a/-a, …).
-        /// </summary>
-        private static LevelDefinition MakeCh7NumberVariableFromMixedTemplate(string title, int globalLevel,
-            int seaTheme, bool xOnLeft, int tileCount)
+        private enum AdditionSlotKind
         {
+            Variable,
+            Number
+        }
+
+        /// <summary>
+        /// Global 129–139: same 3-hand / 3-content-tile addition layout as the 3-tile levels in
+        /// 113–128 (x on one side, matching tiles both sides, + between, 3 hand cards). Only the
+        /// images change: number PNGs (1…9 / -1…-9) and variable PNGs (a/-a, …) — no sea creatures.
+        /// </summary>
+        private static LevelDefinition MakeCh7AdditionNumberVariableLevel(string title, int globalLevel,
+            int seaTheme, bool xOnLeft)
+        {
+            const int tileCount = 3;
             int letterSeed = globalLevel * 7919 + 31;
-            // Same slot split as MakeCh7MixedSeaVariableLevel: at least one variable when possible.
-            int variableSlotCount = tileCount == 2 ? 1 : (globalLevel % 2 == 0 ? 2 : 1);
-            int numberSlotCount = tileCount - variableSlotCount;
-            if (numberSlotCount <= 0)
+            List<AdditionSlotKind> slots = BuildAdditionSlots(globalLevel);
+            int variableSlotCount = 0;
+            foreach (AdditionSlotKind slot in slots)
             {
-                numberSlotCount = 1;
-                variableSlotCount = Math.Max(1, tileCount - 1);
+                if (slot == AdditionSlotKind.Variable)
+                {
+                    variableSlotCount++;
+                }
             }
 
-            List<char> letters = PickDistinctVariableLetters(letterSeed, variableSlotCount);
+            List<char> letters = PickDistinctVariableLetters(letterSeed, Math.Max(1, variableSlotCount));
             int numberSeed = globalLevel * 7919 + 101;
 
             var level = new LevelDefinition
@@ -713,53 +719,38 @@ namespace DragonBoxAlgebra.Gameplay
                 ParCards = tileCount
             };
 
-            // true = variable image, false = number image (mirrors mixed sea/variable bool slots).
-            var slots = new List<bool>();
-            for (int i = 0; i < variableSlotCount; i++)
-            {
-                slots.Add(true);
-            }
-
-            for (int i = 0; i < numberSlotCount; i++)
-            {
-                slots.Add(false);
-            }
-
-            ShuffleSlots(slots, globalLevel * 7919 + 59);
-
-            // Precompute number values so both sides and the hand share the same images.
-            var numberValues = new List<int>();
-            for (int i = 0; i < numberSlotCount; i++)
-            {
-                numberValues.Add(AdditionNumberValue(numberSeed, i));
-            }
-
+            int letterIndex = 0;
+            int numberCursor = 0;
             if (xOnLeft)
             {
-                level.LeftCards.Add(CardKind.DayCreature);
-                level.LeftVariableLetters.Add(VariableGoalRules.GoalLetter);
-                level.LeftValues.Add(1);
-                AddNumberVariableSlotsToSide(level.LeftCards, level.LeftVariableLetters, level.LeftValues,
-                    slots, letters, numberValues);
-                AddNumberVariableSlotsToSide(level.RightCards, level.RightVariableLetters, level.RightValues,
-                    slots, letters, numberValues);
+                AddXTile(level.LeftCards, level.LeftVariableLetters, level.LeftValues);
+                letterIndex = 0;
+                numberCursor = 0;
+                AddAdditionSlotsToSide(level.LeftCards, level.LeftVariableLetters, level.LeftValues, slots,
+                    letters, numberSeed, ref letterIndex, ref numberCursor);
+                letterIndex = 0;
+                numberCursor = 0;
+                AddAdditionSlotsToSide(level.RightCards, level.RightVariableLetters, level.RightValues, slots,
+                    letters, numberSeed, ref letterIndex, ref numberCursor);
             }
             else
             {
-                AddNumberVariableSlotsToSide(level.LeftCards, level.LeftVariableLetters, level.LeftValues,
-                    slots, letters, numberValues);
-                level.RightCards.Add(CardKind.DayCreature);
-                level.RightVariableLetters.Add(VariableGoalRules.GoalLetter);
-                level.RightValues.Add(1);
-                AddNumberVariableSlotsToSide(level.RightCards, level.RightVariableLetters, level.RightValues,
-                    slots, letters, numberValues);
+                letterIndex = 0;
+                numberCursor = 0;
+                AddAdditionSlotsToSide(level.LeftCards, level.LeftVariableLetters, level.LeftValues, slots,
+                    letters, numberSeed, ref letterIndex, ref numberCursor);
+                AddXTile(level.RightCards, level.RightVariableLetters, level.RightValues);
+                letterIndex = 0;
+                numberCursor = 0;
+                AddAdditionSlotsToSide(level.RightCards, level.RightVariableLetters, level.RightValues, slots,
+                    letters, numberSeed, ref letterIndex, ref numberCursor);
             }
 
-            int letterIndex = 0;
-            int numberIndex = 0;
-            foreach (bool isVariable in slots)
+            letterIndex = 0;
+            numberCursor = 0;
+            foreach (AdditionSlotKind slot in slots)
             {
-                if (isVariable)
+                if (slot == AdditionSlotKind.Variable)
                 {
                     level.HandCards.Add(CardKind.NightCreature);
                     level.HandVariableLetters.Add(letters[letterIndex++]);
@@ -769,22 +760,56 @@ namespace DragonBoxAlgebra.Gameplay
                 {
                     level.HandCards.Add(CardKind.NegativeConstant);
                     level.HandVariableLetters.Add('\0');
-                    level.HandValues.Add(numberValues[numberIndex++]);
+                    level.HandValues.Add(AdditionNumberValue(numberSeed, numberCursor++));
                 }
             }
 
             return level;
         }
 
-        private static void AddNumberVariableSlotsToSide(List<CardKind> cards, List<char> letters,
-            List<int> values, List<bool> slots, IReadOnlyList<char> variableLetters,
-            IReadOnlyList<int> numberValues)
+        private static List<AdditionSlotKind> BuildAdditionSlots(int globalLevel)
         {
-            int letterIndex = 0;
-            int numberIndex = 0;
-            foreach (bool isVariable in slots)
+            // Always 3 hand/board content tiles: mix of number and variable images only.
+            int pattern = (globalLevel - 129) % 5;
+            return pattern switch
             {
-                if (isVariable)
+                0 => new List<AdditionSlotKind>
+                {
+                    AdditionSlotKind.Variable, AdditionSlotKind.Number, AdditionSlotKind.Variable
+                },
+                1 => new List<AdditionSlotKind>
+                {
+                    AdditionSlotKind.Number, AdditionSlotKind.Variable, AdditionSlotKind.Number
+                },
+                2 => new List<AdditionSlotKind>
+                {
+                    AdditionSlotKind.Variable, AdditionSlotKind.Number, AdditionSlotKind.Number
+                },
+                3 => new List<AdditionSlotKind>
+                {
+                    AdditionSlotKind.Number, AdditionSlotKind.Variable, AdditionSlotKind.Variable
+                },
+                _ => new List<AdditionSlotKind>
+                {
+                    AdditionSlotKind.Variable, AdditionSlotKind.Number, AdditionSlotKind.Number
+                }
+            };
+        }
+
+        private static void AddXTile(List<CardKind> cards, List<char> letters, List<int> values)
+        {
+            cards.Add(CardKind.DayCreature);
+            letters.Add(VariableGoalRules.GoalLetter);
+            values.Add(1);
+        }
+
+        private static void AddAdditionSlotsToSide(List<CardKind> cards, List<char> letters, List<int> values,
+            List<AdditionSlotKind> slots, IReadOnlyList<char> variableLetters, int numberSeed,
+            ref int letterIndex, ref int numberCursor)
+        {
+            foreach (AdditionSlotKind slot in slots)
+            {
+                if (slot == AdditionSlotKind.Variable)
                 {
                     cards.Add(CardKind.DayCreature);
                     letters.Add(variableLetters[letterIndex++]);
@@ -794,7 +819,7 @@ namespace DragonBoxAlgebra.Gameplay
                 {
                     cards.Add(CardKind.PositiveConstant);
                     letters.Add('\0');
-                    values.Add(numberValues[numberIndex++]);
+                    values.Add(AdditionNumberValue(numberSeed, numberCursor++));
                 }
             }
         }
