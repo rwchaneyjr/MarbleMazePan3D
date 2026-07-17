@@ -17,7 +17,7 @@ namespace DragonBoxAlgebra.UI
         public AlgebraGameController Controller => _controller;
 
         /// <summary>Screen-pixel snap radius — forwarded to DraggableTile.snapDistance.</summary>
-        public float snapDistance = 180f;
+        public float snapDistance = 220f;
 
         private AlgebraGameController _controller;
         private RectTransform _rect;
@@ -42,13 +42,17 @@ namespace DragonBoxAlgebra.UI
         private Vector2 _dragPressScreenPosition;
         private CanvasGroup _canvasGroup;
 
-        /// <summary>Pixels before a press counts as drag instead of click — higher = flip is easier.</summary>
-        private const float FlipDragThresholdPixels = 150f;
+        /// <summary>Pixels before a press counts as drag instead of flip — lower = drag is easier.</summary>
+        private const float FlipDragThresholdPixels = 28f;
         private const float DragScale = 1.08f;
 
         private Vector3 _originalScale;
         private CardWidget _snapHighlight;
         private Vector2 _lastDragScreenPosition;
+        private Vector2 _boardDragSize;
+
+        /// <summary>True while this board/hand tile is mid-drag on the DragRoot.</summary>
+        public bool IsActivelyDragging => _isDragging && _dragStarted;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -368,15 +372,38 @@ namespace DragonBoxAlgebra.UI
                 _canvasGroup.alpha = 0.95f;
             }
 
+            // Layout stretch anchors ignore localPosition — switch to center anchors so the
+            // tile visibly follows the pointer, and keep the on-screen size/position.
             if (_rect != null)
             {
+                _boardDragSize = _rect.rect.size;
+                if (_boardDragSize.x < 1f || _boardDragSize.y < 1f)
+                {
+                    _boardDragSize = _rect.sizeDelta;
+                }
+
+                Vector3 worldPos = _rect.position;
+                var layoutElement = GetComponent<LayoutElement>();
+                if (layoutElement != null)
+                {
+                    layoutElement.ignoreLayout = true;
+                }
+
+                _rect.anchorMin = _rect.anchorMax = new Vector2(0.5f, 0.5f);
+                _rect.pivot = new Vector2(0.5f, 0.5f);
+                _rect.sizeDelta = _boardDragSize;
                 _rect.localScale = _originalScale * DragScale;
+                transform.SetParent(_dragRoot, true);
+                _rect.position = worldPos;
+            }
+            else
+            {
+                transform.SetParent(_dragRoot, true);
             }
 
-            transform.SetParent(_dragRoot, true);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                 eventData.pressEventCamera, out _dragOffset);
-            _dragOffset = (Vector2)transform.localPosition - _dragOffset;
+            _dragOffset = (Vector2)_rect.localPosition - _dragOffset;
         }
 
         private void BeginHandDrag(PointerEventData eventData)
@@ -519,19 +546,28 @@ namespace DragonBoxAlgebra.UI
 
             ClearSnapHighlight();
             RestoreDragVisuals();
+            RestoreDragRaycasts();
+
             if (!TryToSnap(eventData))
             {
                 ReturnToStart();
+                return;
             }
-            else if (_handPlayHandled || _dropHandled)
+
+            if (_dropHandled)
             {
-                RestoreDragRaycasts();
-                Destroy(gameObject);
+                // Board refresh owns cleanup when combine succeeded; only destroy if still on DragRoot.
+                if (this != null && gameObject != null && transform.parent == _dragRoot)
+                {
+                    Destroy(gameObject);
+                }
+
+                return;
             }
-            else
-            {
-                ReturnToStart();
-            }
+
+            // Snapped visually but merge did not apply — put the tile back.
+            EnsureDraggable().ClearSnappedFlag();
+            ReturnToStart();
         }
 
         /// <summary>
@@ -562,7 +598,8 @@ namespace DragonBoxAlgebra.UI
                 _dropHandled = true;
             }
 
-            return _handPlayHandled || _dropHandled || drag.IsSnapped;
+            // Only treat as handled when a real merge/play happened — not merely a visual snap.
+            return _handPlayHandled || _dropHandled;
         }
 
         private void ReturnToStart()
@@ -574,6 +611,18 @@ namespace DragonBoxAlgebra.UI
             {
                 transform.SetParent(_originalParent, false);
                 transform.SetSiblingIndex(_originalSiblingIndex);
+            }
+
+            if (_rect != null)
+            {
+                _rect.anchoredPosition = Vector2.zero;
+                _rect.localRotation = Quaternion.identity;
+                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+            }
+
+            if (_originalParent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
             }
 
             RestoreDragVisuals();
@@ -832,9 +881,9 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            Vector3 world = targetRect.position;
-            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, world,
-                    _canvas != null ? _canvas.worldCamera : null, out Vector2 local))
+            Camera cam = _canvas != null ? _canvas.worldCamera : null;
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, targetRect.position);
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, screen, cam, out Vector2 local))
             {
                 _rect.localPosition = local;
             }
@@ -900,10 +949,15 @@ namespace DragonBoxAlgebra.UI
 
         private CardWidget FindBoardMergeTarget(PointerEventData eventData)
         {
-            CardWidget fallback = null;
+            // Only accept a hovered free tile that can actually combine — never a dead fallback.
             foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
             {
                 if (widget == this || widget.SideName != SideName)
+                {
+                    continue;
+                }
+
+                if (_controller != null && _controller.IsCardPendingCancelOnSide(widget.Card.Id, widget.SideName))
                 {
                     continue;
                 }
@@ -912,14 +966,9 @@ namespace DragonBoxAlgebra.UI
                 {
                     return widget;
                 }
-
-                if (fallback == null && widget.Card.Kind != CardKind.Box)
-                {
-                    fallback = widget;
-                }
             }
 
-            return fallback;
+            return null;
         }
 
         private IEnumerable<CardWidget> GetHoveredCardWidgets(PointerEventData eventData)

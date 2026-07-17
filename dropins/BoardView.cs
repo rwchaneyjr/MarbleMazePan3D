@@ -545,7 +545,7 @@ namespace DragonBoxAlgebra.UI
             for (int i = 0; i < _dragRoot.childCount; i++)
             {
                 CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
-                if (widget == null || widget.SideName == "Hand")
+                if (widget == null || widget.SideName == "Hand" || widget.IsActivelyDragging)
                 {
                     continue;
                 }
