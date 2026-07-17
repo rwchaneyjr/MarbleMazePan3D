@@ -49,6 +49,10 @@ namespace DragonBoxAlgebra.UI
         private Vector3 _originalScale;
         private CardWidget _snapHighlight;
         private Vector2 _lastDragScreenPosition;
+        private Vector2 _boardDragSize;
+
+        /// <summary>True while this board/hand tile is mid-drag on the DragRoot.</summary>
+        public bool IsActivelyDragging => _isDragging && _dragStarted;
 
         public void OnPointerClick(PointerEventData eventData)
         {
@@ -368,15 +372,38 @@ namespace DragonBoxAlgebra.UI
                 _canvasGroup.alpha = 0.95f;
             }
 
+            // Layout stretch anchors ignore localPosition — switch to center anchors so the
+            // tile visibly follows the pointer, and keep the on-screen size/position.
             if (_rect != null)
             {
+                _boardDragSize = _rect.rect.size;
+                if (_boardDragSize.x < 1f || _boardDragSize.y < 1f)
+                {
+                    _boardDragSize = _rect.sizeDelta;
+                }
+
+                Vector3 worldPos = _rect.position;
+                var layoutElement = GetComponent<LayoutElement>();
+                if (layoutElement != null)
+                {
+                    layoutElement.ignoreLayout = true;
+                }
+
+                _rect.anchorMin = _rect.anchorMax = new Vector2(0.5f, 0.5f);
+                _rect.pivot = new Vector2(0.5f, 0.5f);
+                _rect.sizeDelta = _boardDragSize;
                 _rect.localScale = _originalScale * DragScale;
+                transform.SetParent(_dragRoot, true);
+                _rect.position = worldPos;
+            }
+            else
+            {
+                transform.SetParent(_dragRoot, true);
             }
 
-            transform.SetParent(_dragRoot, true);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                 eventData.pressEventCamera, out _dragOffset);
-            _dragOffset = (Vector2)transform.localPosition - _dragOffset;
+            _dragOffset = (Vector2)_rect.localPosition - _dragOffset;
         }
 
         private void BeginHandDrag(PointerEventData eventData)
@@ -854,9 +881,9 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            Vector3 world = targetRect.position;
-            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, world,
-                    _canvas != null ? _canvas.worldCamera : null, out Vector2 local))
+            Camera cam = _canvas != null ? _canvas.worldCamera : null;
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, targetRect.position);
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, screen, cam, out Vector2 local))
             {
                 _rect.localPosition = local;
             }
