@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace DragonBoxAlgebra.UI
 {
     public class CardWidget : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
-        IPointerClickHandler
+        IPointerClickHandler, IPointerDownHandler, IPointerUpHandler
     {
         public BoardCard Card { get; private set; }
         public int Index { get; private set; }
@@ -54,9 +54,38 @@ namespace DragonBoxAlgebra.UI
         /// <summary>True while this board/hand tile is mid-drag on the DragRoot.</summary>
         public bool IsActivelyDragging => _isDragging && _dragStarted;
 
-        public void OnPointerClick(PointerEventData eventData)
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (SideName != "Hand")
+            {
+                return;
+            }
+
+            // Clear stale flags from a previous play/drag so the tile stays flippable.
+            _dragPressScreenPosition = eventData.position;
+            if (!_isDragging)
+            {
+                _dragStarted = false;
+                _didDrag = false;
+                _handPlayHandled = false;
+            }
+
+            EnsureHandFullyInteractive();
+        }
+
+        public void OnPointerClick(PointerEventData eventData) => TryFlipHandOnClick(eventData);
+
+        public void OnPointerUp(PointerEventData eventData) => TryFlipHandOnClick(eventData);
+
+        private void TryFlipHandOnClick(PointerEventData eventData)
         {
             if (_didDrag || _dragStarted || SideName != "Hand" || _controller == null || !CanFlipHand())
+            {
+                return;
+            }
+
+            if (eventData != null
+                && Vector2.Distance(_dragPressScreenPosition, eventData.position) > FlipDragThresholdPixels)
             {
                 return;
             }
@@ -79,6 +108,7 @@ namespace DragonBoxAlgebra.UI
             _lastFlipFrame = Time.frameCount;
             Card = _controller.GetHandDisplayCard(Index);
             RefreshVisual();
+            EnsureHandFullyInteractive();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
             StartCoroutine(PlayHandFlip());
         }
@@ -98,11 +128,7 @@ namespace DragonBoxAlgebra.UI
         public void SetHandCard(BoardCard card)
         {
             Card = card;
-            if (_canvasGroup != null)
-            {
-                _canvasGroup.blocksRaycasts = true;
-            }
-
+            EnsureHandFullyInteractive();
             RefreshVisual();
         }
 
@@ -140,17 +166,30 @@ namespace DragonBoxAlgebra.UI
             ApplyHandSlotDimming();
         }
 
-        private void ApplyHandSlotDimming()
+        private void EnsureHandFullyInteractive()
         {
-            if (_canvasGroup == null || _controller == null || SideName != "Hand")
+            if (SideName != "Hand")
             {
                 return;
             }
 
-            // Never dim or deactivate hand tiles — spent only blocks replay, not appearance.
-            _canvasGroup.alpha = 1f;
-            _canvasGroup.blocksRaycasts = true;
-            _canvasGroup.interactable = true;
+            if (!gameObject.activeSelf)
+            {
+                gameObject.SetActive(true);
+            }
+
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 1f;
+                _canvasGroup.blocksRaycasts = !_isDragging;
+                _canvasGroup.interactable = true;
+            }
+        }
+
+        private void ApplyHandSlotDimming()
+        {
+            // Never dim or deactivate hand tiles — always active and flippable.
+            EnsureHandFullyInteractive();
         }
 
         private void ApplyCreatureVisual()
@@ -524,22 +563,23 @@ namespace DragonBoxAlgebra.UI
 
                 if (_handPlayHandled)
                 {
-                    if (_controller.ShouldKeepHandCardInPanel(Index))
-                    {
-                        transform.SetParent(_originalParent, false);
-                        transform.SetSiblingIndex(_originalSiblingIndex);
-                        SetHandCard(_controller.GetHandDisplayCard(Index));
-                    }
-                    else
-                    {
-                        DestroyImmediate(gameObject);
-                    }
-
+                    // Fixed hand count: always return to the tray — never destroy after play.
+                    transform.SetParent(_originalParent, false);
+                    transform.SetSiblingIndex(_originalSiblingIndex);
+                    SetHandCard(_controller.GetHandDisplayCard(Index));
+                    _didDrag = false;
+                    _dragStarted = false;
+                    _isDragging = false;
+                    _handPlayHandled = false;
+                    EnsureHandFullyInteractive();
                     _controller.RefreshHandPresentation();
                     return;
                 }
 
+                _didDrag = false;
+                _dragStarted = false;
                 ReturnToStart();
+                EnsureHandFullyInteractive();
                 return;
             }
 
