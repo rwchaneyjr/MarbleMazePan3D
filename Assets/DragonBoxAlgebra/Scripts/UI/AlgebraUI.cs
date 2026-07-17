@@ -180,11 +180,11 @@ namespace DragonBoxAlgebra.UI
             {
                 var eventSystemGo = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem),
                     typeof(UnityEngine.EventSystems.StandaloneInputModule));
-                eventSystemGo.GetComponent<UnityEngine.EventSystems.EventSystem>().pixelDragThreshold = 150;
+                eventSystemGo.GetComponent<UnityEngine.EventSystems.EventSystem>().pixelDragThreshold = 5;
             }
             else
             {
-                FindObjectOfType<UnityEngine.EventSystems.EventSystem>().pixelDragThreshold = 150;
+                FindObjectOfType<UnityEngine.EventSystems.EventSystem>().pixelDragThreshold = 5;
             }
 
             _dragRoot.SetAsLastSibling();
