@@ -294,10 +294,8 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
-            if (level.Chapter < 4)
-            {
-                HandRules.DedupeFlipFamilies(_hand);
-            }
+            // One hand slot per image family — light and its opposite dark (or +/-) share a slot.
+            HandRules.DedupeFlipFamilies(_hand);
 
             if (_hand.Count > 0)
             {
