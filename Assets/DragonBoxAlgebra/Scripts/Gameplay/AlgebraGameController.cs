@@ -234,15 +234,14 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
-            if (level.Chapter < 4)
-            {
-                HandRules.DedupeFlipFamilies(_hand);
-            }
 
             if (_hand.Count > 0)
             {
                 HandVisualRules.ApplyLevelThemeToHand(_hand, level.CreatureTheme);
             }
+
+            // Unique hand images only — never keep a card and its opposite, or the same image twice.
+            HandRules.DedupeFlipFamilies(_hand);
 
             CaptureHandTemplates();
             Moves.Reset();

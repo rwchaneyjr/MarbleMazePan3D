@@ -61,6 +61,7 @@ namespace DragonBoxAlgebra.Gameplay
             var seen = new HashSet<int>();
             for (int i = hand.Count - 1; i >= 0; i--)
             {
+                // Same image family: light/dark (or +/-) of one creature/letter/theme = one hand slot.
                 if (!seen.Add(FlipFamilyKey(hand[i])))
                 {
                     hand.RemoveAt(i);
@@ -68,16 +69,22 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
+        /// <summary>
+        /// One key per unique hand image identity. Light and dark (or +/-) share a key.
+        /// </summary>
         private static int FlipFamilyKey(BoardCard card)
         {
             int letterOffset = card.VariableLetter != '\0'
-                ? (char.ToLowerInvariant(card.VariableLetter) - 'a') * 10
+                ? (char.ToLowerInvariant(card.VariableLetter) - 'a' + 1) * 100
                 : 0;
+            int themeOffset = card.VisualTheme >= 0 ? (card.VisualTheme + 1) * 10_000 : 0;
+
             return card.Kind switch
             {
-                CardKind.DayCreature => 100 + letterOffset + card.Value,
-                CardKind.NightCreature => 200 + letterOffset + card.Value,
-                CardKind.PositiveConstant or CardKind.NegativeConstant => 300 + card.Value,
+                CardKind.DayCreature or CardKind.NightCreature =>
+                    100 + letterOffset + themeOffset + card.Value,
+                CardKind.PositiveConstant or CardKind.NegativeConstant =>
+                    300 + card.Value,
                 _ => 1000 + (int)card.Kind
             };
         }
