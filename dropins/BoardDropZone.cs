@@ -25,15 +25,12 @@ namespace DragonBoxAlgebra.UI
 
             AlgebraGameController controller = ui.Controller;
 
-            if (controller.HasPendingBalance)
+            // Filling a ? hole is optional and never blocks the other side.
+            if (controller.CountPendingBalanceHolesOnSide(SideName) > 0
+                && controller.TryPlayFromHand(dragged.Index, SideName))
             {
-                if (controller.PendingBalance.HoleSide == SideName
-                    && controller.TryPlayFromHand(dragged.Index, SideName))
-                {
-                    dragged.MarkHandPlayHandled();
-                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                }
-
+                dragged.MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 return;
             }
 
@@ -61,7 +58,7 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // 3) Empty panel only → start balance play.
+            // 3) Empty panel → start balance play (independent per side/hand).
             if (controller.TryPlayFromHand(dragged.Index, SideName))
             {
                 dragged.MarkHandPlayHandled();

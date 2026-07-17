@@ -260,13 +260,20 @@ namespace DragonBoxAlgebra.UI
 
             if (_controller.HasPendingBalance)
             {
-                BalancePending pending = _controller.PendingBalance;
-                RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
-                TileLayout holeLayout = pending.HoleSide == "Left" ? leftLayout : rightLayout;
-                BalanceHoleWidget hole = BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card,
-                    holeLayout.Width, holeLayout.Height);
-                int holeSlot = Mathf.Clamp(pending.HoleInsertIndex, 0, holePanel.childCount - 1);
-                hole.transform.SetSiblingIndex(holeSlot);
+                foreach (BalancePending pending in _controller.PendingBalances)
+                {
+                    if (pending == null)
+                    {
+                        continue;
+                    }
+
+                    RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
+                    TileLayout holeLayout = pending.HoleSide == "Left" ? leftLayout : rightLayout;
+                    BalanceHoleWidget hole = BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide,
+                        pending.Card, holeLayout.Width, holeLayout.Height);
+                    int holeSlot = Mathf.Clamp(pending.HoleInsertIndex, 0, holePanel.childCount - 1);
+                    hole.transform.SetSiblingIndex(holeSlot);
+                }
             }
 
             // SwirlOnly markers (cards already gone) still append at end of their side.
@@ -291,9 +298,9 @@ namespace DragonBoxAlgebra.UI
                 count += visibleCards - 1;
             }
 
-            if (_controller.HasPendingBalance && _controller.PendingBalance.HoleSide == sideName)
+            if (_controller.HasPendingBalance)
             {
-                count++;
+                count += _controller.CountPendingBalanceHolesOnSide(sideName);
             }
 
             IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
