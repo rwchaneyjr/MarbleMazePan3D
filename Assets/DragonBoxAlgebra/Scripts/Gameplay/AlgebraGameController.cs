@@ -879,7 +879,7 @@ namespace DragonBoxAlgebra.Gameplay
                 _activeHandSlot = handIndex;
             }
 
-            MessageChanged?.Invoke("? appeared on the other side — other side/hand stays free to play.");
+            MessageChanged?.Invoke("? appeared above x (or the red box) on the other side — drag the same tile there.");
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             return true;
