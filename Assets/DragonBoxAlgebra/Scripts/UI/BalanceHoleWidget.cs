@@ -6,20 +6,16 @@ using UnityEngine.UI;
 
 namespace DragonBoxAlgebra.UI
 {
+    /// <summary>
+    /// Pending-balance marker: a plain "?" symbol (same family as the board "+"),
+    /// shown above the x / red box instead of a yellow hole tile.
+    /// </summary>
     public class BalanceHoleWidget : MonoBehaviour, IDropHandler
     {
         private AlgebraGameController _controller;
         private string _sideName;
 
         public string SideName => _sideName;
-
-        public void Initialize(AlgebraGameController controller, string sideName, BoardCard card,
-            float tileWidth = 110f, float tileHeight = 120f)
-        {
-            _controller = controller;
-            _sideName = sideName;
-            Build(tileWidth, tileHeight);
-        }
 
         public void OnDrop(PointerEventData eventData)
         {
@@ -29,69 +25,84 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            if (_controller.TryPlayFromHand(dragged.Index, _sideName))
+            if (_controller != null && _controller.TryPlayFromHand(dragged.Index, _sideName))
             {
                 dragged.MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
             }
         }
 
-        private void Build(float tileWidth, float tileHeight)
+        /// <summary>
+        /// Places a "+"–style "?" above the isolation goal (x or red box) on the hole side.
+        /// </summary>
+        public static BalanceHoleWidget CreateAboveGoal(CardWidget goalCard, AlgebraGameController controller,
+            string holeSide)
         {
-            var rect = gameObject.GetComponent<RectTransform>() ?? gameObject.AddComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(tileWidth, tileHeight);
+            var go = new GameObject($"BalanceQuestion_{holeSide}", typeof(RectTransform), typeof(Text));
+            go.transform.SetParent(goalCard.transform, false);
 
-            var layout = gameObject.AddComponent<LayoutElement>();
-            layout.minWidth = tileWidth;
-            layout.minHeight = tileHeight;
-            layout.preferredWidth = tileWidth;
-            layout.preferredHeight = tileHeight;
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.sizeDelta = new Vector2(36f, 36f);
+            rect.anchoredPosition = new Vector2(0f, 4f);
 
-            var image = gameObject.AddComponent<Image>();
-            image.sprite = SpriteFactory.RoundedCard;
-            image.type = Image.Type.Sliced;
-            image.color = new Color(0.98f, 0.84f, 0.14f, 1f);
-            image.raycastTarget = true;
+            var text = go.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.text = "?";
+            text.fontSize = 34;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = new Color(0.95f, 0.95f, 0.88f);
+            text.raycastTarget = true;
 
-            var borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
-            borderGo.transform.SetParent(transform, false);
-            var borderRect = borderGo.GetComponent<RectTransform>();
-            borderRect.anchorMin = Vector2.zero;
-            borderRect.anchorMax = Vector2.one;
-            borderRect.offsetMin = new Vector2(-5f, -5f);
-            borderRect.offsetMax = new Vector2(5f, 5f);
-            var borderImage = borderGo.GetComponent<Image>();
-            borderImage.sprite = SpriteFactory.RoundedCard;
-            borderImage.type = Image.Type.Sliced;
-            borderImage.raycastTarget = false;
-            borderImage.color = new Color(0.72f, 0.48f, 0.04f, 1f);
-
-            var questionGo = new GameObject("QuestionMark", typeof(RectTransform), typeof(Text));
-            questionGo.transform.SetParent(transform, false);
-            var questionRect = questionGo.GetComponent<RectTransform>();
-            questionRect.anchorMin = Vector2.zero;
-            questionRect.anchorMax = Vector2.one;
-            questionRect.offsetMin = Vector2.zero;
-            questionRect.offsetMax = Vector2.zero;
-
-            var questionText = questionGo.GetComponent<Text>();
-            questionText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            questionText.alignment = TextAnchor.MiddleCenter;
-            questionText.fontSize = 88;
-            questionText.fontStyle = FontStyle.Bold;
-            questionText.color = Color.black;
-            questionText.text = "?";
-            questionText.raycastTarget = false;
+            var hole = go.AddComponent<BalanceHoleWidget>();
+            hole._controller = controller;
+            hole._sideName = holeSide;
+            return hole;
         }
 
+        /// <summary>
+        /// Fallback when the hole side has no x/box: slim in-row "?" like the "+" separator.
+        /// </summary>
+        public static BalanceHoleWidget CreateInlineSymbol(Transform parent, AlgebraGameController controller,
+            string holeSide, float tileHeight)
+        {
+            var go = new GameObject($"BalanceQuestionInline_{holeSide}", typeof(RectTransform), typeof(Text),
+                typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+
+            const float width = 28f;
+            var layoutElement = go.GetComponent<LayoutElement>();
+            layoutElement.minWidth = width;
+            layoutElement.preferredWidth = width;
+            layoutElement.minHeight = tileHeight;
+            layoutElement.preferredHeight = tileHeight;
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(width, tileHeight);
+
+            var text = go.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.text = "?";
+            text.fontSize = 34;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = new Color(0.95f, 0.95f, 0.88f);
+            text.raycastTarget = true;
+
+            var hole = go.AddComponent<BalanceHoleWidget>();
+            hole._controller = controller;
+            hole._sideName = holeSide;
+            return hole;
+        }
+
+        // Kept for any older call sites; routes to the inline symbol style (not the yellow card).
         public static BalanceHoleWidget Create(Transform parent, AlgebraGameController controller, string sideName,
             BoardCard card, float tileWidth = 110f, float tileHeight = 120f)
         {
-            var go = new GameObject($"BalanceHole_{sideName}", typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var hole = go.AddComponent<BalanceHoleWidget>();
-            hole.Initialize(controller, sideName, card, tileWidth, tileHeight);
-            return hole;
+            return CreateInlineSymbol(parent, controller, sideName, tileHeight);
         }
     }
 }

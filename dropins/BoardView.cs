@@ -258,27 +258,61 @@ namespace DragonBoxAlgebra.UI
             RebuildSide(_leftPanel, _controller.Board.Left, "Left", leftLayout);
             RebuildSide(_rightPanel, _controller.Board.Right, "Right", rightLayout);
 
-            if (_controller.HasPendingBalance)
-            {
-                foreach (BalancePending pending in _controller.PendingBalances)
-                {
-                    if (pending == null)
-                    {
-                        continue;
-                    }
-
-                    RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
-                    TileLayout holeLayout = pending.HoleSide == "Left" ? leftLayout : rightLayout;
-                    BalanceHoleWidget hole = BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide,
-                        pending.Card, holeLayout.Width, holeLayout.Height);
-                    int holeSlot = Mathf.Clamp(pending.HoleInsertIndex, 0, holePanel.childCount - 1);
-                    hole.transform.SetSiblingIndex(holeSlot);
-                }
-            }
+            // Pending balance: show a "+"–style "?" above the x / red box (not a yellow hole tile).
+            AttachPendingBalanceQuestionMarks(leftLayout, rightLayout);
 
             // SwirlOnly markers (cards already gone) still append at end of their side.
             BuildSwirlOnlyMarkers(_leftPanel, "Left", leftLayout);
             BuildSwirlOnlyMarkers(_rightPanel, "Right", rightLayout);
+        }
+
+        private void AttachPendingBalanceQuestionMarks(TileLayout leftLayout, TileLayout rightLayout)
+        {
+            if (!_controller.HasPendingBalance)
+            {
+                return;
+            }
+
+            var markedSides = new HashSet<string>();
+            foreach (BalancePending pending in _controller.PendingBalances)
+            {
+                if (pending == null || markedSides.Contains(pending.HoleSide))
+                {
+                    continue;
+                }
+
+                markedSides.Add(pending.HoleSide);
+                CardWidget goal = FindIsolationGoalWidget(pending.HoleSide);
+                if (goal != null)
+                {
+                    BalanceHoleWidget.CreateAboveGoal(goal, _controller, pending.HoleSide);
+                    continue;
+                }
+
+                // Hole side has no x/box yet — slim in-row "?" like the "+" separator.
+                RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
+                TileLayout holeLayout = pending.HoleSide == "Left" ? leftLayout : rightLayout;
+                BalanceHoleWidget hole = BalanceHoleWidget.CreateInlineSymbol(holePanel, _controller,
+                    pending.HoleSide, holeLayout.Height);
+                int holeSlot = Mathf.Clamp(pending.HoleInsertIndex, 0, holePanel.childCount - 1);
+                hole.transform.SetSiblingIndex(holeSlot);
+            }
+        }
+
+        private CardWidget FindIsolationGoalWidget(string sideName)
+        {
+            for (int i = 0; i < _widgets.Count; i++)
+            {
+                CardWidget widget = _widgets[i];
+                if (widget != null
+                    && widget.SideName == sideName
+                    && widget.Card.IsIsolationGoal)
+                {
+                    return widget;
+                }
+            }
+
+            return null;
         }
 
         private int CountSlotsForSide(string sideName, BoardSide side)
@@ -298,9 +332,12 @@ namespace DragonBoxAlgebra.UI
                 count += visibleCards - 1;
             }
 
-            if (_controller.HasPendingBalance)
+            // Pending "?" sits above the x/box (or as a slim inline symbol) — not a full tile slot.
+            if (_controller.HasPendingBalance
+                && _controller.CountPendingBalanceHolesOnSide(sideName) > 0
+                && FindIsolationGoalOnSide(sideName) == null)
             {
-                count += _controller.CountPendingBalanceHolesOnSide(sideName);
+                count += 1;
             }
 
             IReadOnlyList<PendingCancelMarker> markers = _controller.PendingCancels;
@@ -313,6 +350,21 @@ namespace DragonBoxAlgebra.UI
             }
 
             return count;
+        }
+
+        private BoardCard? FindIsolationGoalOnSide(string sideName)
+        {
+            BoardSide side = sideName == "Left" ? _controller.Board.Left : _controller.Board.Right;
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (side.Cards[i].IsIsolationGoal
+                    && !_controller.IsCardPendingCancelOnSide(side.Cards[i].Id, sideName))
+                {
+                    return side.Cards[i];
+                }
+            }
+
+            return null;
         }
 
         private int CountPlusSeparatorsForSide(string sideName, BoardSide side)

@@ -652,8 +652,25 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool CanPlayHandOntoBoardCard(int handIndex, string sideName, int boardIndex)
         {
-            if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count
-                || _spentHandIndices.Contains(handIndex))
+            if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return false;
+            }
+
+            // Allow opposite-snap only when this tile is not mid-balance on that side's ?.
+            // Otherwise magnetic snap steals the second drag meant for the hole (128+).
+            if (HandIndexHasPendingBalance(handIndex))
+            {
+                foreach (BalancePending pending in _pendingBalances)
+                {
+                    if (pending != null && pending.HandIndex == handIndex && pending.HoleSide == sideName)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            if (_spentHandIndices.Contains(handIndex) && !HandIndexHasPendingBalance(handIndex))
             {
                 return false;
             }
