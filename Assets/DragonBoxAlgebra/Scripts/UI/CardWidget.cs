@@ -547,8 +547,11 @@ namespace DragonBoxAlgebra.UI
                         _canvasGroup.blocksRaycasts = false;
                     }
 
-                    // DraggableTile pattern: snap to correct opposite, else return / balance.
-                    if (!TryToSnap(eventData))
+                    // Prefer finishing an open ? hole before magnetic opposite-snap.
+                    // Snap-to-opposite was stealing the second hand→hole drag (128+).
+                    TryFillPendingHoleFromPointer(eventData);
+
+                    if (!_handPlayHandled && !TryToSnap(eventData))
                     {
                         TryPlayHandDrop(eventData);
                     }
@@ -630,6 +633,11 @@ namespace DragonBoxAlgebra.UI
 
             if (SideName == "Hand")
             {
+                if (TryFillPendingHoleOnSide(target.Widget.SideName))
+                {
+                    return true;
+                }
+
                 TryPlayHandOnBoardTarget(target.Widget);
             }
             else if (HandleDropOnCard(target.Widget))
@@ -832,6 +840,27 @@ namespace DragonBoxAlgebra.UI
             MarkHandPlayHandled();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
             return true;
+        }
+
+        private void TryFillPendingHoleFromPointer(PointerEventData eventData)
+        {
+            if (_controller == null || !_controller.HasPendingBalance)
+            {
+                return;
+            }
+
+            BalanceHoleWidget balanceHole = FindBalanceHole(eventData);
+            if (balanceHole != null && TryFillPendingHoleOnSide(balanceHole.SideName))
+            {
+                return;
+            }
+
+            BoardDropZone zone = FindBoardZone(eventData);
+            string side = zone != null ? zone.SideName : SideUnderPointer(eventData);
+            if (side != null)
+            {
+                TryFillPendingHoleOnSide(side);
+            }
         }
 
         private CardWidget FindOppositeBoardCardUnderPointer(PointerEventData eventData)
@@ -1132,6 +1161,12 @@ namespace DragonBoxAlgebra.UI
         private void TryPlayHandOnBoardTarget(CardWidget target)
         {
             if (target == null)
+            {
+                return;
+            }
+
+            // Open ? hole on this side wins over opposite-merge for the second hand drag.
+            if (TryFillPendingHoleOnSide(target.SideName))
             {
                 return;
             }

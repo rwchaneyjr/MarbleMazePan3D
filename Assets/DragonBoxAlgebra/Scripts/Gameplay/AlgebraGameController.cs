@@ -617,11 +617,6 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (_spentHandIndices.Contains(handIndex))
-            {
-                return false;
-            }
-
             BoardCard template = _hand[handIndex];
             if (template.Kind == CardKind.DivideTool || template.Kind == CardKind.One)
             {
@@ -630,9 +625,15 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             // Fill a ? hole on this side when the tile matches — does not lock the other side.
+            // Allowed even if spent-state is wrong so the second drag to the hole always works.
             if (FindPendingBalanceForHole(targetSide, template, handIndex) != null)
             {
                 return TryCompleteBalance(handIndex, targetSide, template);
+            }
+
+            if (_spentHandIndices.Contains(handIndex))
+            {
+                return false;
             }
 
             if (UsesOppositeHandPlay)
