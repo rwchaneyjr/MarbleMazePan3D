@@ -7,7 +7,7 @@ namespace DragonBoxAlgebra.Gameplay
     /// <summary>
     /// DragonBox-style intro: Ch1–Ch4 through level 62; Ch5 (63–80) variable images + red box;
     /// Ch6 (81–100) x + variables; Ch7 (101–139) sea + variables + number images
-    /// (+ between tiles from 113; 129–139 = copy of 113–128 with number/variable images).
+    /// (+ between tiles from 113; 129–139 = ordered copies of 118–128 with number/variable images).
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -44,11 +44,11 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Ch7 levels 13–28 (global 113–128): sea + variable mix, + between tiles.</summary>
         public const int Chapter7MixedPlusStartDisplay = 13;
 
-        /// <summary>Ch7 levels 29–39 (global 129–139): copy of 113–128 with number + variable images.</summary>
+        /// <summary>Ch7 levels 29–39 (global 129–139): ordered copies of 118–128 with number + variable images.</summary>
         public const int Chapter7AdditionStartDisplay = 29;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-ch7-copy-113-128-as-129-139";
+        public const string CurriculumVersion = "2026-07-ch7-copy-118-128-as-129-139";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -482,7 +482,7 @@ namespace DragonBoxAlgebra.Gameplay
 
         /// <summary>
         /// Ch7 (101–139): 6 sea+x, 6 variables, 16 mixed + (113–128),
-        /// then 11 addition levels (129–139) from the 3-hand 113–128 template with number + variable images.
+        /// then 11 levels (129–139) as ordered copies of 118–128 with number + variable images.
         /// </summary>
         private static LevelDefinition BuildChapter7Level(int globalLevel, int theme, int displayNumber)
         {
@@ -520,16 +520,18 @@ namespace DragonBoxAlgebra.Gameplay
                 return MakeCh7MixedSeaVariableLevel(mixedTitle, globalLevel, mixedTheme, mixedXLeft, tileCount);
             }
 
-            // 129–139: exact copy of the 113–128 mixed template — only images change
-            // (sea creature slots → number PNGs; variable slots stay letter PNGs).
-            int additionIndex = displayNumber - Chapter7AdditionStartDisplay;
-            int additionTheme = additionIndex % SeaCreatureNames.Length;
-            int additionTileCount = additionIndex % 2 == 0 ? 2 : 3;
-            bool additionXLeft = additionIndex % 2 == 0;
+            // 129–139: ordered copies of global 118–128 (Ch7 display 18–28).
+            // Same layout/seeds as the source level; only images change (sea → number PNGs).
+            int sourceDisplay = displayNumber - 11; // 29→18 … 39→28
+            int sourceGlobalLevel = globalLevel - 11; // 129→118 … 139→128
+            int sourceMixedIndex = sourceDisplay - Chapter7MixedPlusStartDisplay;
+            int sourceTheme = sourceMixedIndex % SeaCreatureNames.Length;
+            int sourceTileCount = sourceMixedIndex % 2 == 0 ? 2 : 3;
+            bool sourceXLeft = sourceMixedIndex % 2 == 0;
             string additionTitle =
-                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + numbers + vars, {additionTileCount} each side)";
-            return MakeCh7NumberVariableFromMixedTemplate(additionTitle, globalLevel, additionTheme,
-                additionXLeft, additionTileCount);
+                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + numbers + vars, {sourceTileCount} each side; from {sourceGlobalLevel})";
+            return MakeCh7NumberVariableFromMixedTemplate(additionTitle, sourceGlobalLevel, sourceTheme,
+                sourceXLeft, sourceTileCount);
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
@@ -684,19 +686,21 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Global 129–139: copy of <see cref="MakeCh7MixedSeaVariableLevel"/> (113–128).
-        /// Same layout, tile counts, x side, shuffle, hand count, and + between tiles.
-        /// Only change: sea slots become number images; variable slots stay letter images.
+        /// Global 129–139: ordered copy of a source mixed level from 118–128
+        /// (<see cref="MakeCh7MixedSeaVariableLevel"/>). Same layout, tile counts, x side,
+        /// shuffle, hand count, and + between tiles. Only change: sea slots become number
+        /// images; variable slots stay letter images. <paramref name="sourceGlobalLevel"/>
+        /// is the original 118–128 level used for seeds/layout.
         /// </summary>
-        private static LevelDefinition MakeCh7NumberVariableFromMixedTemplate(string title, int globalLevel,
+        private static LevelDefinition MakeCh7NumberVariableFromMixedTemplate(string title, int sourceGlobalLevel,
             int seaTheme, bool xOnLeft, int tileCount)
         {
-            int letterSeed = globalLevel * 7919 + 31;
-            // Identical slot split to MakeCh7MixedSeaVariableLevel.
-            int variableSlotCount = tileCount == 2 ? 1 : (globalLevel % 2 == 0 ? 2 : 1);
+            int letterSeed = sourceGlobalLevel * 7919 + 31;
+            // Identical slot split to MakeCh7MixedSeaVariableLevel for that source level.
+            int variableSlotCount = tileCount == 2 ? 1 : (sourceGlobalLevel % 2 == 0 ? 2 : 1);
             int numberSlotCount = tileCount - variableSlotCount;
             List<char> letters = PickDistinctVariableLetters(letterSeed, variableSlotCount);
-            int numberSeed = globalLevel * 7919 + 101;
+            int numberSeed = sourceGlobalLevel * 7919 + 101;
 
             var level = new LevelDefinition
             {
@@ -707,7 +711,7 @@ namespace DragonBoxAlgebra.Gameplay
                 ParCards = tileCount
             };
 
-            // true = variable (same as mixed), false = number (was sea in 113–128).
+            // true = variable (same as mixed), false = number (was sea in 118–128).
             var slots = new List<bool>();
             for (int i = 0; i < variableSlotCount; i++)
             {
@@ -719,7 +723,7 @@ namespace DragonBoxAlgebra.Gameplay
                 slots.Add(false);
             }
 
-            ShuffleSlots(slots, globalLevel * 7919 + 59);
+            ShuffleSlots(slots, sourceGlobalLevel * 7919 + 59);
 
             var numberValues = new List<int>();
             for (int i = 0; i < numberSlotCount; i++)
@@ -760,7 +764,7 @@ namespace DragonBoxAlgebra.Gameplay
                 }
                 else
                 {
-                    // Was dark sea in 113–128; now negative number image.
+                    // Was dark sea in source 118–128 level; now negative number image.
                     level.HandCards.Add(CardKind.NegativeConstant);
                     level.HandVariableLetters.Add('\0');
                     level.HandValues.Add(numberValues[numberIndex++]);
@@ -786,7 +790,7 @@ namespace DragonBoxAlgebra.Gameplay
                 }
                 else
                 {
-                    // Was light sea in 113–128; now positive number image.
+                    // Was light sea in source 118–128 level; now positive number image.
                     cards.Add(CardKind.PositiveConstant);
                     letters.Add('\0');
                     values.Add(numberValues[numberIndex++]);
