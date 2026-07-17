@@ -78,10 +78,9 @@ namespace DragonBoxAlgebra.Gameplay
             CurrentLevel.Chapter >= 5;
 
         public bool ShouldKeepHandCardInPanel(int handIndex) =>
-            UsesPlayableHandDisplay
+            !_levelComplete
             && handIndex >= 0
-            && handIndex < _hand.Count
-            && (!UsesDualHandPanelDisplay || !_spentHandIndices.Contains(handIndex));
+            && handIndex < _hand.Count;
 
         public bool IsHandBalanceComplete(int handIndex) =>
             handIndex >= 0 && _spentHandIndices.Contains(handIndex);
@@ -118,12 +117,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            if (UsesDualHandPanelDisplay)
-            {
-                return _pendingBalance == null || handIndex == _pendingBalance.HandIndex;
-            }
-
-            return handIndex == CurrentPlayableHandSlotIndex();
+            // Dual-hand / multi-hand: never lock other cards while one is mid-balance.
+            return true;
         }
 
         public BoardCard GetHandDisplayCard(int handIndex)
@@ -146,32 +141,13 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool ShouldDisplayHandCard(int handIndex)
         {
+            // Keep every hand slot visible and present until the level ends.
             if (handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;
             }
 
-            if (_levelComplete)
-            {
-                return false;
-            }
-
-            if (UsesDualHandPanelDisplay)
-            {
-                return true;
-            }
-
-            if (_spentHandIndices.Contains(handIndex))
-            {
-                return false;
-            }
-
-            if (!UsesPlayableHandDisplay)
-            {
-                return true;
-            }
-
-            return IsHandSlotPlayable(handIndex);
+            return !_levelComplete;
         }
 
         private int CurrentPlayableHandSlotIndex()
