@@ -176,7 +176,7 @@ namespace DragonBoxAlgebra.UI
 
         private static Image CreateMergeHalf(Transform parent, string name, BoardCard card, bool light)
         {
-            var halfGo = new GameObject(name, typeof(RectTransform), typeof(Image));
+            var halfGo = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
             halfGo.transform.SetParent(parent, false);
             var halfRect = halfGo.GetComponent<RectTransform>();
             halfRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -191,6 +191,11 @@ namespace DragonBoxAlgebra.UI
                 ? new Color(0.98f, 0.84f, 0.14f, 1f)
                 : new Color(0.08f, 0.08f, 0.12f, 1f);
             bg.raycastTarget = false;
+
+            var halfGroup = halfGo.GetComponent<CanvasGroup>();
+            halfGroup.alpha = 1f;
+            halfGroup.blocksRaycasts = false;
+            halfGroup.interactable = false;
 
             var spriteGo = new GameObject("Creature", typeof(RectTransform), typeof(Image));
             spriteGo.transform.SetParent(halfGo.transform, false);
@@ -273,7 +278,13 @@ namespace DragonBoxAlgebra.UI
             if (lightHalf != null)
             {
                 // Keep halves in hierarchy as active objects; only hide visually.
-                var lightGroup = lightHalf.GetComponent<CanvasGroup>() ?? lightHalf.gameObject.AddComponent<CanvasGroup>();
+                // Do not use ?? with GetComponent — Unity fake-null bypasses ??.
+                CanvasGroup lightGroup = lightHalf.GetComponent<CanvasGroup>();
+                if (lightGroup == null)
+                {
+                    lightGroup = lightHalf.gameObject.AddComponent<CanvasGroup>();
+                }
+
                 lightGroup.alpha = 0f;
                 lightGroup.blocksRaycasts = false;
                 lightHalf.enabled = false;
@@ -281,7 +292,12 @@ namespace DragonBoxAlgebra.UI
 
             if (darkHalf != null)
             {
-                var darkGroup = darkHalf.GetComponent<CanvasGroup>() ?? darkHalf.gameObject.AddComponent<CanvasGroup>();
+                CanvasGroup darkGroup = darkHalf.GetComponent<CanvasGroup>();
+                if (darkGroup == null)
+                {
+                    darkGroup = darkHalf.gameObject.AddComponent<CanvasGroup>();
+                }
+
                 darkGroup.alpha = 0f;
                 darkGroup.blocksRaycasts = false;
                 darkHalf.enabled = false;
