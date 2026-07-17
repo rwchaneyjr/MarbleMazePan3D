@@ -523,6 +523,12 @@ namespace DragonBoxAlgebra.UI
         {
             if (!_isDragging)
             {
+                // Still force a hand tile off the drag layer if a prior drop left it stuck.
+                if (SideName == "Hand" && _dragRoot != null && transform.parent == _dragRoot)
+                {
+                    FinishHandDragReturnToTray();
+                }
+
                 return;
             }
 
@@ -530,59 +536,44 @@ namespace DragonBoxAlgebra.UI
 
             if (SideName == "Hand")
             {
-                if (!_dragStarted)
+                try
                 {
-                    if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
+                    if (!_dragStarted)
+                    {
+                        if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
+                        {
+                            TryFlipHandOnTap();
+                        }
+
+                        return;
+                    }
+
+                    if (!_handPlayHandled && ExceededFlipDragThreshold(eventData))
+                    {
+                        if (_canvasGroup != null)
+                        {
+                            _canvasGroup.blocksRaycasts = false;
+                        }
+
+                        // Prefer finishing an open ? hole before magnetic opposite-snap.
+                        TryFillPendingHoleFromPointer(eventData);
+
+                        if (!_handPlayHandled && !TryToSnap(eventData))
+                        {
+                            TryPlayHandDrop(eventData);
+                        }
+                    }
+                    else if (!_handPlayHandled && CanFlipHand())
                     {
                         TryFlipHandOnTap();
                     }
-
-                    return;
                 }
-
-                if (!_handPlayHandled && ExceededFlipDragThreshold(eventData))
+                finally
                 {
-                    if (_canvasGroup != null)
-                    {
-                        _canvasGroup.blocksRaycasts = false;
-                    }
-
-                    // Prefer finishing an open ? hole before magnetic opposite-snap.
-                    // Snap-to-opposite was stealing the second hand→hole drag (128+).
-                    TryFillPendingHoleFromPointer(eventData);
-
-                    if (!_handPlayHandled && !TryToSnap(eventData))
-                    {
-                        TryPlayHandDrop(eventData);
-                    }
-                }
-                else if (!_handPlayHandled && CanFlipHand())
-                {
-                    TryFlipHandOnTap();
+                    // Always put the hand tile back in the tray — never leave it on the mouse/drag root.
+                    FinishHandDragReturnToTray();
                 }
 
-                ClearSnapHighlight();
-                RestoreDragVisuals();
-
-                if (_handPlayHandled)
-                {
-                    // Fixed hand count: always return to the tray — never destroy after play.
-                    transform.SetParent(_originalParent, false);
-                    transform.SetSiblingIndex(_originalSiblingIndex);
-                    SetHandCard(_controller.GetHandDisplayCard(Index));
-                    _didDrag = false;
-                    _dragStarted = false;
-                    _isDragging = false;
-                    _handPlayHandled = false;
-                    EnsureHandFullyInteractive();
-                    _controller.RefreshHandPresentation();
-                    return;
-                }
-
-                _didDrag = false;
-                _dragStarted = false;
-                ReturnToStart();
-                EnsureHandFullyInteractive();
                 return;
             }
 
@@ -610,6 +601,46 @@ namespace DragonBoxAlgebra.UI
             // Snapped visually but merge did not apply — put the tile back.
             EnsureDraggable().ClearSnappedFlag();
             ReturnToStart();
+        }
+
+        /// <summary>
+        /// Reparents the hand tile into the tray and resets drag flags so it never stays on the cursor.
+        /// </summary>
+        private void FinishHandDragReturnToTray()
+        {
+            ClearSnapHighlight();
+            EnsureDraggable().ClearSnappedFlag();
+
+            Transform trayParent = _originalParent;
+            if (trayParent == null || transform.parent == _dragRoot)
+            {
+                // Prefer the remembered tray slot; if it was destroyed mid-refresh, use DragRoot's owner panel.
+                if (trayParent == null && _dragRoot != null)
+                {
+                    var handView = FindObjectOfType<HandView>();
+                    // Fall through to ReturnToStart which uses DraggableTile's remembered hand parent.
+                }
+            }
+
+            ReturnToStart();
+
+            if (_controller != null && Index >= 0 && Index < _controller.Hand.Count)
+            {
+                SetHandCard(_controller.GetHandDisplayCard(Index));
+            }
+
+            _didDrag = false;
+            _dragStarted = false;
+            _isDragging = false;
+            _handPlayHandled = false;
+            _dropHandled = false;
+            EnsureHandFullyInteractive();
+            RestoreDragRaycasts();
+
+            if (_controller != null)
+            {
+                _controller.RefreshHandPresentation();
+            }
         }
 
         /// <summary>
