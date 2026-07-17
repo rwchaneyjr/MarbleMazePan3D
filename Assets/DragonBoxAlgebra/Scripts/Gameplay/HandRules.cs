@@ -38,6 +38,12 @@ namespace DragonBoxAlgebra.Gameplay
                 for (int h = 0; h < level.HandCards.Count; h++)
                 {
                     CardKind kind = level.HandCards[h];
+                    // Number constants (+/- images) are valid flippable hand tiles on Ch7 129–139.
+                    if (kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+                    {
+                        continue;
+                    }
+
                     if (kind is not (CardKind.DayCreature or CardKind.NightCreature))
                     {
                         throw new System.InvalidOperationException(
