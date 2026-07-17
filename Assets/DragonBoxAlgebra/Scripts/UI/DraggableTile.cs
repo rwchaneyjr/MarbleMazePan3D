@@ -113,6 +113,12 @@ namespace DragonBoxAlgebra.UI
         {
             _snapped = false;
 
+            if (this == null || gameObject == null)
+            {
+                return;
+            }
+
+            // Unity fake-null: parent may have been destroyed by a hand refresh mid-drop.
             if (_startingParent != null)
             {
                 transform.SetParent(_startingParent, false);
@@ -124,10 +130,15 @@ namespace DragonBoxAlgebra.UI
                     rect.localScale = Vector3.one;
                 }
 
-                if (_startingParent is RectTransform parentRect)
+                if (_startingParent is RectTransform parentRect && parentRect != null)
                 {
                     LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
                 }
+            }
+            else if (transform is RectTransform)
+            {
+                // Parent gone — at least clear drag offset so the tile is not left mid-screen.
+                transform.localPosition = Vector3.zero;
             }
             else
             {

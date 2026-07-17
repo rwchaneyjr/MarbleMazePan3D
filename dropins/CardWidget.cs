@@ -605,41 +605,68 @@ namespace DragonBoxAlgebra.UI
 
         /// <summary>
         /// Reparents the hand tile into the tray and resets drag flags so it never stays on the cursor.
+        /// Does not rebuild the hand — a rebuild here destroyed this RectTransform mid-drop
+        /// (MissingReferenceException) and left the last card unable to drag.
         /// </summary>
         private void FinishHandDragReturnToTray()
         {
+            if (this == null || gameObject == null)
+            {
+                return;
+            }
+
             ClearSnapHighlight();
-            EnsureDraggable().ClearSnappedFlag();
-
-            Transform trayParent = _originalParent;
-            if (trayParent == null || transform.parent == _dragRoot)
+            if (_draggable != null)
             {
-                // Prefer the remembered tray slot; if it was destroyed mid-refresh, use DragRoot's owner panel.
-                if (trayParent == null && _dragRoot != null)
-                {
-                    var handView = FindObjectOfType<HandView>();
-                    // Fall through to ReturnToStart which uses DraggableTile's remembered hand parent.
-                }
+                _draggable.ClearSnappedFlag();
             }
 
-            ReturnToStart();
-
-            if (_controller != null && Index >= 0 && Index < _controller.Hand.Count)
-            {
-                SetHandCard(_controller.GetHandDisplayCard(Index));
-            }
+            SafeReturnHandToTray();
 
             _didDrag = false;
             _dragStarted = false;
             _isDragging = false;
             _handPlayHandled = false;
             _dropHandled = false;
+
+            if (this == null || gameObject == null)
+            {
+                return;
+            }
+
+            if (_controller != null && Index >= 0 && Index < _controller.Hand.Count)
+            {
+                SetHandCard(_controller.GetHandDisplayCard(Index));
+            }
+
             EnsureHandFullyInteractive();
             RestoreDragRaycasts();
+        }
 
-            if (_controller != null)
+        private void SafeReturnHandToTray()
+        {
+            // Prefer DraggableTile's remembered tray parent; fall back to _originalParent.
+            EnsureDraggable().ReturnToStart();
+
+            Transform tray = _originalParent;
+            if (tray != null && transform.parent != tray)
             {
-                _controller.RefreshHandPresentation();
+                transform.SetParent(tray, false);
+                transform.SetSiblingIndex(_originalSiblingIndex);
+            }
+
+            if (_rect != null)
+            {
+                _rect.anchoredPosition = Vector2.zero;
+                _rect.localRotation = Quaternion.identity;
+                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+            }
+
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 1f;
+                _canvasGroup.blocksRaycasts = true;
+                _canvasGroup.interactable = true;
             }
         }
 
@@ -682,6 +709,11 @@ namespace DragonBoxAlgebra.UI
 
         private void ReturnToStart()
         {
+            if (this == null || gameObject == null)
+            {
+                return;
+            }
+
             ClearSnapHighlight();
             EnsureDraggable().ReturnToStart();
 
@@ -698,7 +730,7 @@ namespace DragonBoxAlgebra.UI
                 _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
             }
 
-            if (_originalParent is RectTransform parentRect)
+            if (_originalParent is RectTransform parentRect && parentRect != null)
             {
                 LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
             }

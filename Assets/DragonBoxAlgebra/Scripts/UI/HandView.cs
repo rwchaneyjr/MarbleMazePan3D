@@ -41,10 +41,40 @@ namespace DragonBoxAlgebra.UI
 
         private void RefreshHandInPlace()
         {
-            // Always refresh. Skipping while a hand tile is on DragRoot left the card
-            // stuck on the mouse / drag layer after drop.
-            bool preserveDragRoot = HasHandWidgetOnDragRoot() && _controller.KeepHandSlotVisibleDuringDrag();
+            // Never destroy a hand tile that is still on DragRoot — clearing it mid-EndDrag
+            // caused MissingReferenceException and left a ghost card stuck on the mouse.
+            bool preserveDragRoot = HasHandWidgetOnDragRoot();
+            ClearInactiveHandWidgetsOnDragRoot();
             Refresh(preserveDragRoot);
+        }
+
+        private void ClearInactiveHandWidgetsOnDragRoot()
+        {
+            if (_dragRoot == null)
+            {
+                return;
+            }
+
+            var toRemove = new List<GameObject>();
+            for (int i = 0; i < _dragRoot.childCount; i++)
+            {
+                CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
+                if (widget == null || widget.SideName != "Hand")
+                {
+                    continue;
+                }
+
+                // Keep the tile currently being dragged; remove stale leftovers.
+                if (!widget.IsActivelyDragging)
+                {
+                    toRemove.Add(widget.gameObject);
+                }
+            }
+
+            foreach (GameObject go in toRemove)
+            {
+                Object.DestroyImmediate(go);
+            }
         }
 
         private bool HasHandWidgetOnDragRoot()
