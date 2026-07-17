@@ -848,7 +848,11 @@ namespace DragonBoxAlgebra.Gameplay
             BoardSide placedSide = Board.GetSide(targetSide);
             placedSide.Cards.Add(template.CloneForPlacement());
             int placedIndex = placedSide.Cards.Count - 1;
+            // ? always opens on the opposite side from the tile just dragged in.
             string holeSide = targetSide == "Left" ? "Right" : "Left";
+            BoardSide holeBoard = Board.GetSide(holeSide);
+            // Put the answer where the middle "?" sits (center of that side's equation).
+            int holeInsert = Math.Max(0, holeBoard.Cards.Count / 2);
 
             _pendingBalances.Add(new BalancePending
             {
@@ -856,7 +860,7 @@ namespace DragonBoxAlgebra.Gameplay
                 PlacedSide = targetSide,
                 PlacedIndex = placedIndex,
                 HandIndex = handIndex,
-                HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
+                HoleInsertIndex = holeInsert
             });
 
             if (UsesPlayableHandDisplay)
@@ -865,7 +869,7 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             MessageChanged?.Invoke(
-                "? appeared in the middle of the other side — tiles stay active; match opposites or fill the ?.");
+                $"? on the {holeSide.ToLower()} side — drag the matching tile onto it; the ? goes away when filled.");
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             return true;
@@ -876,7 +880,14 @@ namespace DragonBoxAlgebra.Gameplay
             BalancePending pending = FindPendingBalanceForHole(targetSide, template, handIndex);
             if (pending == null)
             {
-                MessageChanged?.Invoke("Drag a matching tile onto the ? hole, or play on the other side.");
+                MessageChanged?.Invoke("Drag the matching tile onto the ? on the opposite side.");
+                return false;
+            }
+
+            // Must be the opposite side from where the first tile was placed.
+            if (targetSide != pending.HoleSide)
+            {
+                MessageChanged?.Invoke($"Drag the answer onto the ? on the {pending.HoleSide.ToLower()} side.");
                 return false;
             }
 
@@ -885,7 +896,7 @@ namespace DragonBoxAlgebra.Gameplay
             int insertIndex = pending.HoleInsertIndex;
             if (insertIndex < 0 || insertIndex > balancedSide.Cards.Count)
             {
-                insertIndex = balancedSide.Cards.Count;
+                insertIndex = balancedSide.Cards.Count / 2;
             }
 
             // Always place the polarity that was started on the first side so the equation balances,
@@ -911,13 +922,14 @@ namespace DragonBoxAlgebra.Gameplay
                 SyncHandFromTemplates();
             }
 
-            HandChanged?.Invoke();
-
             Moves.RegisterBalancedPlay();
             MessageChanged?.Invoke(UsesManualPairMerge
-                ? $"Balanced! Drag {LightTerm} onto {DarkTerm} on the same side to make *."
-                : "Balanced!");
+                ? $"? filled. Drag {LightTerm} onto {DarkTerm} on the same side to make *."
+                : "? filled — balanced!");
             PruneInvalidCancelMarkers();
+            // Rebuild board immediately so the ? disappears as soon as the answer lands.
+            BoardChanged?.Invoke();
+            HandChanged?.Invoke();
             ResolveCombines();
             return true;
         }

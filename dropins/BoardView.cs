@@ -276,17 +276,24 @@ namespace DragonBoxAlgebra.UI
             var markedSides = new HashSet<string>();
             foreach (BalancePending pending in _controller.PendingBalances)
             {
-                if (pending == null || markedSides.Contains(pending.HoleSide))
+                if (pending == null)
                 {
                     continue;
                 }
 
-                markedSides.Add(pending.HoleSide);
-                RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
-                TileLayout holeLayout = pending.HoleSide == "Left" ? leftLayout : rightLayout;
+                // Always the side opposite where the tile was just placed.
+                string oppositeSide = pending.PlacedSide == "Left" ? "Right" : "Left";
+                if (markedSides.Contains(oppositeSide))
+                {
+                    continue;
+                }
+
+                markedSides.Add(oppositeSide);
+                RectTransform holePanel = oppositeSide == "Left" ? _leftPanel : _rightPanel;
+                TileLayout holeLayout = oppositeSide == "Left" ? leftLayout : rightLayout;
                 BalanceHoleWidget hole = BalanceHoleWidget.CreateInlineSymbol(holePanel, _controller,
-                    pending.HoleSide, holeLayout.Height);
-                // Middle of that side's equation row (tiles + "+" separators).
+                    oppositeSide, holeLayout.Height);
+                // Middle of that opposite side's equation (tiles + "+" separators).
                 int mid = Mathf.Max(0, holePanel.childCount / 2);
                 hole.transform.SetSiblingIndex(Mathf.Clamp(mid, 0, holePanel.childCount - 1));
             }
@@ -425,7 +432,8 @@ namespace DragonBoxAlgebra.UI
                 Transform child = panel.GetChild(i);
                 if (child.GetComponent<BoardDropZone>() == null)
                 {
-                    Destroy(child.gameObject);
+                    // Immediate so a filled "?" does not linger after the answer is dragged in.
+                    DestroyImmediate(child.gameObject);
                 }
             }
 
