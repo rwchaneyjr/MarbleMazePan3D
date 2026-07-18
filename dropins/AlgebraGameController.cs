@@ -452,7 +452,8 @@ namespace DragonBoxAlgebra.Gameplay
                 BoardCard cardB = side.Cards[indexB];
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
-                    TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
+                    // Anchor the swirl on the tile that was dropped onto (indexB).
+                    TryCreateCancelMarker(sideName, cardA.Id, cardB.Id, anchorCardId: cardB.Id);
                     MessageChanged?.Invoke(_pendingBalance != null
                         ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. The ? hole stays until you fill it."
                         : $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
@@ -709,7 +710,7 @@ namespace DragonBoxAlgebra.Gameplay
                 int insertAt = Math.Clamp(targetBoardIndex + 1, 0, side.Cards.Count);
                 side.Cards.Insert(insertAt, handCard.CloneForPlacement());
                 BoardCard placed = side.Cards[insertAt];
-                if (!TryCreateCancelMarker(sideName, targetCard.Id, placed.Id))
+                if (!TryCreateCancelMarker(sideName, targetCard.Id, placed.Id, anchorCardId: targetCard.Id))
                 {
                     // Marker failed — still cancel instantly so the drop never "pops to the side".
                     CombineRules.RemovePairById(side, targetCard.Id, placed.Id);
@@ -1156,7 +1157,8 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        private bool TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB)
+        private bool TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB,
+            string anchorCardId = null)
         {
             if (IsCardPendingCancelOnSide(cardIdA, sideName) || IsCardPendingCancelOnSide(cardIdB, sideName))
             {
@@ -1208,13 +1210,37 @@ namespace DragonBoxAlgebra.Gameplay
                 }
             }
 
+            string resolvedAnchor = anchorCardId;
+            if (string.IsNullOrEmpty(resolvedAnchor)
+                || (resolvedAnchor != cardIdA && resolvedAnchor != cardIdB))
+            {
+                // Fall back to the later card so the swirl stays with the pair, not past the red box.
+                int indexA = IndexOfCardId(side, cardIdA);
+                int indexB = IndexOfCardId(side, cardIdB);
+                resolvedAnchor = indexB >= indexA ? cardIdB : cardIdA;
+            }
+
             _pendingCancels.Add(new PendingCancelMarker
             {
                 SideName = sideName,
                 CardIdA = cardIdA,
-                CardIdB = cardIdB
+                CardIdB = cardIdB,
+                AnchorCardId = resolvedAnchor
             });
             return true;
+        }
+
+        private static int IndexOfCardId(BoardSide side, string cardId)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (side.Cards[i].Id == cardId)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         private static bool CardExistsOnlyOnSide(AlgebraBoard board, string sideName, string cardId)

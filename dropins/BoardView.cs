@@ -434,9 +434,9 @@ namespace DragonBoxAlgebra.UI
                 int markerIndex = FindPendingMarkerIndex(sideName, card.Id);
                 if (markerIndex >= 0)
                 {
-                    // Put the merge/swirl in the first pending card's slot so it stays where you dropped.
+                    // Put the merge/swirl on the drop-target card so it does not jump past the red box.
                     if (!placedMarkerIndexes.Contains(markerIndex)
-                        && IsEarlierCardOfPendingPair(side, _controller.PendingCancels[markerIndex], card.Id))
+                        && IsAnchorCardOfPendingPair(side, _controller.PendingCancels[markerIndex], card.Id))
                     {
                         if (usePlus && placedCard)
                         {
@@ -495,8 +495,14 @@ namespace DragonBoxAlgebra.UI
             return -1;
         }
 
-        private static bool IsEarlierCardOfPendingPair(BoardSide side, PendingCancelMarker marker, string cardId)
+        private static bool IsAnchorCardOfPendingPair(BoardSide side, PendingCancelMarker marker, string cardId)
         {
+            if (!string.IsNullOrEmpty(marker.AnchorCardId))
+            {
+                return marker.AnchorCardId == cardId;
+            }
+
+            // Legacy markers: keep the pair on the later slot (away from a leading red box).
             int indexA = IndexOfCardId(side, marker.CardIdA);
             int indexB = IndexOfCardId(side, marker.CardIdB);
             if (indexA < 0 || indexB < 0)
@@ -504,8 +510,8 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
-            int earlier = Math.Min(indexA, indexB);
-            return side.Cards[earlier].Id == cardId;
+            int later = Math.Max(indexA, indexB);
+            return side.Cards[later].Id == cardId;
         }
 
         private static int IndexOfCardId(BoardSide side, string cardId)

@@ -36,6 +36,13 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
+            // Same creature image family only (blocks cross-theme snaps on split-theme levels).
+            if (tile.Card.VisualTheme >= 0 && Widget.Card.VisualTheme >= 0
+                && tile.Card.VisualTheme != Widget.Card.VisualTheme)
+            {
+                return false;
+            }
+
             if (tile.SideName == "Hand")
             {
                 AlgebraGameController controller = tile.Controller;

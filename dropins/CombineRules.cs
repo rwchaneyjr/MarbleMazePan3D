@@ -117,6 +117,12 @@ namespace DragonBoxAlgebra.Core
                 return false;
             }
 
+            // Same creature art only — different side themes (e.g. Ch2 27) must not cross-match.
+            if (a.VisualTheme >= 0 && b.VisualTheme >= 0 && a.VisualTheme != b.VisualTheme)
+            {
+                return false;
+            }
+
             bool aUsesLetter = a.VariableLetter != '\0';
             bool bUsesLetter = b.VariableLetter != '\0';
             if (!aUsesLetter && !bUsesLetter)
