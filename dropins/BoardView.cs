@@ -405,7 +405,8 @@ namespace DragonBoxAlgebra.UI
                 Transform child = panel.GetChild(i);
                 if (child.GetComponent<BoardDropZone>() == null)
                 {
-                    Destroy(child.gameObject);
+                    // Immediate so old opposite cards never sit beside the new swirl for a frame.
+                    DestroyImmediate(child.gameObject);
                 }
             }
 
@@ -443,18 +444,8 @@ namespace DragonBoxAlgebra.UI
                             CreatePlusSeparator(panel, layout.Height);
                         }
 
-                        PendingCancelMarker marker = _controller.PendingCancels[markerIndex];
-                        BoardCard? cardA = FindCardById(side, marker.CardIdA);
-                        BoardCard? cardB = FindCardById(side, marker.CardIdB);
-                        if (cardA.HasValue && cardB.HasValue)
-                        {
-                            AsteriskCancelWidget.CreateMergePair(panel, _controller, markerIndex,
-                                cardA.Value, cardB.Value, layout.Width, layout.Height);
-                        }
-                        else
-                        {
-                            AsteriskCancelWidget.Create(panel, _controller, markerIndex, layout.Width, layout.Height);
-                        }
+                        // Swirl only — never spawn the two opposite card images beside it.
+                        AsteriskCancelWidget.Create(panel, _controller, markerIndex, layout.Width, layout.Height);
 
                         placedMarkerIndexes.Add(markerIndex);
                         placedCard = true;
@@ -555,7 +546,7 @@ namespace DragonBoxAlgebra.UI
 
             foreach (GameObject go in toRemove)
             {
-                Destroy(go);
+                DestroyImmediate(go);
             }
         }
 

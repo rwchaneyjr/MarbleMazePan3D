@@ -542,10 +542,11 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            _isDragging = false;
-
+            // ----- HAND: unchanged from working copy (do not alter) -----
             if (SideName == "Hand")
             {
+                _isDragging = false;
+
                 if (!_dragStarted)
                 {
                     if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
@@ -598,33 +599,46 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            // ----- BOARD opposite merge only -----
+            EndBoardOppositeDrag(eventData);
+        }
+
+        /// <summary>
+        /// Board tile onto opposite: snap visibly, merge, show swirl only — no leftover cards.
+        /// </summary>
+        private void EndBoardOppositeDrag(PointerEventData eventData)
+        {
             ClearSnapHighlight();
-            RestoreDragVisuals();
             RestoreDragRaycasts();
 
-            // Board opposites (Ch1/Ch2 drag-to-merge): snap light onto dark on the same side.
-            if (!TryToSnap(eventData) && !TrySnapBoardOppositeNearby(eventData))
+            // Keep IsActivelyDragging true through merge so BoardChanged does not orphan-clear us.
+            bool merged = TryToSnap(eventData);
+            if (this == null)
             {
+                return;
+            }
+
+            if (!merged)
+            {
+                merged = TrySnapBoardOppositeNearby(eventData);
+            }
+
+            if (this == null)
+            {
+                return;
+            }
+
+            _isDragging = false;
+
+            if (!merged || !_dropHandled)
+            {
+                EnsureDraggable().ClearSnappedFlag();
+                RestoreDragVisuals();
                 ReturnToStart();
                 return;
             }
 
-            if (_dropHandled)
-            {
-                // Slot is no longer needed — board rebuild will refresh the side.
-                ClearBoardDragPlaceholder();
-                // Board refresh owns cleanup when combine succeeded; only destroy if still on DragRoot.
-                if (this != null && gameObject != null && transform.parent == _dragRoot)
-                {
-                    Destroy(gameObject);
-                }
-
-                return;
-            }
-
-            // Snapped visually but merge did not apply — put the tile back.
-            EnsureDraggable().ClearSnappedFlag();
-            ReturnToStart();
+            // Dragged copy already destroyed in MergeBoardOppositeOnto.
         }
 
         /// <summary>
@@ -644,7 +658,6 @@ namespace DragonBoxAlgebra.UI
             Camera cam = eventData != null
                 ? eventData.pressEventCamera
                 : (_canvas != null ? _canvas.worldCamera : null);
-            Vector3 selfPos = transform.position;
 
             foreach (TileSnapTarget target in FindObjectsOfType<TileSnapTarget>())
             {
@@ -653,10 +666,8 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                float screenDist = Vector2.Distance(screen,
+                float distance = Vector2.Distance(screen,
                     RectTransformUtility.WorldToScreenPoint(cam, target.GetSnapPosition()));
-                float worldDist = Vector3.Distance(selfPos, target.GetSnapPosition()) * 100f;
-                float distance = Mathf.Min(screenDist, worldDist);
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
@@ -669,6 +680,7 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
+            // Visible snap onto the opposite, then merge.
             transform.position = best.transform.position;
             return HandleDropOnCard(best);
         }
@@ -1008,19 +1020,81 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
-            SnapOnto(target);
-            if (_controller.TryCombine(SideName, Index, target.Index))
+            return MergeBoardOppositeOnto(target);
+        }
+
+        /// <summary>
+        /// Snap this board card onto its opposite, hide both immediately, combine into a swirl.
+        /// </summary>
+        private bool MergeBoardOppositeOnto(CardWidget target)
+        {
+            if (target == null || _controller == null)
             {
-                _dropHandled = true;
-                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                return true;
+                return false;
             }
 
-            return false;
+            // 1) Visibly land on the opposite.
+            SnapOnto(target);
+
+            // 2) Hide both tiles BEFORE BoardChanged rebuilds — no momentary leftover card.
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 0f;
+            }
+
+            CanvasGroup targetGroup = target.GetComponent<CanvasGroup>();
+            if (targetGroup != null)
+            {
+                targetGroup.alpha = 0f;
+            }
+            else
+            {
+                target.gameObject.SetActive(false);
+            }
+
+            // 3) Merge → pending cancel → board shows swirl only.
+            if (!_controller.TryCombine(SideName, Index, target.Index))
+            {
+                if (_canvasGroup != null)
+                {
+                    _canvasGroup.alpha = 1f;
+                }
+
+                if (targetGroup != null)
+                {
+                    targetGroup.alpha = 1f;
+                }
+                else if (target != null && target.gameObject != null)
+                {
+                    target.gameObject.SetActive(true);
+                }
+
+                return false;
+            }
+
+            _dropHandled = true;
+            DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+
+            // 4) Destroy the dragged copy so only the swirl remains.
+            _isDragging = false;
+            ClearBoardDragPlaceholder();
+            ClearSnapHighlight();
+            if (this != null && gameObject != null)
+            {
+                DestroyImmediate(gameObject);
+            }
+
+            return true;
         }
 
         private void SnapOnto(CardWidget target)
         {
+            if (target == null)
+            {
+                return;
+            }
+
+            transform.position = target.transform.position;
             if (_rect == null || _dragRoot == null)
             {
                 return;
