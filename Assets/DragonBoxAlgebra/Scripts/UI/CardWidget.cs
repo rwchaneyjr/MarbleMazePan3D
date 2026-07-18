@@ -491,6 +491,11 @@ namespace DragonBoxAlgebra.UI
         {
             if (!_isDragging)
             {
+                if (SideName == "Hand" && _dragRoot != null && transform.parent == _dragRoot)
+                {
+                    PutHandCardBackInPanel();
+                }
+
                 return;
             }
 
@@ -539,68 +544,129 @@ namespace DragonBoxAlgebra.UI
         {
             if (!_isDragging)
             {
+                // Safety: never leave a hand card stranded on DragRoot under the cursor.
+                if (SideName == "Hand" && _dragRoot != null && transform.parent == _dragRoot)
+                {
+                    PutHandCardBackInPanel();
+                }
+
                 return;
             }
 
-            // ----- HAND: unchanged from working copy (do not alter) -----
             if (SideName == "Hand")
             {
-                _isDragging = false;
-
-                if (!_dragStarted)
-                {
-                    if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
-                    {
-                        TryFlipHandOnTap();
-                    }
-
-                    return;
-                }
-
-                if (!_handPlayHandled && ExceededFlipDragThreshold(eventData))
-                {
-                    if (_canvasGroup != null)
-                    {
-                        _canvasGroup.blocksRaycasts = false;
-                    }
-
-                    // DraggableTile pattern: snap to correct opposite, else return / balance.
-                    if (!TryToSnap(eventData))
-                    {
-                        TryPlayHandDrop(eventData);
-                    }
-                }
-                else if (!_handPlayHandled && CanFlipHand())
-                {
-                    TryFlipHandOnTap();
-                }
-
-                ClearSnapHighlight();
-                RestoreDragVisuals();
-
-                if (_handPlayHandled)
-                {
-                    if (_controller.ShouldKeepHandCardInPanel(Index))
-                    {
-                        transform.SetParent(_originalParent, false);
-                        transform.SetSiblingIndex(_originalSiblingIndex);
-                        SetHandCard(_controller.GetHandDisplayCard(Index));
-                    }
-                    else
-                    {
-                        DestroyImmediate(gameObject);
-                    }
-
-                    _controller.RefreshHandPresentation();
-                    return;
-                }
-
-                ReturnToStart();
+                EndHandDrag(eventData);
                 return;
             }
 
             // ----- BOARD opposite merge only -----
             EndBoardOppositeDrag(eventData);
+        }
+
+        /// <summary>
+        /// Hand release: never use board magnetic snap (that locks the card to the pointer).
+        /// Always put the card back in the hand before any hand rebuild.
+        /// </summary>
+        private void EndHandDrag(PointerEventData eventData)
+        {
+            bool started = _dragStarted;
+            _isDragging = false;
+            _didDrag = false;
+            ClearSnapHighlight();
+            EnsureDraggable().ClearSnappedFlag();
+
+            if (!started)
+            {
+                if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
+                {
+                    TryFlipHandOnTap();
+                }
+
+                RestoreDragRaycasts();
+                return;
+            }
+
+            // Drop/raycast play only — do NOT call TryToSnap (board-opposite path).
+            if (!_handPlayHandled && ExceededFlipDragThreshold(eventData))
+            {
+                if (_canvasGroup != null)
+                {
+                    _canvasGroup.blocksRaycasts = false;
+                }
+
+                TryPlayHandDrop(eventData);
+            }
+            else if (!_handPlayHandled && CanFlipHand())
+            {
+                TryFlipHandOnTap();
+            }
+
+            // Critical: leave DragRoot immediately so the card stops tracking the mouse.
+            PutHandCardBackInPanel();
+
+            if (_handPlayHandled)
+            {
+                if (_controller != null && Index >= 0 && Index < _controller.Hand.Count
+                    && _controller.ShouldKeepHandCardInPanel(Index))
+                {
+                    SetHandCard(_controller.GetHandDisplayCard(Index));
+                }
+
+                // Rebuild next frame so EventSystem can finish EndDrag on a live object.
+                StartCoroutine(DeferredHandRefreshAfterDrop());
+            }
+
+            _handPlayHandled = false;
+            _dropHandled = false;
+            _dragStarted = false;
+        }
+
+        private void PutHandCardBackInPanel()
+        {
+            if (this == null || gameObject == null)
+            {
+                return;
+            }
+
+            if (_originalParent != null)
+            {
+                transform.SetParent(_originalParent, false);
+                transform.SetSiblingIndex(Mathf.Clamp(_originalSiblingIndex, 0, _originalParent.childCount - 1));
+            }
+            else
+            {
+                EnsureDraggable().ReturnToStart();
+            }
+
+            if (_rect != null)
+            {
+                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+                _rect.anchoredPosition = Vector2.zero;
+                _rect.localRotation = Quaternion.identity;
+            }
+
+            RestoreDragVisuals();
+            RestoreDragRaycasts();
+
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.blocksRaycasts = true;
+                _canvasGroup.interactable = true;
+            }
+
+            if (_originalParent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+            }
+        }
+
+        private IEnumerator DeferredHandRefreshAfterDrop()
+        {
+            yield return null;
+            if (_controller != null)
+            {
+                _controller.RefreshHandPresentation();
+            }
         }
 
         /// <summary>
@@ -686,10 +752,16 @@ namespace DragonBoxAlgebra.UI
         }
 
         /// <summary>
-        /// Uses DraggableTile + TileSnapTarget: closest correct opposite within snapDistance.
+        /// Board-only magnetic snap onto a correct opposite within snapDistance.
+        /// Hand must not use this — it locks the card onto the target and sticks to the pointer.
         /// </summary>
         private bool TryToSnap(PointerEventData eventData)
         {
+            if (SideName == "Hand")
+            {
+                return false;
+            }
+
             DraggableTile drag = EnsureDraggable();
             Vector2 screen = eventData != null ? eventData.position : _lastDragScreenPosition;
             Camera cam = eventData != null
@@ -704,21 +776,22 @@ namespace DragonBoxAlgebra.UI
 
             _snapHighlight = target.Widget;
 
-            if (SideName == "Hand")
-            {
-                TryPlayHandOnBoardTarget(target.Widget);
-            }
-            else if (HandleDropOnCard(target.Widget))
+            if (HandleDropOnCard(target.Widget))
             {
                 _dropHandled = true;
             }
 
-            // Only treat as handled when a real merge/play happened — not merely a visual snap.
-            return _handPlayHandled || _dropHandled;
+            return _dropHandled;
         }
 
         private void ReturnToStart()
         {
+            if (SideName == "Hand")
+            {
+                PutHandCardBackInPanel();
+                return;
+            }
+
             ClearSnapHighlight();
             EnsureDraggable().ClearSnappedFlag();
 

@@ -47,13 +47,15 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            bool preserveDragRoot = HasHandWidgetOnDragRoot() && _controller.KeepHandSlotVisibleDuringDrag();
-            if (HasHandWidgetOnDragRoot() && !preserveDragRoot)
+            // Always preserve a hand card that is mid-drag on DragRoot so EndDrag can
+            // reparent it. Destroying it here is what leaves a ghost stuck to the mouse.
+            if (HasHandWidgetOnDragRoot())
             {
+                Refresh(preserveDragRoot: true);
                 return;
             }
 
-            Refresh(preserveDragRoot);
+            Refresh(preserveDragRoot: false);
         }
 
         private bool HasHandWidgetOnDragRoot()
