@@ -545,9 +545,12 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            // Hand path: keep the pre-opposite-merge behavior. Clearing _isDragging / destroying
+            // the ghost before HandChanged finishes is what left cards stuck to the mouse.
             if (SideName == "Hand")
             {
                 _isDragging = false;
+
                 if (!_dragStarted)
                 {
                     if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
@@ -565,7 +568,6 @@ namespace DragonBoxAlgebra.UI
                         _canvasGroup.blocksRaycasts = false;
                     }
 
-                    // DraggableTile pattern: snap to correct opposite, else return / balance.
                     if (!TryToSnap(eventData))
                     {
                         TryPlayHandDrop(eventData);
@@ -577,7 +579,42 @@ namespace DragonBoxAlgebra.UI
                 }
 
                 ClearSnapHighlight();
-                FinishHandDragVisual();
+                RestoreDragVisuals();
+                RestoreDragRaycasts();
+                EnsureDraggable().ClearSnappedFlag();
+
+                if (_handPlayHandled)
+                {
+                    if (_controller.ShouldKeepHandCardInPanel(Index))
+                    {
+                        if (_originalParent != null)
+                        {
+                            transform.SetParent(_originalParent, false);
+                            transform.SetSiblingIndex(Mathf.Clamp(_originalSiblingIndex, 0,
+                                _originalParent.childCount - 1));
+                        }
+
+                        if (_rect != null)
+                        {
+                            _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+                            _rect.anchoredPosition = Vector2.zero;
+                            _rect.localRotation = Quaternion.identity;
+                        }
+
+                        SetHandCard(_controller.GetHandDisplayCard(Index));
+                    }
+                    else if (this != null && gameObject != null)
+                    {
+                        DestroyImmediate(gameObject);
+                        _controller.RefreshHandPresentation();
+                        return;
+                    }
+
+                    _controller.RefreshHandPresentation();
+                    return;
+                }
+
+                ReturnHandToPanel();
                 return;
             }
 
@@ -585,7 +622,7 @@ namespace DragonBoxAlgebra.UI
             RestoreDragRaycasts();
             // Do NOT RestoreDragVisuals yet — that flashes a card beside the new swirl.
 
-            // Stay actively dragging until merge finishes so BoardChanged does not orphan-clear us.
+            // Board only: stay actively dragging until merge finishes.
             bool merged = TryToSnap(eventData);
             if (this == null)
             {
@@ -606,7 +643,6 @@ namespace DragonBoxAlgebra.UI
 
             if (!merged || !_dropHandled)
             {
-                // Not close enough — snap back into the original slot.
                 EnsureDraggable().ClearSnappedFlag();
                 RestoreDragVisuals();
                 ReturnToStart();
@@ -693,28 +729,6 @@ namespace DragonBoxAlgebra.UI
             return _handPlayHandled || _dropHandled;
         }
 
-        /// <summary>
-        /// Always clear the hand drag ghost off DragRoot so it cannot stick to the pointer.
-        /// </summary>
-        private void FinishHandDragVisual()
-        {
-            EnsureDraggable().ClearSnappedFlag();
-
-            if (_handPlayHandled)
-            {
-                // Drop the in-flight copy, then let HandView rebuild the slot.
-                if (this != null && gameObject != null)
-                {
-                    DestroyImmediate(gameObject);
-                }
-
-                _controller?.RefreshHandPresentation();
-                return;
-            }
-
-            ReturnHandToPanel();
-        }
-
         private void ReturnHandToPanel()
         {
             ClearSnapHighlight();
@@ -740,13 +754,6 @@ namespace DragonBoxAlgebra.UI
             if (_originalParent is RectTransform parentRect)
             {
                 LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
-            }
-
-            // Last resort: never leave a hand card on the drag layer.
-            if (_dragRoot != null && this != null && transform.parent == _dragRoot)
-            {
-                DestroyImmediate(gameObject);
-                _controller?.RefreshHandPresentation();
             }
         }
 
