@@ -19,7 +19,7 @@ namespace DragonBoxAlgebra.UI
         /// <summary>Screen-pixel snap radius — forwarded to DraggableTile.snapDistance.</summary>
         public float snapDistance = 220f;
 
-        private const float DragToMergeSnapDistance = 320f;
+        private const float DragToMergeSnapDistance = 480f;
 
         private AlgebraGameController _controller;
         private RectTransform _rect;
@@ -613,10 +613,11 @@ namespace DragonBoxAlgebra.UI
             {
                 // Slot is no longer needed — board rebuild will refresh the side.
                 ClearBoardDragPlaceholder();
-                // Board refresh owns cleanup when combine succeeded; only destroy if still on DragRoot.
+                // Destroy immediately so the dragged image cannot linger off to the side
+                // while the swirl merge pair plays in the board row.
                 if (this != null && gameObject != null && transform.parent == _dragRoot)
                 {
-                    Destroy(gameObject);
+                    DestroyImmediate(gameObject);
                 }
 
                 return;
@@ -1008,6 +1009,7 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
+            // Lock the dragged image onto the target before the swirl starts.
             SnapOnto(target);
             if (_controller.TryCombine(SideName, Index, target.Index))
             {
@@ -1021,6 +1023,13 @@ namespace DragonBoxAlgebra.UI
 
         private void SnapOnto(CardWidget target)
         {
+            if (target == null)
+            {
+                return;
+            }
+
+            // Prefer world snap so the picture sits exactly on the opposite image.
+            transform.position = target.transform.position;
             if (_rect == null || _dragRoot == null)
             {
                 return;

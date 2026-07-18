@@ -9,8 +9,11 @@ namespace DragonBoxAlgebra.UI
 {
     public class AsteriskCancelWidget : MonoBehaviour, IPointerClickHandler
     {
-        private const float MergeDuration = 1.15f;
-        private const float MergeHalfOffset = 28f;
+        private const float MergeDuration = 0.55f;
+        /// <summary>How far the two creature images start apart before snapping into the swirl.</summary>
+        private const float MergeHalfOffset = 12f;
+        /// <summary>Fraction of the merge where images must already be centered (aggressive snap).</summary>
+        private const float ImageSnapFinishAt = 0.35f;
         private const float SwirlClickableAlpha = 0.25f;
         private const float AutoDismissDelay = 0.35f;
         private const string SwirlingLightResourcePath = "CreatureSprites/SwirlingLight";
@@ -203,11 +206,32 @@ namespace DragonBoxAlgebra.UI
             spriteRect.offsetMin = new Vector2(4f, 4f);
             spriteRect.offsetMax = new Vector2(-4f, -4f);
             var spriteImage = spriteGo.GetComponent<Image>();
-            spriteImage.sprite = CardVisuals.IconSprite(card);
+            // Prefer the full creature PNG so the merge snap is on the real card image.
+            spriteImage.sprite = CardVisuals.CreatureSprite(card) ?? CardVisuals.IconSprite(card);
             spriteImage.preserveAspect = true;
             spriteImage.raycastTarget = false;
 
             return bg;
+        }
+
+        private static void SetChildImageAlpha(Transform parent, float alpha)
+        {
+            if (parent == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Image childImage = parent.GetChild(i).GetComponent<Image>();
+                if (childImage == null)
+                {
+                    continue;
+                }
+
+                Color c = childImage.color;
+                childImage.color = new Color(c.r, c.g, c.b, alpha);
+            }
         }
 
         private IEnumerator PlayMergeAnimation()
@@ -229,35 +253,42 @@ namespace DragonBoxAlgebra.UI
             while (elapsed < MergeDuration)
             {
                 elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / MergeDuration));
+                float t = Mathf.Clamp01(elapsed / MergeDuration);
+                // Images slam to center early; swirl finishes filling in after.
+                float imageT = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / ImageSnapFinishAt));
+                float fadeT = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - 0.2f) / 0.8f));
+                float swirlT = Mathf.SmoothStep(0f, 1f, t);
 
                 if (lightRect != null)
                 {
-                    lightRect.anchoredPosition = Vector2.Lerp(lightStart, Vector2.zero, t);
-                    lightRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.35f, t);
+                    lightRect.anchoredPosition = Vector2.Lerp(lightStart, Vector2.zero, imageT);
+                    lightRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.4f, imageT);
                 }
 
                 if (darkRect != null)
                 {
-                    darkRect.anchoredPosition = Vector2.Lerp(darkStart, Vector2.zero, t);
-                    darkRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.35f, t);
+                    darkRect.anchoredPosition = Vector2.Lerp(darkStart, Vector2.zero, imageT);
+                    darkRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.4f, imageT);
                 }
 
                 if (lightHalf != null)
                 {
+                    // Fade the card frame, but keep the creature Image child visible until centered.
                     lightHalf.color = new Color(lightStartColor.r, lightStartColor.g, lightStartColor.b,
-                        Mathf.Lerp(1f, 0f, t));
+                        Mathf.Lerp(1f, 0f, fadeT));
+                    SetChildImageAlpha(lightHalf.transform, Mathf.Lerp(1f, 0f, fadeT));
                 }
 
                 if (darkHalf != null)
                 {
                     darkHalf.color = new Color(darkStartColor.r, darkStartColor.g, darkStartColor.b,
-                        Mathf.Lerp(1f, 0f, t));
+                        Mathf.Lerp(1f, 0f, fadeT));
+                    SetChildImageAlpha(darkHalf.transform, Mathf.Lerp(1f, 0f, fadeT));
                 }
 
                 if (_symbolGroup != null)
                 {
-                    float symbolAlpha = Mathf.Lerp(0f, 1f, t);
+                    float symbolAlpha = Mathf.Lerp(0f, 1f, swirlT);
                     _symbolGroup.alpha = symbolAlpha;
                     if (!_readyToClick && symbolAlpha >= SwirlClickableAlpha)
                     {
@@ -267,7 +298,7 @@ namespace DragonBoxAlgebra.UI
 
                 if (_symbolRect != null)
                 {
-                    _symbolRect.localScale = Vector3.one * Mathf.Lerp(0.2f, 1f, t);
+                    _symbolRect.localScale = Vector3.one * Mathf.Lerp(0.2f, 1f, swirlT);
                 }
 
                 yield return null;
@@ -275,11 +306,13 @@ namespace DragonBoxAlgebra.UI
 
             if (lightHalf != null)
             {
+                lightHalf.rectTransform.anchoredPosition = Vector2.zero;
                 lightHalf.gameObject.SetActive(false);
             }
 
             if (darkHalf != null)
             {
+                darkHalf.rectTransform.anchoredPosition = Vector2.zero;
                 darkHalf.gameObject.SetActive(false);
             }
 
