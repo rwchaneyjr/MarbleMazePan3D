@@ -506,10 +506,13 @@ namespace DragonBoxAlgebra.UI
                         _canvasGroup.blocksRaycasts = false;
                     }
 
-                    // DraggableTile pattern: snap to correct opposite, else return / balance.
-                    if (!TryToSnap(eventData))
+                    // Raycast first: drop on a side → ? on the other side (+ small card preview).
+                    // Magnetic TryToSnap was eating every drop whenever an opposite existed
+                    // on the board (common on Ch7), so the ? hole never appeared.
+                    TryPlayHandDrop(eventData);
+                    if (!_handPlayHandled)
                     {
-                        TryPlayHandDrop(eventData);
+                        TryToSnap(eventData);
                     }
                 }
                 else if (!_handPlayHandled && CanFlipHand())
