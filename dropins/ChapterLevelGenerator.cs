@@ -120,6 +120,8 @@ namespace DragonBoxAlgebra.Gameplay
                 AddRandomExtraTileOppositeBox(levels[i], i);
             }
 
+            // One unique image per hand — drop duplicates and light/dark (or +/-) pairs.
+            HandRules.DedupeLevelHandDefinitions(levels);
             HandRules.AssertAllHandCardsFlippable(levels);
             HandRules.AssertVariableHandCardsFlippable(levels);
             return levels;
