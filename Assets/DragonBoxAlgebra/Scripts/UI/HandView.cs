@@ -47,8 +47,12 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            bool preserveDragRoot = HasHandWidgetOnDragRoot() && _controller.KeepHandSlotVisibleDuringDrag();
-            if (HasHandWidgetOnDragRoot() && !preserveDragRoot)
+            // Drop finished / abandoned drag ghosts so they cannot block hand rebuilds
+            // (that left a card stuck on the pointer).
+            CleanupInactiveHandDragGhosts();
+
+            bool preserveDragRoot = HasActiveHandDrag() && _controller.KeepHandSlotVisibleDuringDrag();
+            if (HasActiveHandDrag() && !preserveDragRoot)
             {
                 return;
             }
@@ -68,6 +72,38 @@ namespace DragonBoxAlgebra.UI
             }
 
             return false;
+        }
+
+        private bool HasActiveHandDrag()
+        {
+            for (int i = 0; i < _dragRoot.childCount; i++)
+            {
+                CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand" && widget.IsActivelyDragging)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void CleanupInactiveHandDragGhosts()
+        {
+            var toRemove = new List<GameObject>();
+            for (int i = 0; i < _dragRoot.childCount; i++)
+            {
+                CardWidget widget = _dragRoot.GetChild(i).GetComponent<CardWidget>();
+                if (widget != null && widget.SideName == "Hand" && !widget.IsActivelyDragging)
+                {
+                    toRemove.Add(widget.gameObject);
+                }
+            }
+
+            foreach (GameObject go in toRemove)
+            {
+                Object.DestroyImmediate(go);
+            }
         }
 
         private bool IsHandIndexOnDragRoot(int handIndex)

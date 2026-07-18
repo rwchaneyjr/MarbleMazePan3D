@@ -577,26 +577,7 @@ namespace DragonBoxAlgebra.UI
                 }
 
                 ClearSnapHighlight();
-                RestoreDragVisuals();
-
-                if (_handPlayHandled)
-                {
-                    if (_controller.ShouldKeepHandCardInPanel(Index))
-                    {
-                        transform.SetParent(_originalParent, false);
-                        transform.SetSiblingIndex(_originalSiblingIndex);
-                        SetHandCard(_controller.GetHandDisplayCard(Index));
-                    }
-                    else
-                    {
-                        DestroyImmediate(gameObject);
-                    }
-
-                    _controller.RefreshHandPresentation();
-                    return;
-                }
-
-                ReturnToStart();
+                FinishHandDragVisual();
                 return;
             }
 
@@ -712,8 +693,71 @@ namespace DragonBoxAlgebra.UI
             return _handPlayHandled || _dropHandled;
         }
 
+        /// <summary>
+        /// Always clear the hand drag ghost off DragRoot so it cannot stick to the pointer.
+        /// </summary>
+        private void FinishHandDragVisual()
+        {
+            EnsureDraggable().ClearSnappedFlag();
+
+            if (_handPlayHandled)
+            {
+                // Drop the in-flight copy, then let HandView rebuild the slot.
+                if (this != null && gameObject != null)
+                {
+                    DestroyImmediate(gameObject);
+                }
+
+                _controller?.RefreshHandPresentation();
+                return;
+            }
+
+            ReturnHandToPanel();
+        }
+
+        private void ReturnHandToPanel()
+        {
+            ClearSnapHighlight();
+            EnsureDraggable().ClearSnappedFlag();
+
+            if (_originalParent != null)
+            {
+                transform.SetParent(_originalParent, false);
+                transform.SetSiblingIndex(Mathf.Clamp(_originalSiblingIndex, 0, _originalParent.childCount - 1));
+            }
+
+            if (_rect != null)
+            {
+                // Hand uses layout sizing — do not force board bottom-left anchors.
+                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+                _rect.anchoredPosition = Vector2.zero;
+                _rect.localRotation = Quaternion.identity;
+            }
+
+            RestoreDragVisuals();
+            RestoreDragRaycasts();
+
+            if (_originalParent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+            }
+
+            // Last resort: never leave a hand card on the drag layer.
+            if (_dragRoot != null && this != null && transform.parent == _dragRoot)
+            {
+                DestroyImmediate(gameObject);
+                _controller?.RefreshHandPresentation();
+            }
+        }
+
         private void ReturnToStart()
         {
+            if (SideName == "Hand")
+            {
+                ReturnHandToPanel();
+                return;
+            }
+
             ClearSnapHighlight();
             EnsureDraggable().ClearSnappedFlag();
 
