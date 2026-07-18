@@ -17,6 +17,7 @@ namespace DragonBoxAlgebra.UI
         private Canvas _canvas;
         private GameObject _chapterSelectPage;
         private GameObject _gameplayRoot;
+        private CanvasGroup _gameplayCanvasGroup;
 
         public void Initialize(AlgebraGameController controller)
         {
@@ -123,13 +124,14 @@ namespace DragonBoxAlgebra.UI
             var background = CreatePanel(canvasGo.transform, "Background", new Color(0.12f, 0.34f, 0.42f),
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-            _gameplayRoot = new GameObject("GameplayRoot", typeof(RectTransform)).gameObject;
+            _gameplayRoot = new GameObject("GameplayRoot", typeof(RectTransform), typeof(CanvasGroup));
             _gameplayRoot.transform.SetParent(background.transform, false);
             var gameplayRect = _gameplayRoot.GetComponent<RectTransform>();
             gameplayRect.anchorMin = Vector2.zero;
             gameplayRect.anchorMax = Vector2.one;
             gameplayRect.offsetMin = Vector2.zero;
             gameplayRect.offsetMax = Vector2.zero;
+            _gameplayCanvasGroup = _gameplayRoot.GetComponent<CanvasGroup>();
 
             _titleText = CreateText(_gameplayRoot.transform, "Title", "DragonBox Algebra",
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -20f), 28, TextAnchor.MiddleCenter);
@@ -189,7 +191,9 @@ namespace DragonBoxAlgebra.UI
             _completeView = gameObject.AddComponent<LevelCompleteView>();
             _completeView.Initialize(Controller, completePanel.gameObject, starsText, creatureText);
 
-            BuildChapterSelectPage(background.transform);
+            // Chapter select lives on the canvas (not under Background) so it can sit above
+            // gameplay without ever needing to disable DragRoot.
+            BuildChapterSelectPage(canvasGo.transform);
 
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {
@@ -229,20 +233,15 @@ namespace DragonBoxAlgebra.UI
 
         private void ShowChapterSelect()
         {
+            // Never SetActive(false) on DragRoot or GameplayRoot — that aborts Unity's drag
+            // EndDrag cleanup and leaves hand cards stuck to the mouse.
+            ClearDragRootOrphans();
+            SetGameplayVisible(false);
+
             if (_chapterSelectPage != null)
             {
                 _chapterSelectPage.SetActive(true);
                 _chapterSelectPage.transform.SetAsLastSibling();
-            }
-
-            if (_gameplayRoot != null)
-            {
-                _gameplayRoot.SetActive(false);
-            }
-
-            if (_dragRoot != null)
-            {
-                _dragRoot.gameObject.SetActive(false);
             }
 
             if (_completeView != null)
@@ -254,15 +253,14 @@ namespace DragonBoxAlgebra.UI
         private void StartChapter(int chapter)
         {
             int startIndex = ChapterLevelGenerator.StartLevelIndexForChapter(chapter);
+            ClearDragRootOrphans();
+
             if (_chapterSelectPage != null)
             {
                 _chapterSelectPage.SetActive(false);
             }
 
-            if (_gameplayRoot != null)
-            {
-                _gameplayRoot.SetActive(true);
-            }
+            SetGameplayVisible(true);
 
             if (_dragRoot != null)
             {
@@ -271,6 +269,41 @@ namespace DragonBoxAlgebra.UI
             }
 
             Controller.LoadLevel(startIndex);
+        }
+
+        private void SetGameplayVisible(bool visible)
+        {
+            if (_gameplayCanvasGroup == null && _gameplayRoot != null)
+            {
+                _gameplayCanvasGroup = _gameplayRoot.GetComponent<CanvasGroup>()
+                    ?? _gameplayRoot.AddComponent<CanvasGroup>();
+            }
+
+            if (_gameplayCanvasGroup == null)
+            {
+                return;
+            }
+
+            _gameplayCanvasGroup.alpha = visible ? 1f : 0f;
+            _gameplayCanvasGroup.interactable = visible;
+            _gameplayCanvasGroup.blocksRaycasts = visible;
+        }
+
+        private void ClearDragRootOrphans()
+        {
+            if (_dragRoot == null)
+            {
+                return;
+            }
+
+            for (int i = _dragRoot.childCount - 1; i >= 0; i--)
+            {
+                Transform child = _dragRoot.GetChild(i);
+                if (child != null)
+                {
+                    DestroyImmediate(child.gameObject);
+                }
+            }
         }
 
         private static Button CreateChapterButton(Transform parent, string label, Vector2 anchor,
