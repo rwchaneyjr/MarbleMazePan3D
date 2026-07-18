@@ -545,10 +545,9 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            _isDragging = false;
-
             if (SideName == "Hand")
             {
+                _isDragging = false;
                 if (!_dragStarted)
                 {
                     if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
@@ -602,33 +601,38 @@ namespace DragonBoxAlgebra.UI
             }
 
             ClearSnapHighlight();
-            RestoreDragVisuals();
             RestoreDragRaycasts();
+            // Do NOT RestoreDragVisuals yet — that flashes a card beside the new swirl.
 
-            // Board opposites (Ch1/Ch2 drag-to-merge): snap light onto dark on the same side.
-            if (!TryToSnap(eventData) && !TrySnapBoardOppositeNearby(eventData))
+            // Stay actively dragging until merge finishes so BoardChanged does not orphan-clear us.
+            bool merged = TryToSnap(eventData);
+            if (this == null)
             {
+                return;
+            }
+
+            if (!merged)
+            {
+                merged = TrySnapBoardOppositeNearby(eventData);
+            }
+
+            if (this == null)
+            {
+                return;
+            }
+
+            _isDragging = false;
+
+            if (!merged || !_dropHandled)
+            {
+                // Not close enough — snap back into the original slot.
+                EnsureDraggable().ClearSnappedFlag();
+                RestoreDragVisuals();
                 ReturnToStart();
                 return;
             }
 
-            if (_dropHandled)
-            {
-                // Slot is no longer needed — board rebuild will refresh the side.
-                ClearBoardDragPlaceholder();
-                // Destroy immediately so the dragged image cannot linger off to the side
-                // while the swirl merge pair plays in the board row.
-                if (this != null && gameObject != null && transform.parent == _dragRoot)
-                {
-                    DestroyImmediate(gameObject);
-                }
-
-                return;
-            }
-
-            // Snapped visually but merge did not apply — put the tile back.
-            EnsureDraggable().ClearSnappedFlag();
-            ReturnToStart();
+            // Merge already destroyed this dragged copy in ConsumeDraggedCopyAfterMerge.
         }
 
         /// <summary>
@@ -1011,16 +1015,63 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
-            // Lock the dragged image onto the target before the swirl starts.
+            // Visually sit on top of the opposite, then merge into swirl-only.
             SnapOnto(target);
+
+            // Hide BOTH tiles before BoardChanged rebuilds — otherwise a partner card
+            // (or this drag ghost) is visible beside the new swirl.
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 0f;
+            }
+
+            CanvasGroup targetGroup = target.GetComponent<CanvasGroup>();
+            if (targetGroup != null)
+            {
+                targetGroup.alpha = 0f;
+            }
+            else
+            {
+                target.gameObject.SetActive(false);
+            }
+
             if (_controller.TryCombine(SideName, Index, target.Index))
             {
                 _dropHandled = true;
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                ConsumeDraggedCopyAfterMerge();
                 return true;
             }
 
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 1f;
+            }
+
+            if (targetGroup != null)
+            {
+                targetGroup.alpha = 1f;
+            }
+            else if (target != null && target.gameObject != null)
+            {
+                target.gameObject.SetActive(true);
+            }
+
             return false;
+        }
+
+        /// <summary>
+        /// After a successful opposite merge, destroy the dragged copy so only the swirl remains.
+        /// </summary>
+        private void ConsumeDraggedCopyAfterMerge()
+        {
+            _isDragging = false;
+            ClearBoardDragPlaceholder();
+            ClearSnapHighlight();
+            if (this != null && gameObject != null)
+            {
+                DestroyImmediate(gameObject);
+            }
         }
 
         private void SnapOnto(CardWidget target)
@@ -1030,7 +1081,7 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Prefer world snap so the picture sits exactly on the opposite image.
+            // Sit exactly on the opposite image (visible on top while dragging).
             transform.position = target.transform.position;
             if (_rect == null || _dragRoot == null)
             {
