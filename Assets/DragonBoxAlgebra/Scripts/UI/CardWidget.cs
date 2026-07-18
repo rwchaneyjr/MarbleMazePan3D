@@ -545,76 +545,9 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Hand path: keep the pre-opposite-merge behavior. Clearing _isDragging / destroying
-            // the ghost before HandChanged finishes is what left cards stuck to the mouse.
             if (SideName == "Hand")
             {
-                _isDragging = false;
-
-                if (!_dragStarted)
-                {
-                    if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
-                    {
-                        TryFlipHandOnTap();
-                    }
-
-                    return;
-                }
-
-                if (!_handPlayHandled && ExceededFlipDragThreshold(eventData))
-                {
-                    if (_canvasGroup != null)
-                    {
-                        _canvasGroup.blocksRaycasts = false;
-                    }
-
-                    if (!TryToSnap(eventData))
-                    {
-                        TryPlayHandDrop(eventData);
-                    }
-                }
-                else if (!_handPlayHandled && CanFlipHand())
-                {
-                    TryFlipHandOnTap();
-                }
-
-                ClearSnapHighlight();
-                RestoreDragVisuals();
-                RestoreDragRaycasts();
-                EnsureDraggable().ClearSnappedFlag();
-
-                if (_handPlayHandled)
-                {
-                    if (_controller.ShouldKeepHandCardInPanel(Index))
-                    {
-                        if (_originalParent != null)
-                        {
-                            transform.SetParent(_originalParent, false);
-                            transform.SetSiblingIndex(Mathf.Clamp(_originalSiblingIndex, 0,
-                                _originalParent.childCount - 1));
-                        }
-
-                        if (_rect != null)
-                        {
-                            _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
-                            _rect.anchoredPosition = Vector2.zero;
-                            _rect.localRotation = Quaternion.identity;
-                        }
-
-                        SetHandCard(_controller.GetHandDisplayCard(Index));
-                    }
-                    else if (this != null && gameObject != null)
-                    {
-                        DestroyImmediate(gameObject);
-                        _controller.RefreshHandPresentation();
-                        return;
-                    }
-
-                    _controller.RefreshHandPresentation();
-                    return;
-                }
-
-                ReturnHandToPanel();
+                EndHandDrag(eventData);
                 return;
             }
 
@@ -650,6 +583,87 @@ namespace DragonBoxAlgebra.UI
             }
 
             // Merge already destroyed this dragged copy in ConsumeDraggedCopyAfterMerge.
+        }
+
+        /// <summary>
+        /// Hand release: never use board magnetic snap (that locked the card to the pointer /
+        /// board tile). Always put the card back in the hand before any hand rebuild.
+        /// </summary>
+        private void EndHandDrag(PointerEventData eventData)
+        {
+            bool started = _dragStarted;
+            _isDragging = false;
+            ClearSnapHighlight();
+            EnsureDraggable().ClearSnappedFlag();
+
+            if (!started)
+            {
+                if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
+                {
+                    TryFlipHandOnTap();
+                }
+
+                RestoreDragRaycasts();
+                return;
+            }
+
+            // Resolve the drop WITHOUT DraggableTile.TryToSnap — that snap path was for
+            // board-opposite merges and left the hand card stuck following the pointer.
+            if (!_handPlayHandled && ExceededFlipDragThreshold(eventData))
+            {
+                if (_canvasGroup != null)
+                {
+                    _canvasGroup.blocksRaycasts = false;
+                }
+
+                TryPlayHandDrop(eventData);
+            }
+            else if (!_handPlayHandled && CanFlipHand())
+            {
+                TryFlipHandOnTap();
+            }
+
+            // Critical: leave DragRoot immediately so the card stops tracking the mouse.
+            PutHandCardBackInPanel();
+
+            if (_handPlayHandled)
+            {
+                // Rebuild next frame so EventSystem can finish EndDrag on a live object.
+                StartCoroutine(DeferredHandRefreshAfterDrop());
+            }
+        }
+
+        private void PutHandCardBackInPanel()
+        {
+            if (_originalParent != null)
+            {
+                transform.SetParent(_originalParent, false);
+                transform.SetSiblingIndex(Mathf.Clamp(_originalSiblingIndex, 0, _originalParent.childCount - 1));
+            }
+
+            if (_rect != null)
+            {
+                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+                _rect.anchoredPosition = Vector2.zero;
+                _rect.localRotation = Quaternion.identity;
+            }
+
+            RestoreDragVisuals();
+            RestoreDragRaycasts();
+
+            if (_originalParent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+            }
+        }
+
+        private IEnumerator DeferredHandRefreshAfterDrop()
+        {
+            yield return null;
+            if (_controller != null)
+            {
+                _controller.RefreshHandPresentation();
+            }
         }
 
         /// <summary>
@@ -698,10 +712,16 @@ namespace DragonBoxAlgebra.UI
         }
 
         /// <summary>
-        /// Uses DraggableTile + TileSnapTarget: closest correct opposite within snapDistance.
+        /// Board-only magnetic snap onto a correct opposite within snapDistance.
+        /// Hand must not use this — it locks the card onto the target and sticks to the pointer.
         /// </summary>
         private bool TryToSnap(PointerEventData eventData)
         {
+            if (SideName == "Hand")
+            {
+                return false;
+            }
+
             DraggableTile drag = EnsureDraggable();
             Vector2 screen = eventData != null ? eventData.position : _lastDragScreenPosition;
             Camera cam = eventData != null
@@ -716,52 +736,19 @@ namespace DragonBoxAlgebra.UI
 
             _snapHighlight = target.Widget;
 
-            if (SideName == "Hand")
-            {
-                TryPlayHandOnBoardTarget(target.Widget);
-            }
-            else if (HandleDropOnCard(target.Widget))
+            if (HandleDropOnCard(target.Widget))
             {
                 _dropHandled = true;
             }
 
-            // Only treat as handled when a real merge/play happened — not merely a visual snap.
-            return _handPlayHandled || _dropHandled;
-        }
-
-        private void ReturnHandToPanel()
-        {
-            ClearSnapHighlight();
-            EnsureDraggable().ClearSnappedFlag();
-
-            if (_originalParent != null)
-            {
-                transform.SetParent(_originalParent, false);
-                transform.SetSiblingIndex(Mathf.Clamp(_originalSiblingIndex, 0, _originalParent.childCount - 1));
-            }
-
-            if (_rect != null)
-            {
-                // Hand uses layout sizing — do not force board bottom-left anchors.
-                _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
-                _rect.anchoredPosition = Vector2.zero;
-                _rect.localRotation = Quaternion.identity;
-            }
-
-            RestoreDragVisuals();
-            RestoreDragRaycasts();
-
-            if (_originalParent is RectTransform parentRect)
-            {
-                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
-            }
+            return _dropHandled;
         }
 
         private void ReturnToStart()
         {
             if (SideName == "Hand")
             {
-                ReturnHandToPanel();
+                PutHandCardBackInPanel();
                 return;
             }
 
