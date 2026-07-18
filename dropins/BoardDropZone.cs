@@ -73,11 +73,10 @@ namespace DragonBoxAlgebra.UI
             PointerEventData eventData)
         {
             TileSnapTarget best = null;
-            float bestDistance = Mathf.Max(160f, dragged.snapDistance);
+            float bestDistance = Mathf.Max(80f, dragged.snapDistance);
 
             Vector2 screen = eventData.position;
             Camera cam = eventData.pressEventCamera;
-            Vector3 dragPos = dragged.transform.position;
 
             foreach (TileSnapTarget target in Object.FindObjectsOfType<TileSnapTarget>())
             {
@@ -86,10 +85,8 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                float screenDist = Vector2.Distance(screen,
+                float distance = Vector2.Distance(screen,
                     RectTransformUtility.WorldToScreenPoint(cam, target.GetSnapPosition()));
-                float worldDist = Vector3.Distance(dragPos, target.GetSnapPosition()) * 100f;
-                float distance = Mathf.Min(screenDist, worldDist);
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;

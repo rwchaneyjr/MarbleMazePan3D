@@ -17,9 +17,10 @@ namespace DragonBoxAlgebra.UI
         public AlgebraGameController Controller => _controller;
 
         /// <summary>Screen-pixel snap radius — forwarded to DraggableTile.snapDistance.</summary>
-        public float snapDistance = 220f;
+        public float snapDistance = 140f;
 
-        private const float DragToMergeSnapDistance = 320f;
+        /// <summary>Must be nearly on the opposite. Farther drops snap back.</summary>
+        private const float DragToMergeSnapDistance = 140f;
 
         private AlgebraGameController _controller;
         private RectTransform _rect;
@@ -542,10 +543,9 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            _isDragging = false;
-
             if (SideName == "Hand")
             {
+                _isDragging = false;
                 if (!_dragStarted)
                 {
                     if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
@@ -602,34 +602,39 @@ namespace DragonBoxAlgebra.UI
             RestoreDragVisuals();
             RestoreDragRaycasts();
 
-            // Board opposites (Ch1/Ch2 drag-to-merge): snap light onto dark on the same side.
-            if (!TryToSnap(eventData) && !TrySnapBoardOppositeNearby(eventData))
+            // Stay "actively dragging" until merge finishes so BoardChanged does not orphan-clear us.
+            bool merged = TryToSnap(eventData);
+            if (this == null)
             {
+                return;
+            }
+
+            if (!merged)
+            {
+                merged = TrySnapBoardOppositeNearby(eventData);
+            }
+
+            if (this == null)
+            {
+                return;
+            }
+
+            _isDragging = false;
+
+            if (!merged || !_dropHandled)
+            {
+                // Not close enough — snap back into the original slot.
+                EnsureDraggable().ClearSnappedFlag();
                 ReturnToStart();
                 return;
             }
 
-            if (_dropHandled)
-            {
-                // Slot is no longer needed — board rebuild will refresh the side.
-                ClearBoardDragPlaceholder();
-                // Board refresh owns cleanup when combine succeeded; only destroy if still on DragRoot.
-                if (this != null && gameObject != null && transform.parent == _dragRoot)
-                {
-                    Destroy(gameObject);
-                }
-
-                return;
-            }
-
-            // Snapped visually but merge did not apply — put the tile back.
-            EnsureDraggable().ClearSnappedFlag();
-            ReturnToStart();
+            // Merge already destroyed this dragged copy in ConsumeDraggedCopyAfterMerge.
         }
 
         /// <summary>
-        /// Wider same-side opposite search so light/dark pairs snap together even when not
-        /// exactly on top of each other (Ch1/Ch2 drag-to-merge levels).
+        /// Same-side opposite merge only when the pointer is close enough.
+        /// Otherwise the tile snaps back.
         /// </summary>
         private bool TrySnapBoardOppositeNearby(PointerEventData eventData)
         {
@@ -639,12 +644,12 @@ namespace DragonBoxAlgebra.UI
             }
 
             CardWidget best = null;
-            float bestDistance = DragToMergeSnapDistance;
+            float maxDistance = Mathf.Max(80f, snapDistance);
+            float bestDistance = maxDistance;
             Vector2 screen = eventData != null ? eventData.position : _lastDragScreenPosition;
             Camera cam = eventData != null
                 ? eventData.pressEventCamera
                 : (_canvas != null ? _canvas.worldCamera : null);
-            Vector3 selfPos = transform.position;
 
             foreach (TileSnapTarget target in FindObjectsOfType<TileSnapTarget>())
             {
@@ -653,10 +658,9 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                float screenDist = Vector2.Distance(screen,
+                // Screen distance only — avoids false "close" matches across the red box.
+                float distance = Vector2.Distance(screen,
                     RectTransformUtility.WorldToScreenPoint(cam, target.GetSnapPosition()));
-                float worldDist = Vector3.Distance(selfPos, target.GetSnapPosition()) * 100f;
-                float distance = Mathf.Min(screenDist, worldDist);
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
@@ -669,6 +673,7 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
+            // Land visibly on top of the opposite, then merge.
             transform.position = best.transform.position;
             return HandleDropOnCard(best);
         }
@@ -1008,19 +1013,52 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
+            // Visually sit on top of the opposite, then merge into swirl-only.
             SnapOnto(target);
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 0f;
+            }
+
             if (_controller.TryCombine(SideName, Index, target.Index))
             {
                 _dropHandled = true;
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                ConsumeDraggedCopyAfterMerge();
                 return true;
+            }
+
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 1f;
             }
 
             return false;
         }
 
+        /// <summary>
+        /// After a successful opposite merge, destroy the dragged copy so only the swirl remains.
+        /// </summary>
+        private void ConsumeDraggedCopyAfterMerge()
+        {
+            _isDragging = false;
+            ClearBoardDragPlaceholder();
+            ClearSnapHighlight();
+            if (this != null && gameObject != null)
+            {
+                DestroyImmediate(gameObject);
+            }
+        }
+
         private void SnapOnto(CardWidget target)
         {
+            if (target == null)
+            {
+                return;
+            }
+
+            // Sit exactly on the opposite image (visible on top while dragging).
+            transform.position = target.transform.position;
             if (_rect == null || _dragRoot == null)
             {
                 return;

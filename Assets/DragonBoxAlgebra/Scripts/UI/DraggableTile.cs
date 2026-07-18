@@ -11,8 +11,8 @@ namespace DragonBoxAlgebra.UI
     public class DraggableTile : MonoBehaviour
     {
         [Header("Snapping")]
-        [Tooltip("Max screen-pixel distance to snap onto a correct opposite.")]
-        public float snapDistance = 220f;
+        [Tooltip("Max screen-pixel distance to snap onto a correct opposite. Farther = snap back.")]
+        public float snapDistance = 140f;
 
         private CardWidget _owner;
         private Vector3 _startingPosition;
@@ -44,7 +44,6 @@ namespace DragonBoxAlgebra.UI
             TileSnapTarget closestTarget = null;
             float closestDistance = snapDistance;
 
-            Vector3 ownerPos = transform.position;
             TileSnapTarget[] targets = FindObjectsOfType<TileSnapTarget>();
             foreach (TileSnapTarget target in targets)
             {
@@ -53,11 +52,9 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
+                // Screen pixels only so a far tile past the red box cannot look "close".
                 Vector2 targetScreen = RectTransformUtility.WorldToScreenPoint(eventCamera, target.GetSnapPosition());
-                float screenDist = Vector2.Distance(screenPosition, targetScreen);
-                // Also allow center-to-center proximity so edge drops still count as "on" the tile.
-                float worldDist = Vector3.Distance(ownerPos, target.GetSnapPosition()) * 100f;
-                float distance = Mathf.Min(screenDist, worldDist);
+                float distance = Vector2.Distance(screenPosition, targetScreen);
                 if (distance < closestDistance)
                 {
                     closestDistance = distance;
