@@ -148,6 +148,36 @@ namespace DragonBoxAlgebra.Gameplay
             return ChapterCount;
         }
 
+        /// <summary>1-based chapter → 0-based global level index of that chapter's first puzzle.</summary>
+        public static int StartLevelIndexForChapter(int chapter)
+        {
+            int clamped = ClampChapter(chapter);
+            int cursor = 0;
+            for (int i = 1; i < clamped; i++)
+            {
+                cursor += ChapterLevelCounts[i - 1];
+            }
+
+            return cursor;
+        }
+
+        /// <summary>1-based chapter display name.</summary>
+        public static string NameForChapter(int chapter)
+        {
+            int clamped = ClampChapter(chapter);
+            return ChapterNames[clamped - 1];
+        }
+
+        /// <summary>How many levels are in a 1-based chapter.</summary>
+        public static int LevelCountForChapter(int chapter)
+        {
+            int clamped = ClampChapter(chapter);
+            return ChapterLevelCounts[clamped - 1];
+        }
+
+        private static int ClampChapter(int chapter) =>
+            chapter < 1 ? 1 : (chapter > ChapterCount ? ChapterCount : chapter);
+
         public static int IndexWithinChapter(int levelIndex)
         {
             if (levelIndex < 0)

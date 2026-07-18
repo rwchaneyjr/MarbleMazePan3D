@@ -15,6 +15,8 @@ namespace DragonBoxAlgebra.UI
         private LevelCompleteView _completeView;
         private RectTransform _dragRoot;
         private Canvas _canvas;
+        private GameObject _chapterSelectPage;
+        private GameObject _gameplayRoot;
 
         public void Initialize(AlgebraGameController controller)
         {
@@ -23,7 +25,7 @@ namespace DragonBoxAlgebra.UI
             controller.LevelLoaded += OnLevelLoaded;
             controller.MessageChanged += OnMessageChanged;
             controller.LevelCompleted += OnLevelCompleted;
-            controller.LoadLevel(0);
+            ShowChapterSelect();
         }
 
         private void OnDestroy()
@@ -83,6 +85,8 @@ namespace DragonBoxAlgebra.UI
 
         public void OnRestartClicked() => Controller.RestartLevel();
 
+        public void OnBackToMenuClicked() => ShowChapterSelect();
+
         public void OnNextClicked()
         {
             _completeView.Hide();
@@ -119,18 +123,26 @@ namespace DragonBoxAlgebra.UI
             var background = CreatePanel(canvasGo.transform, "Background", new Color(0.12f, 0.34f, 0.42f),
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-            _titleText = CreateText(background.transform, "Title", "DragonBox Algebra",
+            _gameplayRoot = new GameObject("GameplayRoot", typeof(RectTransform)).gameObject;
+            _gameplayRoot.transform.SetParent(background.transform, false);
+            var gameplayRect = _gameplayRoot.GetComponent<RectTransform>();
+            gameplayRect.anchorMin = Vector2.zero;
+            gameplayRect.anchorMax = Vector2.one;
+            gameplayRect.offsetMin = Vector2.zero;
+            gameplayRect.offsetMax = Vector2.zero;
+
+            _titleText = CreateText(_gameplayRoot.transform, "Title", "DragonBox Algebra",
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -20f), 28, TextAnchor.MiddleCenter);
-            _progressText = CreateText(background.transform, "Progress", "1/6",
+            _progressText = CreateText(_gameplayRoot.transform, "Progress", "1/6",
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -52f), 20, TextAnchor.MiddleCenter);
 
-            _spriteDebugText = CreateText(background.transform, "SpriteDebug", "",
+            _spriteDebugText = CreateText(_gameplayRoot.transform, "SpriteDebug", "",
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -76f), 13, TextAnchor.MiddleCenter);
             _spriteDebugText.color = new Color(1f, 0.92f, 0.35f);
             _spriteDebugText.horizontalOverflow = HorizontalWrapMode.Wrap;
             RefreshSpriteDebugBanner();
 
-            var boardRow = CreatePanel(background.transform, "BoardRow", new Color(0f, 0f, 0f, 0.15f),
+            var boardRow = CreatePanel(_gameplayRoot.transform, "BoardRow", new Color(0f, 0f, 0f, 0.15f),
                 new Vector2(0.02f, 0.28f), new Vector2(0.98f, 0.82f), Vector2.zero, Vector2.zero);
 
             var leftPanel = CreateTexturedPanel(boardRow.transform, "LeftPanel",
@@ -138,7 +150,6 @@ namespace DragonBoxAlgebra.UI
             var rightPanel = CreateTexturedPanel(boardRow.transform, "RightPanel",
                 new Vector2(0.505f, 0f), new Vector2(1f, 1f));
 
-            // DragRoot above UI so hand/board tiles stay visible while dragging.
             _dragRoot = new GameObject("DragRoot", typeof(RectTransform)).GetComponent<RectTransform>();
             _dragRoot.SetParent(canvasGo.transform, false);
             _dragRoot.anchorMin = Vector2.zero;
@@ -150,31 +161,35 @@ namespace DragonBoxAlgebra.UI
             var boardView = gameObject.AddComponent<BoardView>();
             boardView.Initialize(Controller, leftPanel, rightPanel, _canvas, _dragRoot);
 
-            var handPanel = CreatePanel(background.transform, "Hand", new Color(0.08f, 0.18f, 0.24f, 0.85f),
+            var handPanel = CreatePanel(_gameplayRoot.transform, "Hand", new Color(0.08f, 0.18f, 0.24f, 0.85f),
                 new Vector2(0.12f, 0.06f), new Vector2(0.88f, 0.22f), Vector2.zero, Vector2.zero);
             handPanel.GetComponent<Image>().raycastTarget = false;
             var handView = gameObject.AddComponent<HandView>();
             handView.Initialize(Controller, handPanel, _canvas, _dragRoot);
 
-            _messageText = CreateText(background.transform, "Message",
+            _messageText = CreateText(_gameplayRoot.transform, "Message",
                 "Drag cards together on the same side, or drag from your hand to the board.",
                 new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 12f), 18, TextAnchor.LowerCenter);
 
-            CreateRoundButton(background.transform, "Menu", new Vector2(0.06f, 0.92f), OnRestartClicked, "⬆");
-            CreateRoundButton(background.transform, "Random", new Vector2(0.12f, 0.92f), OnRandomClicked, "🎲");
-            CreateRoundButton(background.transform, "Undo", new Vector2(0.88f, 0.92f), OnUndoClicked, "↩");
-            CreateRoundButton(background.transform, "Rewind", new Vector2(0.94f, 0.92f), OnRewindClicked, "⏪");
+            CreateWideButton(_gameplayRoot.transform, "Back to menu", new Vector2(0.14f, 0.92f),
+                new Vector2(180f, 44f), OnBackToMenuClicked);
+            CreateRoundButton(_gameplayRoot.transform, "Random", new Vector2(0.28f, 0.92f), OnRandomClicked, "🎲");
+            CreateRoundButton(_gameplayRoot.transform, "Undo", new Vector2(0.88f, 0.92f), OnUndoClicked, "↩");
+            CreateRoundButton(_gameplayRoot.transform, "Rewind", new Vector2(0.94f, 0.92f), OnRewindClicked, "⏪");
 
-            var completePanel = CreatePanel(background.transform, "CompletePanel", new Color(0.05f, 0.12f, 0.18f, 0.92f),
+            var completePanel = CreatePanel(_gameplayRoot.transform, "CompletePanel", new Color(0.05f, 0.12f, 0.18f, 0.92f),
                 new Vector2(0.2f, 0.25f), new Vector2(0.8f, 0.75f), Vector2.zero, Vector2.zero);
             var starsText = CreateText(completePanel.transform, "Stars", "Level Complete",
                 new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), Vector2.zero, 22, TextAnchor.MiddleCenter);
             var creatureText = CreateText(completePanel.transform, "Creature", "🐲",
                 new Vector2(0.5f, 0.78f), new Vector2(0.5f, 0.78f), Vector2.zero, 48, TextAnchor.MiddleCenter);
-            CreateButton(completePanel.transform, "Next", new Vector2(0.5f, 0.18f), OnNextClicked);
+            CreateButton(completePanel.transform, "Next", new Vector2(0.35f, 0.18f), OnNextClicked);
+            CreateButton(completePanel.transform, "Back to menu", new Vector2(0.65f, 0.18f), OnBackToMenuClicked);
 
             _completeView = gameObject.AddComponent<LevelCompleteView>();
             _completeView.Initialize(Controller, completePanel.gameObject, starsText, creatureText);
+
+            BuildChapterSelectPage(background.transform);
 
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {
@@ -188,6 +203,116 @@ namespace DragonBoxAlgebra.UI
             }
 
             _dragRoot.SetAsLastSibling();
+        }
+
+        private void BuildChapterSelectPage(Transform parent)
+        {
+            var page = CreatePanel(parent, "ChapterSelectPage", new Color(0.08f, 0.22f, 0.30f, 0.98f),
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            _chapterSelectPage = page.gameObject;
+
+            CreateText(page.transform, "SelectTitle", "DragonBox Algebra",
+                new Vector2(0.5f, 0.9f), new Vector2(0.5f, 0.9f), Vector2.zero, 36, TextAnchor.MiddleCenter);
+            CreateText(page.transform, "SelectSubtitle", "Choose a chapter",
+                new Vector2(0.5f, 0.82f), new Vector2(0.5f, 0.82f), Vector2.zero, 22, TextAnchor.MiddleCenter);
+
+            for (int chapter = 1; chapter <= ChapterLevelGenerator.ChapterCount; chapter++)
+            {
+                int chapterNumber = chapter;
+                int startIndex = ChapterLevelGenerator.StartLevelIndexForChapter(chapterNumber);
+                string name = ChapterLevelGenerator.NameForChapter(chapterNumber);
+                float y = 0.72f - (chapterNumber - 1) * 0.09f;
+                string label = $"Ch {chapterNumber}  ·  {name}  ·  Lv {startIndex + 1}";
+                CreateChapterButton(page.transform, label, new Vector2(0.5f, y), () => StartChapter(chapterNumber));
+            }
+        }
+
+        private void ShowChapterSelect()
+        {
+            if (_chapterSelectPage != null)
+            {
+                _chapterSelectPage.SetActive(true);
+                _chapterSelectPage.transform.SetAsLastSibling();
+            }
+
+            if (_gameplayRoot != null)
+            {
+                _gameplayRoot.SetActive(false);
+            }
+
+            if (_dragRoot != null)
+            {
+                _dragRoot.gameObject.SetActive(false);
+            }
+
+            if (_completeView != null)
+            {
+                _completeView.Hide();
+            }
+        }
+
+        private void StartChapter(int chapter)
+        {
+            int startIndex = ChapterLevelGenerator.StartLevelIndexForChapter(chapter);
+            if (_chapterSelectPage != null)
+            {
+                _chapterSelectPage.SetActive(false);
+            }
+
+            if (_gameplayRoot != null)
+            {
+                _gameplayRoot.SetActive(true);
+            }
+
+            if (_dragRoot != null)
+            {
+                _dragRoot.gameObject.SetActive(true);
+                _dragRoot.SetAsLastSibling();
+            }
+
+            Controller.LoadLevel(startIndex);
+        }
+
+        private static Button CreateChapterButton(Transform parent, string label, Vector2 anchor,
+            UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject("ChapterButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(520f, 52f);
+            var image = go.GetComponent<Image>();
+            image.sprite = SpriteFactory.RoundedButton;
+            image.type = Image.Type.Sliced;
+            image.color = new Color(0.82f, 0.32f, 0.18f);
+
+            var button = go.GetComponent<Button>();
+            button.onClick.AddListener(onClick);
+            CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 18, TextAnchor.MiddleCenter);
+            return button;
+        }
+
+        private static Button CreateWideButton(Transform parent, string label, Vector2 anchor, Vector2 size,
+            UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject(label.Replace(" ", "") + "Button", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            var image = go.GetComponent<Image>();
+            image.sprite = SpriteFactory.RoundedButton;
+            image.type = Image.Type.Sliced;
+            image.color = new Color(0.82f, 0.32f, 0.18f);
+
+            var button = go.GetComponent<Button>();
+            button.onClick.AddListener(onClick);
+            CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 16, TextAnchor.MiddleCenter);
+            return button;
         }
 
         private static RectTransform CreateTexturedPanel(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
@@ -245,7 +370,7 @@ namespace DragonBoxAlgebra.UI
 
         private static Button CreateButton(Transform parent, string label, Vector2 anchor, UnityEngine.Events.UnityAction onClick)
         {
-            var go = new GameObject(label + "Button", typeof(RectTransform), typeof(Image), typeof(Button));
+            var go = new GameObject(label.Replace(" ", "") + "Button", typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(parent, false);
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = anchor;
