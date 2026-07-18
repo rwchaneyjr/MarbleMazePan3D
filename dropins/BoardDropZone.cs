@@ -43,13 +43,6 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // 2) If the pointer is over ANY board tile, do nothing.
-            //    Falling through to TryPlayFromHand is what "pops the tile to the side".
-            if (FindAnyBoardCardUnderPointer(eventData, dragged) != null)
-            {
-                return;
-            }
-
             if (controller.UsesOppositeHandPlay)
             {
                 if (controller.TryPlayHandOntoOppositeOnSide(dragged.Index, SideName))
@@ -61,7 +54,17 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // 3) Empty panel only → start balance play.
+            // 2) Over a non-opposite board tile (or empty panel) → start / continue balance
+            //    so a ? (+ small card image) appears on the other side.
+            CardWidget under = FindAnyBoardCardUnderPointer(eventData, dragged);
+            if (under != null
+                && CombineRules.GetCombineAction(dragged.Card, under.Card)
+                == CombineActionType.OppositeCancel)
+            {
+                // Aimed at an opposite — merge path above should have handled; don't side-dump.
+                return;
+            }
+
             if (controller.TryPlayFromHand(dragged.Index, SideName))
             {
                 dragged.MarkHandPlayHandled();
