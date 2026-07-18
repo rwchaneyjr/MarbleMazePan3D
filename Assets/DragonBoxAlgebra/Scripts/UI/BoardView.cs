@@ -435,16 +435,16 @@ namespace DragonBoxAlgebra.UI
                 int markerIndex = FindPendingMarkerIndex(sideName, card.Id);
                 if (markerIndex >= 0)
                 {
-                    // Put the merge/swirl in the first pending card's slot so it stays where you dropped.
+                    // One swirl replaces the drop-target slot; the partner card is omitted entirely.
                     if (!placedMarkerIndexes.Contains(markerIndex)
-                        && IsEarlierCardOfPendingPair(side, _controller.PendingCancels[markerIndex], card.Id))
+                        && IsAnchorCardOfPendingPair(side, _controller.PendingCancels[markerIndex], card.Id))
                     {
                         if (usePlus && placedCard)
                         {
                             CreatePlusSeparator(panel, layout.Height);
                         }
 
-                        // Swirl only — both opposite cards are gone; no leftover half-card beside it.
+                        // Swirl only — both opposite cards are gone; no leftover card beside it.
                         AsteriskCancelWidget.Create(panel, _controller, markerIndex, layout.Width, layout.Height);
 
                         placedMarkerIndexes.Add(markerIndex);
@@ -486,8 +486,14 @@ namespace DragonBoxAlgebra.UI
             return -1;
         }
 
-        private static bool IsEarlierCardOfPendingPair(BoardSide side, PendingCancelMarker marker, string cardId)
+        private static bool IsAnchorCardOfPendingPair(BoardSide side, PendingCancelMarker marker, string cardId)
         {
+            if (!string.IsNullOrEmpty(marker.AnchorCardId))
+            {
+                return marker.AnchorCardId == cardId;
+            }
+
+            // Fallback: earlier card of the pair.
             int indexA = IndexOfCardId(side, marker.CardIdA);
             int indexB = IndexOfCardId(side, marker.CardIdB);
             if (indexA < 0 || indexB < 0)

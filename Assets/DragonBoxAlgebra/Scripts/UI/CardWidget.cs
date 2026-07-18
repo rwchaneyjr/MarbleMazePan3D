@@ -599,8 +599,9 @@ namespace DragonBoxAlgebra.UI
             }
 
             ClearSnapHighlight();
-            RestoreDragVisuals();
             RestoreDragRaycasts();
+            // Do NOT RestoreDragVisuals yet — restoring alpha here is what flashed a card
+            // beside the new swirl for a frame.
 
             // Stay "actively dragging" until merge finishes so BoardChanged does not orphan-clear us.
             bool merged = TryToSnap(eventData);
@@ -625,6 +626,7 @@ namespace DragonBoxAlgebra.UI
             {
                 // Not close enough — snap back into the original slot.
                 EnsureDraggable().ClearSnappedFlag();
+                RestoreDragVisuals();
                 ReturnToStart();
                 return;
             }
@@ -1015,9 +1017,22 @@ namespace DragonBoxAlgebra.UI
 
             // Visually sit on top of the opposite, then merge into swirl-only.
             SnapOnto(target);
+
+            // Hide BOTH tiles before BoardChanged rebuilds — otherwise the drop target
+            // (or this drag ghost) is visible beside the new swirl for a frame.
             if (_canvasGroup != null)
             {
                 _canvasGroup.alpha = 0f;
+            }
+
+            CanvasGroup targetGroup = target.GetComponent<CanvasGroup>();
+            if (targetGroup != null)
+            {
+                targetGroup.alpha = 0f;
+            }
+            else
+            {
+                target.gameObject.SetActive(false);
             }
 
             if (_controller.TryCombine(SideName, Index, target.Index))
@@ -1031,6 +1046,15 @@ namespace DragonBoxAlgebra.UI
             if (_canvasGroup != null)
             {
                 _canvasGroup.alpha = 1f;
+            }
+
+            if (targetGroup != null)
+            {
+                targetGroup.alpha = 1f;
+            }
+            else if (target != null && target.gameObject != null)
+            {
+                target.gameObject.SetActive(true);
             }
 
             return false;
