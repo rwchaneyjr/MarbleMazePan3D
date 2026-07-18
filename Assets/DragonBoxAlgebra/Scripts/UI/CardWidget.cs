@@ -50,6 +50,7 @@ namespace DragonBoxAlgebra.UI
         private CardWidget _snapHighlight;
         private Vector2 _lastDragScreenPosition;
         private Vector2 _boardDragSize;
+        private GameObject _boardDragPlaceholder;
 
         /// <summary>True while this board/hand tile is mid-drag on the DragRoot.</summary>
         public bool IsActivelyDragging => _isDragging && _dragStarted;
@@ -386,6 +387,10 @@ namespace DragonBoxAlgebra.UI
                     layoutElement.ignoreLayout = true;
                 }
 
+                // Keep a blank slot in the row so the red box / other tiles do not slide
+                // toward the snap target when this card leaves the HorizontalLayoutGroup.
+                InsertBoardDragPlaceholder(_originalParent, _originalSiblingIndex, _boardDragSize);
+
                 _rect.anchorMin = _rect.anchorMax = new Vector2(0.5f, 0.5f);
                 _rect.pivot = new Vector2(0.5f, 0.5f);
                 _rect.sizeDelta = _boardDragSize;
@@ -395,12 +400,62 @@ namespace DragonBoxAlgebra.UI
             }
             else
             {
+                InsertBoardDragPlaceholder(_originalParent, _originalSiblingIndex, new Vector2(110f, 120f));
                 transform.SetParent(_dragRoot, true);
             }
 
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                 eventData.pressEventCamera, out _dragOffset);
             _dragOffset = (Vector2)_rect.localPosition - _dragOffset;
+        }
+
+        private void InsertBoardDragPlaceholder(Transform parent, int siblingIndex, Vector2 size)
+        {
+            ClearBoardDragPlaceholder();
+            if (parent == null)
+            {
+                return;
+            }
+
+            var go = new GameObject("BoardDragPlaceholder", typeof(RectTransform), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+            go.transform.SetSiblingIndex(Mathf.Clamp(siblingIndex, 0, parent.childCount - 1));
+
+            float width = Mathf.Max(1f, size.x);
+            float height = Mathf.Max(1f, size.y);
+            var layoutElement = go.GetComponent<LayoutElement>();
+            layoutElement.minWidth = width;
+            layoutElement.preferredWidth = width;
+            layoutElement.minHeight = height;
+            layoutElement.preferredHeight = height;
+            layoutElement.flexibleWidth = 0f;
+            layoutElement.flexibleHeight = 0f;
+            layoutElement.ignoreLayout = false;
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(width, height);
+            _boardDragPlaceholder = go;
+
+            if (parent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+            }
+        }
+
+        private void ClearBoardDragPlaceholder()
+        {
+            if (_boardDragPlaceholder == null)
+            {
+                return;
+            }
+
+            Transform parent = _boardDragPlaceholder.transform.parent;
+            DestroyImmediate(_boardDragPlaceholder);
+            _boardDragPlaceholder = null;
+            if (parent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+            }
         }
 
         private void BeginHandDrag(PointerEventData eventData)
@@ -553,6 +608,8 @@ namespace DragonBoxAlgebra.UI
 
             if (_dropHandled)
             {
+                // Slot is no longer needed — board rebuild will refresh the side.
+                ClearBoardDragPlaceholder();
                 // Board refresh owns cleanup when combine succeeded; only destroy if still on DragRoot.
                 if (this != null && gameObject != null && transform.parent == _dragRoot)
                 {
@@ -602,19 +659,42 @@ namespace DragonBoxAlgebra.UI
         private void ReturnToStart()
         {
             ClearSnapHighlight();
-            EnsureDraggable().ReturnToStart();
+            EnsureDraggable().ClearSnappedFlag();
 
-            if (_originalParent != null && transform.parent != _originalParent)
+            // Put the card back into the held layout slot, then drop the placeholder so
+            // the red box never slides during the drag or the return.
+            if (_originalParent != null)
             {
+                int slotIndex = _boardDragPlaceholder != null
+                    ? _boardDragPlaceholder.transform.GetSiblingIndex()
+                    : _originalSiblingIndex;
                 transform.SetParent(_originalParent, false);
-                transform.SetSiblingIndex(_originalSiblingIndex);
+                ClearBoardDragPlaceholder();
+                transform.SetSiblingIndex(Mathf.Clamp(slotIndex, 0, _originalParent.childCount - 1));
+            }
+            else
+            {
+                ClearBoardDragPlaceholder();
+            }
+
+            var layoutElement = GetComponent<LayoutElement>();
+            if (layoutElement != null)
+            {
+                layoutElement.ignoreLayout = false;
             }
 
             if (_rect != null)
             {
+                _rect.anchorMin = new Vector2(0f, 0f);
+                _rect.anchorMax = new Vector2(0f, 0f);
+                _rect.pivot = new Vector2(0.5f, 0.5f);
                 _rect.anchoredPosition = Vector2.zero;
                 _rect.localRotation = Quaternion.identity;
                 _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+                if (_boardDragSize.x > 1f && _boardDragSize.y > 1f)
+                {
+                    _rect.sizeDelta = _boardDragSize;
+                }
             }
 
             if (_originalParent is RectTransform parentRect)
@@ -624,6 +704,11 @@ namespace DragonBoxAlgebra.UI
 
             RestoreDragVisuals();
             RestoreDragRaycasts();
+        }
+
+        private void OnDestroy()
+        {
+            ClearBoardDragPlaceholder();
         }
 
         private void UpdateSnapHighlight(PointerEventData eventData)
