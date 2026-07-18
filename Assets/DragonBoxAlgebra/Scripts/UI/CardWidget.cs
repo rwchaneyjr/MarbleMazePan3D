@@ -728,9 +728,29 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // 2) Empty board panel only → start balance. Never "side dump" when over a non-opposite tile.
-            if (FindHandBoardTarget(eventData) != null)
+            // Over a board tile: fill ?, start balance on that side, or ignore non-opposites.
+            // Addition levels (129–139) already have tiles — empty-padding-only was locking drops.
+            CardWidget boardTarget = FindHandBoardTarget(eventData);
+            if (boardTarget != null)
             {
+                if (_controller.HasPendingBalance
+                    && _controller.PendingBalance != null
+                    && _controller.PendingBalance.HoleSide == boardTarget.SideName
+                    && _controller.TryPlayFromHand(Index, boardTarget.SideName))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    return;
+                }
+
+                if (!_controller.UsesOppositeHandPlay
+                    && CombineRules.GetCombineAction(Card, boardTarget.Card) != CombineActionType.OppositeCancel
+                    && _controller.TryPlayFromHand(Index, boardTarget.SideName))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+
                 return;
             }
 

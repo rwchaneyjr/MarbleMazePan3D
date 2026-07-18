@@ -133,6 +133,10 @@ namespace DragonBoxAlgebra.Core
                 || (a.Kind == CardKind.NegativeConstant && b.Kind == CardKind.PositiveConstant && a.Value == b.Value);
         }
 
-        public static bool UsesAsteriskCancel(BoardCard a, BoardCard b) => IsCreatureOppositePair(a, b);
+        /// <summary>
+        /// Creature and number (+/-) opposite pairs both use the swirl cancel marker.
+        /// </summary>
+        public static bool UsesAsteriskCancel(BoardCard a, BoardCard b) =>
+            IsCreatureOppositePair(a, b) || IsDiceOppositePair(a, b);
     }
 }

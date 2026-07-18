@@ -38,6 +38,18 @@ namespace DragonBoxAlgebra.Gameplay
                 for (int h = 0; h < level.HandCards.Count; h++)
                 {
                     CardKind kind = level.HandCards[h];
+                    // Ch7 140–150 may use number PNGs (+/- constants) in the hand.
+                    if (kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+                    {
+                        if (level.Chapter < 7)
+                        {
+                            throw new System.InvalidOperationException(
+                                $"Level {i + 1} ({level.Title}) hand card {h} cannot be a number before Ch7.");
+                        }
+
+                        continue;
+                    }
+
                     if (kind is not (CardKind.DayCreature or CardKind.NightCreature))
                     {
                         throw new System.InvalidOperationException(
