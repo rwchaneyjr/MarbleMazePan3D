@@ -5,7 +5,8 @@ namespace DragonBoxAlgebra.Gameplay
 {
     /// <summary>
     /// DragonBox-style intro: Ch1–Ch4 through level 62; Ch5 (63–80) variable images + red box;
-    /// Ch6 (81–100) x + variables; Ch7 (101–128) sea + variables (+ between tiles from 113).
+    /// Ch6 (81–100) x + variables; Ch7 (101–150) sea + variables (+ between tiles from 113);
+    /// 129–139 exact copies of 118–128; 140–150 exact copies of 129–139.
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -16,7 +17,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter4LevelCount = 19;
         public const int Chapter5LevelCount = 18;
         public const int Chapter6LevelCount = 20;
-        public const int Chapter7LevelCount = 28;
+        public const int Chapter7LevelCount = 50;
         public const int ChapterCount = 7;
         public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
             + Chapter4LevelCount + Chapter5LevelCount + Chapter6LevelCount + Chapter7LevelCount;
@@ -42,8 +43,14 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Ch7 levels 13–28 (global 113–128): sea + variable mix, + between tiles.</summary>
         public const int Chapter7MixedPlusStartDisplay = 13;
 
+        /// <summary>Ch7 levels 29–39 (global 129–139): exact copies of 118–128.</summary>
+        public const int Chapter7CopyStartDisplay = 29;
+
+        /// <summary>Ch7 levels 40–50 (global 140–150): exact copies of 129–139.</summary>
+        public const int Chapter7Copy140StartDisplay = 40;
+
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-ch7-mixed-128";
+        public const string CurriculumVersion = "2026-07-ch7-140-150-copy-129-139-140to150-create";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -54,9 +61,9 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>From global level 86: random 2 or 3 variable letters (one tile each).</summary>
         public const int HighVariableLetterCountStartLevel = 86;
 
-        /// <summary>Levels 113–128 show a + sign between each board tile image.</summary>
+        /// <summary>Levels 113–150 show a + sign between each board tile image.</summary>
         public const int PlusBetweenTilesStartLevel = 113;
-        public const int PlusBetweenTilesEndLevel = 128;
+        public const int PlusBetweenTilesEndLevel = 150;
 
         public static bool UsesPlusBetweenBoardTiles(int globalLevel) =>
             globalLevel >= PlusBetweenTilesStartLevel && globalLevel <= PlusBetweenTilesEndLevel;
@@ -476,7 +483,8 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Ch7 (101–128): 6 sea+x, 6 variables (101–112 unchanged), 16 mixed + levels (113–128).
+        /// Ch7 (101–150): 6 sea+x, 6 variables, 16 mixed + (113–128),
+        /// 11 exact copies of 118–128 as 129–139, then 11 exact copies of 129–139 as 140–150.
         /// </summary>
         private static LevelDefinition BuildChapter7Level(int globalLevel, int theme, int displayNumber)
         {
@@ -503,13 +511,46 @@ namespace DragonBoxAlgebra.Gameplay
                 return MakeCh7VariableBalanceLevel(variableTitle, variableTheme, letters, variableXLeft);
             }
 
-            int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
-            int mixedTheme = mixedIndex % SeaCreatureNames.Length;
-            int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
-            bool mixedXLeft = mixedIndex % 2 == 0;
-            string mixedTitle =
-                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
-            return MakeCh7MixedSeaVariableLevel(mixedTitle, globalLevel, mixedTheme, mixedXLeft, tileCount);
+            if (displayNumber < Chapter7CopyStartDisplay)
+            {
+                int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
+                int mixedTheme = mixedIndex % SeaCreatureNames.Length;
+                int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
+                bool mixedXLeft = mixedIndex % 2 == 0;
+                string mixedTitle =
+                    $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
+                return MakeCh7MixedSeaVariableLevel(mixedTitle, globalLevel, mixedTheme, mixedXLeft, tileCount);
+            }
+
+            if (displayNumber < Chapter7Copy140StartDisplay)
+            {
+                // 129–139: exact copies of global 118–128 (same layout/seeds).
+                int sourceDisplay = displayNumber - 11; // 29→18 … 39→28
+                int sourceGlobalLevel = globalLevel - 11; // 129→118 … 139→128
+                int sourceMixedIndex = sourceDisplay - Chapter7MixedPlusStartDisplay;
+                int sourceTheme = sourceMixedIndex % SeaCreatureNames.Length;
+                int sourceTileCount = sourceMixedIndex % 2 == 0 ? 2 : 3;
+                bool sourceXLeft = sourceMixedIndex % 2 == 0;
+                string copyTitle =
+                    $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {sourceTileCount} each side; from {sourceGlobalLevel})";
+                return MakeCh7MixedSeaVariableLevel(copyTitle, sourceGlobalLevel, sourceTheme, sourceXLeft,
+                    sourceTileCount);
+            }
+
+            // 140–150: exact copies of 129–139 (same layout/seeds as those sources).
+            int from129Display = displayNumber - 11; // 40→29 … 50→39
+            int from129Global = globalLevel - 11; // 140→129 … 150→139
+            // 129–139 themselves copy 118–128, so reuse that underlying layout seed.
+            int layoutDisplay = from129Display - 11; // 40→18 … 50→28
+            int layoutGlobal = from129Global - 11; // 140→118 … 150→128
+            int layoutMixedIndex = layoutDisplay - Chapter7MixedPlusStartDisplay;
+            int layoutTheme = layoutMixedIndex % SeaCreatureNames.Length;
+            int layoutTileCount = layoutMixedIndex % 2 == 0 ? 2 : 3;
+            bool layoutXLeft = layoutMixedIndex % 2 == 0;
+            string copy140Title =
+                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {layoutTileCount} each side; from {from129Global})";
+            return MakeCh7MixedSeaVariableLevel(copy140Title, layoutGlobal, layoutTheme, layoutXLeft,
+                layoutTileCount);
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
