@@ -81,18 +81,17 @@ namespace DragonBoxAlgebra.UI
             "Fish", "Turtle", "Clam", "Dolphin", "Eel", "Lobster", "Sea Horse", "Starfish"
         };
 
-        public static string ThemeName => _themeIndex switch
+        /// <summary>
+        /// Display name for the active theme — must match the PNG pair on screen
+        /// (themes wrap over the 8 sea-creature sprite rows).
+        /// </summary>
+        public static string ThemeName
         {
-            0 => "Fish & Turtle",
-            1 => "Bird & Owl",
-            2 => "Crab & Jelly",
-            3 => "Butterfly & Bat",
-            4 => "Star & Moon",
-            5 => "Rabbit & Fox",
-            6 => "Bee & Snake",
-            7 => "Sun & Storm",
-            8 => "Dragon & Flame",
-            _ => "Cat & Dog"
-        };
+            get
+            {
+                string creature = PngCreatureNameFor(_themeIndex);
+                return $"{creature} (light & dark)";
+            }
+        }
     }
 }

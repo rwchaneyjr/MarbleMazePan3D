@@ -52,6 +52,9 @@ namespace DragonBoxAlgebra.Gameplay
         public bool UsesOppositeHandPlay =>
             CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16;
 
+        /// <summary>Ch1/Ch2 drag-to-merge: same-side light/dark tiles should snap together into *.</summary>
+        public bool UsesDragToMergePairs => CurrentLevel.DragToMergePairs;
+
         private bool UsesVariablePositiveNegative => CurrentLevel.Chapter >= 5;
 
         private string LightTerm => UsesVariablePositiveNegative ? "positive" : "light";

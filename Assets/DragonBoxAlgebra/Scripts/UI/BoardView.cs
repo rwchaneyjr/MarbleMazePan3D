@@ -17,8 +17,6 @@ namespace DragonBoxAlgebra.UI
         private const float DefaultTileHeight = 120f;
         private const float DefaultTileSpacing = 16f;
         private const float PlusSeparatorWidth = 28f;
-        /// <summary>Extra space between the red box / x and the nearest tile on its side.</summary>
-        private const float IsolationGoalNeighborGap = 28f;
         private const float MinTileWidth = 52f;
         private const float MinTileSpacing = 4f;
         private const int CompactPadding = 12;
@@ -470,52 +468,12 @@ namespace DragonBoxAlgebra.UI
                     CreatePlusSeparator(panel, layout.Height);
                 }
 
-                bool isIsolationGoal = VariableGoalRules.IsIsolationGoal(card);
-                // Nudge the red box / x a bit farther from its nearest neighbor card.
-                if (isIsolationGoal && placedCard)
-                {
-                    CreateIsolationGoalGap(panel, layout.Height);
-                }
-
                 CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot,
                     layout.Width, layout.Height);
                 widget.gameObject.AddComponent<CardDropZone>();
                 _widgets.Add(widget);
                 placedCard = true;
-
-                if (isIsolationGoal && HasLaterVisibleCard(side, i, sideName))
-                {
-                    CreateIsolationGoalGap(panel, layout.Height);
-                }
             }
-        }
-
-        private bool HasLaterVisibleCard(BoardSide side, int fromIndex, string sideName)
-        {
-            for (int i = fromIndex + 1; i < side.Cards.Count; i++)
-            {
-                if (!_controller.IsCardPendingCancelOnSide(side.Cards[i].Id, sideName))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static void CreateIsolationGoalGap(Transform parent, float tileHeight)
-        {
-            var go = new GameObject("IsolationGoalGap", typeof(RectTransform), typeof(LayoutElement));
-            go.transform.SetParent(parent, false);
-
-            var layoutElement = go.GetComponent<LayoutElement>();
-            layoutElement.minWidth = IsolationGoalNeighborGap;
-            layoutElement.preferredWidth = IsolationGoalNeighborGap;
-            layoutElement.minHeight = tileHeight;
-            layoutElement.preferredHeight = tileHeight;
-
-            var rect = go.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(IsolationGoalNeighborGap, tileHeight);
         }
 
         private int FindPendingMarkerIndex(string sideName, string cardId)

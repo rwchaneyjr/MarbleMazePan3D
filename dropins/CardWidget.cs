@@ -19,6 +19,8 @@ namespace DragonBoxAlgebra.UI
         /// <summary>Screen-pixel snap radius — forwarded to DraggableTile.snapDistance.</summary>
         public float snapDistance = 220f;
 
+        private const float DragToMergeSnapDistance = 320f;
+
         private AlgebraGameController _controller;
         private RectTransform _rect;
         private RectTransform _dragRoot;
@@ -545,7 +547,8 @@ namespace DragonBoxAlgebra.UI
             RestoreDragVisuals();
             RestoreDragRaycasts();
 
-            if (!TryToSnap(eventData))
+            // Board opposites (Ch1/Ch2 drag-to-merge): snap light onto dark on the same side.
+            if (!TryToSnap(eventData) && !TrySnapBoardOppositeNearby(eventData))
             {
                 ReturnToStart();
                 return;
@@ -565,6 +568,52 @@ namespace DragonBoxAlgebra.UI
             // Snapped visually but merge did not apply — put the tile back.
             EnsureDraggable().ClearSnappedFlag();
             ReturnToStart();
+        }
+
+        /// <summary>
+        /// Wider same-side opposite search so light/dark pairs snap together even when not
+        /// exactly on top of each other (Ch1/Ch2 drag-to-merge levels).
+        /// </summary>
+        private bool TrySnapBoardOppositeNearby(PointerEventData eventData)
+        {
+            if (SideName == "Hand" || _controller == null || !_controller.UsesDragToMergePairs)
+            {
+                return false;
+            }
+
+            CardWidget best = null;
+            float bestDistance = DragToMergeSnapDistance;
+            Vector2 screen = eventData != null ? eventData.position : _lastDragScreenPosition;
+            Camera cam = eventData != null
+                ? eventData.pressEventCamera
+                : (_canvas != null ? _canvas.worldCamera : null);
+            Vector3 selfPos = transform.position;
+
+            foreach (TileSnapTarget target in FindObjectsOfType<TileSnapTarget>())
+            {
+                if (target == null || !target.IsCorrectTile(this))
+                {
+                    continue;
+                }
+
+                float screenDist = Vector2.Distance(screen,
+                    RectTransformUtility.WorldToScreenPoint(cam, target.GetSnapPosition()));
+                float worldDist = Vector3.Distance(selfPos, target.GetSnapPosition()) * 100f;
+                float distance = Mathf.Min(screenDist, worldDist);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = target.Widget;
+                }
+            }
+
+            if (best == null)
+            {
+                return false;
+            }
+
+            transform.position = best.transform.position;
+            return HandleDropOnCard(best);
         }
 
         /// <summary>
@@ -1170,6 +1219,11 @@ namespace DragonBoxAlgebra.UI
             widget._canvasGroup = root.GetComponent<CanvasGroup>();
             widget._canvasGroup.blocksRaycasts = true;
             widget._canvasGroup.interactable = true;
+
+            if (sideName != "Hand" && controller != null && controller.UsesDragToMergePairs)
+            {
+                widget.snapDistance = DragToMergeSnapDistance;
+            }
 
             var draggable = root.AddComponent<DraggableTile>();
             draggable.Bind(widget);
