@@ -15,6 +15,7 @@ namespace DragonBoxAlgebra.UI
         private LevelCompleteView _completeView;
         private RectTransform _dragRoot;
         private Canvas _canvas;
+        private GameObject _chapterSelectPage;
 
         public void Initialize(AlgebraGameController controller)
         {
@@ -23,7 +24,8 @@ namespace DragonBoxAlgebra.UI
             controller.LevelLoaded += OnLevelLoaded;
             controller.MessageChanged += OnMessageChanged;
             controller.LevelCompleted += OnLevelCompleted;
-            controller.LoadLevel(0);
+            // Overlay menu only — gameplay hierarchy / DragRoot stay exactly as on workingupto150.
+            ShowChapterSelect();
         }
 
         private void OnDestroy()
@@ -82,6 +84,8 @@ namespace DragonBoxAlgebra.UI
         }
 
         public void OnRestartClicked() => Controller.RestartLevel();
+
+        public void OnBackToMenuClicked() => ShowChapterSelect();
 
         public void OnNextClicked()
         {
@@ -160,8 +164,9 @@ namespace DragonBoxAlgebra.UI
                 "Drag cards together on the same side, or drag from your hand to the board.",
                 new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 12f), 18, TextAnchor.LowerCenter);
 
-            CreateRoundButton(background.transform, "Menu", new Vector2(0.06f, 0.92f), OnRestartClicked, "⬆");
-            CreateRoundButton(background.transform, "Random", new Vector2(0.12f, 0.92f), OnRandomClicked, "🎲");
+            CreateWideButton(background.transform, "Back to menu", new Vector2(0.14f, 0.92f),
+                new Vector2(180f, 44f), OnBackToMenuClicked);
+            CreateRoundButton(background.transform, "Random", new Vector2(0.28f, 0.92f), OnRandomClicked, "🎲");
             CreateRoundButton(background.transform, "Undo", new Vector2(0.88f, 0.92f), OnUndoClicked, "↩");
             CreateRoundButton(background.transform, "Rewind", new Vector2(0.94f, 0.92f), OnRewindClicked, "⏪");
 
@@ -171,10 +176,14 @@ namespace DragonBoxAlgebra.UI
                 new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), Vector2.zero, 22, TextAnchor.MiddleCenter);
             var creatureText = CreateText(completePanel.transform, "Creature", "🐲",
                 new Vector2(0.5f, 0.78f), new Vector2(0.5f, 0.78f), Vector2.zero, 48, TextAnchor.MiddleCenter);
-            CreateButton(completePanel.transform, "Next", new Vector2(0.5f, 0.18f), OnNextClicked);
+            CreateButton(completePanel.transform, "Next", new Vector2(0.35f, 0.18f), OnNextClicked);
+            CreateButton(completePanel.transform, "Back to menu", new Vector2(0.65f, 0.18f), OnBackToMenuClicked);
 
             _completeView = gameObject.AddComponent<LevelCompleteView>();
             _completeView.Initialize(Controller, completePanel.gameObject, starsText, creatureText);
+
+            // Full-screen overlay on the canvas. Does not reparent board/hand/DragRoot.
+            BuildChapterSelectPage(canvasGo.transform);
 
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {
@@ -188,6 +197,101 @@ namespace DragonBoxAlgebra.UI
             }
 
             _dragRoot.SetAsLastSibling();
+        }
+
+        private void BuildChapterSelectPage(Transform parent)
+        {
+            var page = CreatePanel(parent, "ChapterSelectPage", new Color(0.08f, 0.22f, 0.30f, 0.98f),
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            _chapterSelectPage = page.gameObject;
+
+            CreateText(page.transform, "SelectTitle", "DragonBox Algebra",
+                new Vector2(0.5f, 0.9f), new Vector2(0.5f, 0.9f), Vector2.zero, 36, TextAnchor.MiddleCenter);
+            CreateText(page.transform, "SelectSubtitle", "Choose a chapter",
+                new Vector2(0.5f, 0.82f), new Vector2(0.5f, 0.82f), Vector2.zero, 22, TextAnchor.MiddleCenter);
+
+            for (int chapter = 1; chapter <= ChapterLevelGenerator.ChapterCount; chapter++)
+            {
+                int chapterNumber = chapter;
+                int startIndex = ChapterLevelGenerator.StartLevelIndexForChapter(chapterNumber);
+                string name = ChapterLevelGenerator.NameForChapter(chapterNumber);
+                float y = 0.72f - (chapterNumber - 1) * 0.09f;
+                string label = $"Ch {chapterNumber}  ·  {name}  ·  Lv {startIndex + 1}";
+                CreateChapterButton(page.transform, label, new Vector2(0.5f, y), () => StartChapter(chapterNumber));
+            }
+        }
+
+        private void ShowChapterSelect()
+        {
+            if (_completeView != null)
+            {
+                _completeView.Hide();
+            }
+
+            // Never disable DragRoot or the gameplay tree — that broke hand drag before.
+            if (_chapterSelectPage != null)
+            {
+                _chapterSelectPage.SetActive(true);
+                _chapterSelectPage.transform.SetAsLastSibling();
+            }
+        }
+
+        private void StartChapter(int chapter)
+        {
+            if (_chapterSelectPage != null)
+            {
+                _chapterSelectPage.SetActive(false);
+            }
+
+            if (_dragRoot != null)
+            {
+                _dragRoot.SetAsLastSibling();
+            }
+
+            Controller.LoadLevel(ChapterLevelGenerator.StartLevelIndexForChapter(chapter));
+        }
+
+        private static Button CreateChapterButton(Transform parent, string label, Vector2 anchor,
+            UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject("ChapterButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(520f, 52f);
+            var image = go.GetComponent<Image>();
+            image.sprite = SpriteFactory.RoundedButton;
+            image.type = Image.Type.Sliced;
+            image.color = new Color(0.82f, 0.32f, 0.18f);
+
+            var button = go.GetComponent<Button>();
+            button.onClick.AddListener(onClick);
+            CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 18, TextAnchor.MiddleCenter);
+            return button;
+        }
+
+        private static Button CreateWideButton(Transform parent, string label, Vector2 anchor, Vector2 size,
+            UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject(label.Replace(" ", "") + "Button", typeof(RectTransform), typeof(Image),
+                typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            var image = go.GetComponent<Image>();
+            image.sprite = SpriteFactory.RoundedButton;
+            image.type = Image.Type.Sliced;
+            image.color = new Color(0.82f, 0.32f, 0.18f);
+
+            var button = go.GetComponent<Button>();
+            button.onClick.AddListener(onClick);
+            CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 16, TextAnchor.MiddleCenter);
+            return button;
         }
 
         private static RectTransform CreateTexturedPanel(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
@@ -245,7 +349,8 @@ namespace DragonBoxAlgebra.UI
 
         private static Button CreateButton(Transform parent, string label, Vector2 anchor, UnityEngine.Events.UnityAction onClick)
         {
-            var go = new GameObject(label + "Button", typeof(RectTransform), typeof(Image), typeof(Button));
+            var go = new GameObject(label.Replace(" ", "") + "Button", typeof(RectTransform), typeof(Image),
+                typeof(Button));
             go.transform.SetParent(parent, false);
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = anchor;
