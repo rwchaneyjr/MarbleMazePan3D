@@ -17,9 +17,12 @@ namespace DragonBoxAlgebra.UI
         public AlgebraGameController Controller => _controller;
 
         /// <summary>Screen-pixel snap radius — forwarded to DraggableTile.snapDistance.</summary>
-        public float snapDistance = 220f;
+        public float snapDistance = 140f;
 
-        private const float DragToMergeSnapDistance = 480f;
+        /// <summary>
+        /// Must nearly overlap the opposite (about one tile). Farther drops pop back in place.
+        /// </summary>
+        private const float DragToMergeSnapDistance = 130f;
 
         private AlgebraGameController _controller;
         private RectTransform _rect;
@@ -629,8 +632,8 @@ namespace DragonBoxAlgebra.UI
         }
 
         /// <summary>
-        /// Wider same-side opposite search so light/dark pairs snap together even when not
-        /// exactly on top of each other (Ch1/Ch2 drag-to-merge levels).
+        /// Same-side opposite merge only when the pointer is close enough to the target.
+        /// Otherwise the tile pops back to its slot.
         /// </summary>
         private bool TrySnapBoardOppositeNearby(PointerEventData eventData)
         {
@@ -640,12 +643,12 @@ namespace DragonBoxAlgebra.UI
             }
 
             CardWidget best = null;
-            float bestDistance = DragToMergeSnapDistance;
+            float maxDistance = Mathf.Max(80f, snapDistance);
+            float bestDistance = maxDistance;
             Vector2 screen = eventData != null ? eventData.position : _lastDragScreenPosition;
             Camera cam = eventData != null
                 ? eventData.pressEventCamera
                 : (_canvas != null ? _canvas.worldCamera : null);
-            Vector3 selfPos = transform.position;
 
             foreach (TileSnapTarget target in FindObjectsOfType<TileSnapTarget>())
             {
@@ -654,10 +657,9 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                float screenDist = Vector2.Distance(screen,
+                // Screen distance only — world units can look "close" across the red box.
+                float distance = Vector2.Distance(screen,
                     RectTransformUtility.WorldToScreenPoint(cam, target.GetSnapPosition()));
-                float worldDist = Vector3.Distance(selfPos, target.GetSnapPosition()) * 100f;
-                float distance = Mathf.Min(screenDist, worldDist);
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
