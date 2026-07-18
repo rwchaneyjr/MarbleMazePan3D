@@ -234,15 +234,14 @@ namespace DragonBoxAlgebra.Gameplay
 
             _hand.Clear();
             _hand.AddRange(level.BuildHand());
-            if (level.Chapter < 4)
-            {
-                HandRules.DedupeFlipFamilies(_hand);
-            }
 
             if (_hand.Count > 0)
             {
                 HandVisualRules.ApplyLevelThemeToHand(_hand, level.CreatureTheme);
             }
+
+            // Unique hand images only — never keep a card and its opposite, or the same image twice.
+            HandRules.DedupeFlipFamilies(_hand);
 
             CaptureHandTemplates();
             Moves.Reset();
@@ -736,12 +735,12 @@ namespace DragonBoxAlgebra.Gameplay
                     IndexA = targetBoardIndex,
                     IndexB = -1
                 });
-                MessageChanged?.Invoke("Dice canceled.");
+                MessageChanged?.Invoke("Numbers canceled.");
             }
 
             if (UsesReusableVariableHandCards)
             {
-                // Unlock sea/variable hand tiles while matching board tiles remain.
+                // Unlock sea/variable/number hand tiles while matching board tiles remain.
                 RefreshHandSpentStateForReusableCards();
             }
 
@@ -1274,6 +1273,8 @@ namespace DragonBoxAlgebra.Gameplay
         {
             for (int i = 0; i < _hand.Count; i++)
             {
+                // Numbers use matching +/- board constants (not light-sea count).
+                // Sea / variable tiles use HandTileStillNeededOnBoard as before.
                 if (HandTileStillNeededOnBoard(i))
                 {
                     _spentHandIndices.Remove(i);
@@ -1292,7 +1293,17 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            char letter = _hand[handIndex].VariableLetter;
+            BoardCard handCard = _hand[handIndex];
+            if (handCard.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+            {
+                // Negative hand cancels positive board numbers (and the reverse after flip).
+                CardKind needed = handCard.Kind == CardKind.NegativeConstant
+                    ? CardKind.PositiveConstant
+                    : CardKind.NegativeConstant;
+                return CountConstantsOnBoard(needed, handCard.Value) > 0;
+            }
+
+            char letter = handCard.VariableLetter;
             if (letter != '\0')
             {
                 return CountPositiveVariablesOnBoard(letter) > 0;
@@ -1300,6 +1311,28 @@ namespace DragonBoxAlgebra.Gameplay
 
             // Sea hand tile stays unlocked while any light sea remains on the board.
             return CountLightSeaCreaturesOnBoard() > 0;
+        }
+
+        private int CountConstantsOnBoard(CardKind kind, int value)
+        {
+            int count = 0;
+            foreach (BoardCard card in Board.Left.Cards)
+            {
+                if (card.Kind == kind && card.Value == value)
+                {
+                    count++;
+                }
+            }
+
+            foreach (BoardCard card in Board.Right.Cards)
+            {
+                if (card.Kind == kind && card.Value == value)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private bool HandLetterStillNeededOnBoard(int handIndex) =>

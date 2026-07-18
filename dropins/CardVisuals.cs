@@ -123,7 +123,8 @@ namespace DragonBoxAlgebra.UI
 
         public static Sprite CreatureSprite(BoardCard card)
         {
-            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box)
+            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box
+                or CardKind.PositiveConstant or CardKind.NegativeConstant)
             {
                 Sprite loaded = CardSpriteLoader.ForCard(card);
                 if (loaded != null)
@@ -131,7 +132,10 @@ namespace DragonBoxAlgebra.UI
                     return loaded;
                 }
 
-                CreatureSpriteDebug.LogFallback(card, "CardVisuals");
+                if (card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box)
+                {
+                    CreatureSpriteDebug.LogFallback(card, "CardVisuals");
+                }
             }
 
             return card.Kind switch

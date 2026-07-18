@@ -22,6 +22,8 @@ namespace DragonBoxAlgebra.UI
         private static int _boxPriority;
         private static readonly Dictionary<long, Sprite> VariableSprites = new();
         private static readonly Dictionary<long, int> VariablePriorities = new();
+        private static readonly Dictionary<long, Sprite> NumberSprites = new();
+        private static readonly Dictionary<long, int> NumberPriorities = new();
         private static bool _initialized;
 
         private static readonly List<string> DebugFilesFound = new();
@@ -52,6 +54,8 @@ namespace DragonBoxAlgebra.UI
             _boxPriority = 0;
             VariableSprites.Clear();
             VariablePriorities.Clear();
+            NumberSprites.Clear();
+            NumberPriorities.Clear();
             _initialized = false;
             DebugFilesFound.Clear();
             DebugRegistered.Clear();
@@ -158,6 +162,15 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
+            if (card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+            {
+                Sprite number = GetNumberSprite(card.Value, card.Kind == CardKind.PositiveConstant);
+                if (number != null)
+                {
+                    return number;
+                }
+            }
+
             return card.Kind switch
             {
                 CardKind.DayCreature => GetThemed(theme, light: true),
@@ -192,6 +205,27 @@ namespace DragonBoxAlgebra.UI
 
             VariableSprites[key] = sprite;
             VariablePriorities[key] = priority;
+        }
+
+        private static long NumberKey(int value, bool positive) =>
+            ((long)Math.Abs(value) << 1) | (positive ? 1L : 0L);
+
+        private static Sprite GetNumberSprite(int value, bool positive)
+        {
+            NumberSprites.TryGetValue(NumberKey(value, positive), out Sprite sprite);
+            return sprite;
+        }
+
+        private static void RegisterNumber(int value, bool positive, Sprite sprite, int priority)
+        {
+            long key = NumberKey(value, positive);
+            if (NumberPriorities.TryGetValue(key, out int existing) && priority < existing)
+            {
+                return;
+            }
+
+            NumberSprites[key] = sprite;
+            NumberPriorities[key] = priority;
         }
 
         public static bool HasCustomArt(int theme, bool light)
@@ -290,6 +324,14 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            if (TryParseNumberName(name, out int numberValue, out bool numberPositive))
+            {
+                RegisterNumber(numberValue, numberPositive, sprite, priority);
+                DebugRegistered.Add(
+                    $"{folder}/{sprite.name} -> number {(numberPositive ? "+" : "-")}{numberValue}");
+                return;
+            }
+
             if (TryParseThemePairName(name, out int theme, out bool light))
             {
                 RegisterThemed(theme, light, sprite, priority);
@@ -310,6 +352,34 @@ namespace DragonBoxAlgebra.UI
             }
 
             DebugUnmatched.Add($"{folder}/{sprite.name}");
+        }
+
+        private static bool TryParseNumberName(string name, out int value, out bool positive)
+        {
+            value = 0;
+            positive = true;
+
+            if (string.IsNullOrEmpty(name))
+            {
+                return false;
+            }
+
+            if (name.Length >= 2 && name[0] == '-' && int.TryParse(name.Substring(1), out int negValue)
+                && negValue >= 0 && negValue <= 9)
+            {
+                value = negValue;
+                positive = false;
+                return true;
+            }
+
+            if (int.TryParse(name, out int posValue) && posValue >= 0 && posValue <= 9)
+            {
+                value = posValue;
+                positive = true;
+                return true;
+            }
+
+            return false;
         }
 
         private static bool TryParseVariableName(string name, out char letter, out bool positive)

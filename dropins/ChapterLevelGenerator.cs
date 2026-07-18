@@ -5,7 +5,8 @@ namespace DragonBoxAlgebra.Gameplay
 {
     /// <summary>
     /// DragonBox-style intro: Ch1–Ch4 through level 62; Ch5 (63–80) variable images + red box;
-    /// Ch6 (81–100) x + variables; Ch7 (101–128) sea + variables (+ between tiles from 113).
+    /// Ch6 (81–100) x + variables; Ch7 (101–150) sea + variables + numbers (+ between tiles from 113);
+    /// 129–139 exact copies of 118–128; 140–150 copy 129–139 with sea slots → number images.
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -16,7 +17,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter4LevelCount = 19;
         public const int Chapter5LevelCount = 18;
         public const int Chapter6LevelCount = 20;
-        public const int Chapter7LevelCount = 28;
+        public const int Chapter7LevelCount = 50;
         public const int ChapterCount = 7;
         public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
             + Chapter4LevelCount + Chapter5LevelCount + Chapter6LevelCount + Chapter7LevelCount;
@@ -42,8 +43,14 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Ch7 levels 13–28 (global 113–128): sea + variable mix, + between tiles.</summary>
         public const int Chapter7MixedPlusStartDisplay = 13;
 
+        /// <summary>Ch7 levels 29–39 (global 129–139): exact copies of 118–128.</summary>
+        public const int Chapter7CopyStartDisplay = 29;
+
+        /// <summary>Ch7 levels 40–50 (global 140–150): copies of 129–139 with numbers instead of sea.</summary>
+        public const int Chapter7Copy140StartDisplay = 40;
+
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-ch7-mixed-128";
+        public const string CurriculumVersion = "2026-07-ch7-140-150-numbers-140to150-create";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -54,9 +61,9 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>From global level 86: random 2 or 3 variable letters (one tile each).</summary>
         public const int HighVariableLetterCountStartLevel = 86;
 
-        /// <summary>Levels 113–128 show a + sign between each board tile image.</summary>
+        /// <summary>Levels 113–150 show a + sign between each board tile image.</summary>
         public const int PlusBetweenTilesStartLevel = 113;
-        public const int PlusBetweenTilesEndLevel = 128;
+        public const int PlusBetweenTilesEndLevel = 150;
 
         public static bool UsesPlusBetweenBoardTiles(int globalLevel) =>
             globalLevel >= PlusBetweenTilesStartLevel && globalLevel <= PlusBetweenTilesEndLevel;
@@ -113,6 +120,8 @@ namespace DragonBoxAlgebra.Gameplay
                 AddRandomExtraTileOppositeBox(levels[i], i);
             }
 
+            // One unique image per hand — drop duplicates and light/dark (or +/-) pairs.
+            HandRules.DedupeLevelHandDefinitions(levels);
             HandRules.AssertAllHandCardsFlippable(levels);
             HandRules.AssertVariableHandCardsFlippable(levels);
             return levels;
@@ -476,7 +485,8 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Ch7 (101–128): 6 sea+x, 6 variables (101–112 unchanged), 16 mixed + levels (113–128).
+        /// Ch7 (101–150): 6 sea+x, 6 variables, 16 mixed + (113–128),
+        /// 11 exact copies of 118–128 as 129–139, then 11 copies of 129–139 as 140–150 with sea→numbers.
         /// </summary>
         private static LevelDefinition BuildChapter7Level(int globalLevel, int theme, int displayNumber)
         {
@@ -503,13 +513,46 @@ namespace DragonBoxAlgebra.Gameplay
                 return MakeCh7VariableBalanceLevel(variableTitle, variableTheme, letters, variableXLeft);
             }
 
-            int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
-            int mixedTheme = mixedIndex % SeaCreatureNames.Length;
-            int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
-            bool mixedXLeft = mixedIndex % 2 == 0;
-            string mixedTitle =
-                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
-            return MakeCh7MixedSeaVariableLevel(mixedTitle, globalLevel, mixedTheme, mixedXLeft, tileCount);
+            if (displayNumber < Chapter7CopyStartDisplay)
+            {
+                int mixedIndex = displayNumber - Chapter7MixedPlusStartDisplay;
+                int mixedTheme = mixedIndex % SeaCreatureNames.Length;
+                int tileCount = mixedIndex % 2 == 0 ? 2 : 3;
+                bool mixedXLeft = mixedIndex % 2 == 0;
+                string mixedTitle =
+                    $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {tileCount} each side)";
+                return MakeCh7MixedSeaVariableLevel(mixedTitle, globalLevel, mixedTheme, mixedXLeft, tileCount);
+            }
+
+            if (displayNumber < Chapter7Copy140StartDisplay)
+            {
+                // 129–139: exact copies of global 118–128 (same layout/seeds).
+                int sourceDisplay = displayNumber - 11; // 29→18 … 39→28
+                int sourceGlobalLevel = globalLevel - 11; // 129→118 … 139→128
+                int sourceMixedIndex = sourceDisplay - Chapter7MixedPlusStartDisplay;
+                int sourceTheme = sourceMixedIndex % SeaCreatureNames.Length;
+                int sourceTileCount = sourceMixedIndex % 2 == 0 ? 2 : 3;
+                bool sourceXLeft = sourceMixedIndex % 2 == 0;
+                string copyTitle =
+                    $"Ch7 • {ChapterNames[6]} {displayNumber} (x + sea + vars, {sourceTileCount} each side; from {sourceGlobalLevel})";
+                return MakeCh7MixedSeaVariableLevel(copyTitle, sourceGlobalLevel, sourceTheme, sourceXLeft,
+                    sourceTileCount);
+            }
+
+            // 140–150: copies of 129–139 with sea creature slots replaced by number PNGs.
+            int from129Display = displayNumber - 11; // 40→29 … 50→39
+            int from129Global = globalLevel - 11; // 140→129 … 150→139
+            // 129–139 themselves copy 118–128, so reuse that underlying layout seed.
+            int layoutDisplay = from129Display - 11; // 40→18 … 50→28
+            int layoutGlobal = from129Global - 11; // 140→118 … 150→128
+            int layoutMixedIndex = layoutDisplay - Chapter7MixedPlusStartDisplay;
+            int layoutTheme = layoutMixedIndex % SeaCreatureNames.Length;
+            int layoutTileCount = layoutMixedIndex % 2 == 0 ? 2 : 3;
+            bool layoutXLeft = layoutMixedIndex % 2 == 0;
+            string copy140Title =
+                $"Ch7 • {ChapterNames[6]} {displayNumber} (x + numbers + vars, {layoutTileCount} each side; from {from129Global})";
+            return MakeCh7NumberVariableFromMixedTemplate(copy140Title, layoutGlobal, layoutTheme, layoutXLeft,
+                layoutTileCount);
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
@@ -661,6 +704,124 @@ namespace DragonBoxAlgebra.Gameplay
                 cards.Add(CardKind.DayCreature);
                 letters.Add(isVariable ? variableLetters[letterIndex++] : '\0');
             }
+        }
+
+        /// <summary>
+        /// Global 140–150: copy of a 129–139 / 118–128 mixed layout. Sea slots → number images;
+        /// variable slots stay letter images.
+        /// </summary>
+        private static LevelDefinition MakeCh7NumberVariableFromMixedTemplate(string title, int sourceGlobalLevel,
+            int seaTheme, bool xOnLeft, int tileCount)
+        {
+            int letterSeed = sourceGlobalLevel * 7919 + 31;
+            int variableSlotCount = tileCount == 2 ? 1 : (sourceGlobalLevel % 2 == 0 ? 2 : 1);
+            int numberSlotCount = tileCount - variableSlotCount;
+            List<char> letters = PickDistinctVariableLetters(letterSeed, variableSlotCount);
+            int numberSeed = sourceGlobalLevel * 7919 + 101;
+
+            var level = new LevelDefinition
+            {
+                Title = title,
+                Chapter = 7,
+                CreatureTheme = seaTheme,
+                ParMoves = 2 + tileCount * 2,
+                ParCards = tileCount
+            };
+
+            // true = variable (same as mixed), false = number (was sea in 129–139).
+            var slots = new List<bool>();
+            for (int i = 0; i < variableSlotCount; i++)
+            {
+                slots.Add(true);
+            }
+
+            for (int i = 0; i < numberSlotCount; i++)
+            {
+                slots.Add(false);
+            }
+
+            ShuffleSlots(slots, sourceGlobalLevel * 7919 + 59);
+
+            var numberValues = new List<int>();
+            for (int i = 0; i < numberSlotCount; i++)
+            {
+                numberValues.Add(AdditionNumberValue(numberSeed, i));
+            }
+
+            if (xOnLeft)
+            {
+                level.LeftCards.Add(CardKind.DayCreature);
+                level.LeftVariableLetters.Add(VariableGoalRules.GoalLetter);
+                level.LeftValues.Add(1);
+                AddNumberVariableSlotsToSide(level.LeftCards, level.LeftVariableLetters, level.LeftValues,
+                    slots, letters, numberValues);
+                AddNumberVariableSlotsToSide(level.RightCards, level.RightVariableLetters, level.RightValues,
+                    slots, letters, numberValues);
+            }
+            else
+            {
+                AddNumberVariableSlotsToSide(level.LeftCards, level.LeftVariableLetters, level.LeftValues,
+                    slots, letters, numberValues);
+                level.RightCards.Add(CardKind.DayCreature);
+                level.RightVariableLetters.Add(VariableGoalRules.GoalLetter);
+                level.RightValues.Add(1);
+                AddNumberVariableSlotsToSide(level.RightCards, level.RightVariableLetters, level.RightValues,
+                    slots, letters, numberValues);
+            }
+
+            int letterIndex = 0;
+            int numberIndex = 0;
+            foreach (bool isVariable in slots)
+            {
+                if (isVariable)
+                {
+                    level.HandCards.Add(CardKind.NightCreature);
+                    level.HandVariableLetters.Add(letters[letterIndex++]);
+                    level.HandValues.Add(1);
+                }
+                else
+                {
+                    level.HandCards.Add(CardKind.NegativeConstant);
+                    level.HandVariableLetters.Add('\0');
+                    level.HandValues.Add(numberValues[numberIndex++]);
+                }
+            }
+
+            return level;
+        }
+
+        private static void AddNumberVariableSlotsToSide(List<CardKind> cards, List<char> letters,
+            List<int> values, List<bool> slots, IReadOnlyList<char> variableLetters,
+            IReadOnlyList<int> numberValues)
+        {
+            int letterIndex = 0;
+            int numberIndex = 0;
+            foreach (bool isVariable in slots)
+            {
+                if (isVariable)
+                {
+                    cards.Add(CardKind.DayCreature);
+                    letters.Add(variableLetters[letterIndex++]);
+                    values.Add(1);
+                }
+                else
+                {
+                    cards.Add(CardKind.PositiveConstant);
+                    letters.Add('\0');
+                    values.Add(numberValues[numberIndex++]);
+                }
+            }
+        }
+
+        private static int AdditionNumberValue(int numberSeed, int numberIndex)
+        {
+            int baseValue = 1 + ((numberSeed + numberIndex * 17) % 5);
+            if (baseValue < 1)
+            {
+                return 1;
+            }
+
+            return baseValue > 9 ? 9 : baseValue;
         }
 
         private static void ShuffleSlots(List<bool> slots, int seed)
