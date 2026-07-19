@@ -53,7 +53,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-140-150-zero-cancel";
+        public const string CurriculumVersion = "2026-07-140-150-zero-and-x-one-side";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -127,6 +127,7 @@ namespace DragonBoxAlgebra.Gameplay
             HandRules.DedupeLevelHandDefinitions(levels);
             HandRules.AssertAllHandCardsFlippable(levels);
             HandRules.AssertVariableHandCardsFlippable(levels);
+            AssertGoalXOnOneSideForNumberLevels(levels);
             return levels;
         }
 
@@ -554,8 +555,112 @@ namespace DragonBoxAlgebra.Gameplay
             bool layoutXLeft = layoutMixedIndex % 2 == 0;
             string copy140Title =
                 $"Ch7 • {ChapterNames[6]} {displayNumber} (x + numbers + vars, {layoutTileCount} each side; from {from129Global})";
-            return MakeCh7NumberVariableFromMixedTemplate(copy140Title, layoutGlobal, layoutTheme, layoutXLeft,
-                layoutTileCount);
+            LevelDefinition numberLevel = MakeCh7NumberVariableFromMixedTemplate(copy140Title, layoutGlobal,
+                layoutTheme, layoutXLeft, layoutTileCount);
+            // 140–150: x must always appear, and only on one side.
+            EnsureGoalXOnOneSide(numberLevel, preferLeft: layoutXLeft);
+            return numberLevel;
+        }
+
+        /// <summary>
+        /// Guarantees exactly one isolation x on exactly one board side (never both, never missing).
+        /// </summary>
+        private static void EnsureGoalXOnOneSide(LevelDefinition level, bool preferLeft)
+        {
+            int leftX = CountGoalX(level.LeftCards, level.LeftVariableLetters);
+            int rightX = CountGoalX(level.RightCards, level.RightVariableLetters);
+
+            if (leftX == 1 && rightX == 0)
+            {
+                return;
+            }
+
+            if (leftX == 0 && rightX == 1)
+            {
+                return;
+            }
+
+            RemoveAllGoalX(level.LeftCards, level.LeftVariableLetters, level.LeftValues);
+            RemoveAllGoalX(level.RightCards, level.RightVariableLetters, level.RightValues);
+
+            if (preferLeft)
+            {
+                InsertGoalXAtStart(level.LeftCards, level.LeftVariableLetters, level.LeftValues);
+            }
+            else
+            {
+                InsertGoalXAtStart(level.RightCards, level.RightVariableLetters, level.RightValues);
+            }
+        }
+
+        private static int CountGoalX(List<CardKind> cards, List<char> letters)
+        {
+            int count = 0;
+            for (int i = 0; i < cards.Count; i++)
+            {
+                if (cards[i] == CardKind.DayCreature
+                    && i < letters.Count
+                    && letters[i] == VariableGoalRules.GoalLetter)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static void RemoveAllGoalX(List<CardKind> cards, List<char> letters, List<int> values)
+        {
+            for (int i = cards.Count - 1; i >= 0; i--)
+            {
+                bool isGoalX = cards[i] == CardKind.DayCreature
+                    && i < letters.Count
+                    && letters[i] == VariableGoalRules.GoalLetter;
+                if (!isGoalX)
+                {
+                    continue;
+                }
+
+                cards.RemoveAt(i);
+                if (i < letters.Count)
+                {
+                    letters.RemoveAt(i);
+                }
+
+                if (i < values.Count)
+                {
+                    values.RemoveAt(i);
+                }
+            }
+        }
+
+        private static void InsertGoalXAtStart(List<CardKind> cards, List<char> letters, List<int> values)
+        {
+            cards.Insert(0, CardKind.DayCreature);
+            letters.Insert(0, VariableGoalRules.GoalLetter);
+            values.Insert(0, 1);
+        }
+
+        private static void AssertGoalXOnOneSideForNumberLevels(IReadOnlyList<LevelDefinition> levels)
+        {
+            for (int globalLevel = NumberLevelsStartLevel; globalLevel <= TotalLevels; globalLevel++)
+            {
+                int index = globalLevel - 1;
+                if (index < 0 || index >= levels.Count)
+                {
+                    continue;
+                }
+
+                LevelDefinition level = levels[index];
+                int leftX = CountGoalX(level.LeftCards, level.LeftVariableLetters);
+                int rightX = CountGoalX(level.RightCards, level.RightVariableLetters);
+                if (leftX + rightX != 1)
+                {
+                    throw new System.InvalidOperationException(
+                        $"Level {globalLevel} ({level.Title}) must have x on exactly one side " +
+                        $"(left={leftX}, right={rightX}).");
+                }
+            }
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
