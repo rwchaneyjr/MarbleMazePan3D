@@ -554,10 +554,8 @@ namespace DragonBoxAlgebra.Gameplay
             bool layoutXLeft = layoutMixedIndex % 2 == 0;
             string copy140Title =
                 $"Ch7 • {ChapterNames[6]} {displayNumber} (x + numbers + vars, {layoutTileCount} each side; from {from129Global})";
-            LevelDefinition numberLevel = MakeCh7NumberVariableFromMixedTemplate(copy140Title, layoutGlobal,
-                layoutTheme, layoutXLeft, layoutTileCount);
-            AddSceneVariableOppositeX(numberLevel, globalLevel);
-            return numberLevel;
+            return MakeCh7NumberVariableFromMixedTemplate(copy140Title, layoutGlobal, layoutTheme, layoutXLeft,
+                layoutTileCount);
         }
 
         /// <summary>x on one side; light sea creature on both sides; dark sea creature in hand.</summary>
@@ -793,135 +791,6 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return level;
-        }
-
-        /// <summary>
-        /// Levels 140–150: add one available variable on the board side opposite x (scene only).
-        /// Prefers the dark twin of a letter already on that side so it can cancel in-place.
-        /// </summary>
-        private static void AddSceneVariableOppositeX(LevelDefinition level, int globalLevel)
-        {
-            bool xOnLeft = SideHasVariableX(level.LeftCards, level.LeftVariableLetters);
-            List<CardKind> cards = xOnLeft ? level.RightCards : level.LeftCards;
-            List<char> letters = xOnLeft ? level.RightVariableLetters : level.LeftVariableLetters;
-            List<int> values = xOnLeft ? level.RightValues : level.LeftValues;
-
-            char letter = PickAvailableSceneLetterOnSide(cards, letters, level, globalLevel);
-            if (letter == '\0')
-            {
-                return;
-            }
-
-            while (letters.Count < cards.Count)
-            {
-                letters.Add('\0');
-            }
-
-            while (values.Count < cards.Count)
-            {
-                values.Add(1);
-            }
-
-            // Dark twin when that letter is already light on this side; otherwise light.
-            bool sideHasLightLetter = SideHasLetterKind(cards, letters, letter, CardKind.DayCreature);
-            cards.Add(sideHasLightLetter ? CardKind.NightCreature : CardKind.DayCreature);
-            letters.Add(letter);
-            values.Add(1);
-        }
-
-        private static char PickAvailableSceneLetterOnSide(List<CardKind> sideCards, List<char> sideLetters,
-            LevelDefinition level, int globalLevel)
-        {
-            var onSide = new List<char>();
-            CollectBoardLetters(sideCards, sideLetters, onSide);
-            if (onSide.Count > 0)
-            {
-                return onSide[new System.Random(globalLevel * 7919 + 73).Next(onSide.Count)];
-            }
-
-            var available = new List<char>();
-            CollectBoardLetters(level.LeftCards, level.LeftVariableLetters, available);
-            CollectBoardLetters(level.RightCards, level.RightVariableLetters, available);
-            CollectHandLetters(level, available);
-
-            if (available.Count == 0)
-            {
-                available.AddRange(VariablePairLetters);
-            }
-
-            return available[new System.Random(globalLevel * 7919 + 73).Next(available.Count)];
-        }
-
-        private static bool SideHasLetterKind(List<CardKind> cards, List<char> letters, char letter, CardKind kind)
-        {
-            for (int i = 0; i < cards.Count; i++)
-            {
-                if (cards[i] == kind && i < letters.Count && letters[i] == letter)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static void CollectBoardLetters(List<CardKind> cards, List<char> letters, List<char> into)
-        {
-            for (int i = 0; i < cards.Count; i++)
-            {
-                if (cards[i] is not (CardKind.DayCreature or CardKind.NightCreature))
-                {
-                    continue;
-                }
-
-                char letter = i < letters.Count ? letters[i] : '\0';
-                if (letter == '\0' || letter == VariableGoalRules.GoalLetter)
-                {
-                    continue;
-                }
-
-                if (!into.Contains(letter))
-                {
-                    into.Add(letter);
-                }
-            }
-        }
-
-        private static void CollectHandLetters(LevelDefinition level, List<char> into)
-        {
-            for (int i = 0; i < level.HandCards.Count; i++)
-            {
-                if (level.HandCards[i] is not (CardKind.DayCreature or CardKind.NightCreature))
-                {
-                    continue;
-                }
-
-                char letter = i < level.HandVariableLetters.Count ? level.HandVariableLetters[i] : '\0';
-                if (letter == '\0' || letter == VariableGoalRules.GoalLetter)
-                {
-                    continue;
-                }
-
-                if (!into.Contains(letter))
-                {
-                    into.Add(letter);
-                }
-            }
-        }
-
-        private static bool SideHasVariableX(List<CardKind> cards, List<char> letters)
-        {
-            for (int i = 0; i < cards.Count; i++)
-            {
-                if (cards[i] == CardKind.DayCreature
-                    && i < letters.Count
-                    && letters[i] == VariableGoalRules.GoalLetter)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private static void AddNumberVariableSlotsToSide(List<CardKind> cards, List<char> letters,

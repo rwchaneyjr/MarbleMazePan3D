@@ -725,7 +725,8 @@ namespace DragonBoxAlgebra.Gameplay
 
                 _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
-                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
+                string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
+                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
             }
             else
             {
