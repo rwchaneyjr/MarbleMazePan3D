@@ -453,9 +453,10 @@ namespace DragonBoxAlgebra.Gameplay
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
+                    string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
                     MessageChanged?.Invoke(_pendingBalance != null
-                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. The ? hole stays until you fill it."
-                        : $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
+                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears. The ? hole stays until you fill it."
+                        : $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
                 }
                 else
                 {
@@ -971,6 +972,11 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool UsesPlusBetweenBoardTiles =>
             ChapterLevelGenerator.UsesPlusBetweenBoardTiles(_levelIndex + 1);
+
+        /// <summary>Levels 140–150: show number 0 where the cancel swirl normally appears.</summary>
+        public bool UsesZeroCancelSymbol =>
+            _levelIndex + 1 >= ChapterLevelGenerator.NumberLevelsStartLevel
+            && _levelIndex + 1 <= ChapterLevelGenerator.TotalLevels;
 
         public bool TryGetBoxSideNames(out string boxSide, out string oppositeSide)
         {

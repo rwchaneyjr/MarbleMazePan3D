@@ -24,6 +24,7 @@ namespace DragonBoxAlgebra.UI
         private bool _readyToClick;
         private bool _mergeInProgress;
         private bool _autoDismissStarted;
+        private bool _usesZeroCancelSymbol;
         private Coroutine _symbolAnimation;
         private Coroutine _autoDismissCoroutine;
 
@@ -89,8 +90,25 @@ namespace DragonBoxAlgebra.UI
 
         private static bool UsesSwirlingLight => GetSwirlingLightSprite() != null;
 
+        private Sprite ResolveCancelSymbolSprite()
+        {
+            _usesZeroCancelSymbol = _controller != null && _controller.UsesZeroCancelSymbol;
+            if (_usesZeroCancelSymbol)
+            {
+                // Prefer 0.png; if missing, Build falls back to a "0" text glyph.
+                return CardSpriteLoader.GetZeroSprite();
+            }
+
+            return GetSwirlingLightSprite();
+        }
+
         private void Build(float tileWidth, float tileHeight)
         {
+            Sprite cancelSprite = ResolveCancelSymbolSprite();
+            bool usesZero = _usesZeroCancelSymbol;
+            bool usesSpriteSymbol = cancelSprite != null;
+            bool usesSwirl = !usesZero && usesSpriteSymbol && UsesSwirlingLight;
+
             var rect = gameObject.GetComponent<RectTransform>() ?? gameObject.AddComponent<RectTransform>();
             rect.sizeDelta = new Vector2(tileWidth, tileHeight);
 
@@ -103,9 +121,11 @@ namespace DragonBoxAlgebra.UI
             var image = gameObject.AddComponent<Image>();
             image.sprite = SpriteFactory.RoundedCard;
             image.type = Image.Type.Sliced;
-            image.color = UsesSwirlingLight
-                ? new Color(0.04f, 0.05f, 0.14f, 0.94f)
-                : new Color(0.98f, 0.84f, 0.14f, 0.92f);
+            image.color = usesZero
+                ? new Color(0.96f, 0.97f, 1f, 0.98f)
+                : usesSwirl
+                    ? new Color(0.04f, 0.05f, 0.14f, 0.94f)
+                    : new Color(0.98f, 0.84f, 0.14f, 0.92f);
             image.raycastTarget = true;
 
             var borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
@@ -119,24 +139,25 @@ namespace DragonBoxAlgebra.UI
             borderImage.sprite = SpriteFactory.RoundedCard;
             borderImage.type = Image.Type.Sliced;
             borderImage.raycastTarget = false;
-            borderImage.color = UsesSwirlingLight
-                ? new Color(0.35f, 0.55f, 1f, 0.95f)
-                : new Color(0.72f, 0.48f, 0.04f, 1f);
+            borderImage.color = usesZero
+                ? new Color(0.2f, 0.28f, 0.45f, 0.9f)
+                : usesSwirl
+                    ? new Color(0.35f, 0.55f, 1f, 0.95f)
+                    : new Color(0.72f, 0.48f, 0.04f, 1f);
 
-            var symbolGo = new GameObject("SwirlSymbol", typeof(RectTransform), typeof(CanvasGroup));
+            var symbolGo = new GameObject(usesZero ? "ZeroSymbol" : "SwirlSymbol", typeof(RectTransform), typeof(CanvasGroup));
             symbolGo.transform.SetParent(transform, false);
             _symbolRect = symbolGo.GetComponent<RectTransform>();
             _symbolRect.anchorMin = Vector2.zero;
             _symbolRect.anchorMax = Vector2.one;
-            _symbolRect.offsetMin = UsesSwirlingLight ? new Vector2(6f, 6f) : Vector2.zero;
-            _symbolRect.offsetMax = UsesSwirlingLight ? new Vector2(-6f, -6f) : Vector2.zero;
+            _symbolRect.offsetMin = usesSwirl || usesZero ? new Vector2(6f, 6f) : Vector2.zero;
+            _symbolRect.offsetMax = usesSwirl || usesZero ? new Vector2(-6f, -6f) : Vector2.zero;
             _symbolGroup = symbolGo.GetComponent<CanvasGroup>();
             _symbolGroup.alpha = 0f;
 
-            Sprite swirl = GetSwirlingLightSprite();
-            if (swirl != null)
+            if (usesSpriteSymbol)
             {
-                var imageGo = new GameObject("SwirlingLight", typeof(RectTransform), typeof(Image));
+                var imageGo = new GameObject(usesZero ? "Zero" : "SwirlingLight", typeof(RectTransform), typeof(Image));
                 imageGo.transform.SetParent(symbolGo.transform, false);
                 var imageRect = imageGo.GetComponent<RectTransform>();
                 imageRect.anchorMin = Vector2.zero;
@@ -144,14 +165,14 @@ namespace DragonBoxAlgebra.UI
                 imageRect.offsetMin = Vector2.zero;
                 imageRect.offsetMax = Vector2.zero;
                 _symbolImage = imageGo.GetComponent<Image>();
-                _symbolImage.sprite = swirl;
+                _symbolImage.sprite = cancelSprite;
                 _symbolImage.preserveAspect = true;
                 _symbolImage.raycastTarget = false;
                 _symbolImage.color = Color.white;
             }
             else
             {
-                var textGo = new GameObject("Asterisk", typeof(RectTransform), typeof(Text));
+                var textGo = new GameObject(usesZero ? "ZeroText" : "Asterisk", typeof(RectTransform), typeof(Text));
                 textGo.transform.SetParent(symbolGo.transform, false);
                 var textRect = textGo.GetComponent<RectTransform>();
                 textRect.anchorMin = Vector2.zero;
@@ -161,10 +182,10 @@ namespace DragonBoxAlgebra.UI
                 _symbolFallbackText = textGo.GetComponent<Text>();
                 _symbolFallbackText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 _symbolFallbackText.alignment = TextAnchor.MiddleCenter;
-                _symbolFallbackText.fontSize = 88;
+                _symbolFallbackText.fontSize = usesZero ? 72 : 88;
                 _symbolFallbackText.fontStyle = FontStyle.Bold;
                 _symbolFallbackText.color = Color.black;
-                _symbolFallbackText.text = "*";
+                _symbolFallbackText.text = usesZero ? "0" : "*";
                 _symbolFallbackText.raycastTarget = false;
             }
         }
@@ -332,7 +353,33 @@ namespace DragonBoxAlgebra.UI
                 StopCoroutine(_symbolAnimation);
             }
 
-            _symbolAnimation = StartCoroutine(UsesSwirlingLight ? AnimateSwirlingLight() : SpinAsteriskFallback());
+            if (_usesZeroCancelSymbol)
+            {
+                _symbolAnimation = StartCoroutine(PulseZeroSymbol());
+            }
+            else
+            {
+                _symbolAnimation = StartCoroutine(UsesSwirlingLight ? AnimateSwirlingLight() : SpinAsteriskFallback());
+            }
+        }
+
+        private IEnumerator PulseZeroSymbol()
+        {
+            float pulsePhase = 0f;
+            while (_symbolRect != null)
+            {
+                pulsePhase += Time.deltaTime * 2.2f;
+                float pulse = 0.5f + 0.5f * Mathf.Sin(pulsePhase);
+                float scale = Mathf.Lerp(0.94f, 1.06f, pulse);
+                _symbolRect.localScale = Vector3.one * scale;
+
+                if (_symbolGroup != null)
+                {
+                    _symbolGroup.alpha = Mathf.Lerp(0.88f, 1f, pulse);
+                }
+
+                yield return null;
+            }
         }
 
         private IEnumerator AnimateSwirlingLight()
