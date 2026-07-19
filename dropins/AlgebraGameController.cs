@@ -17,6 +17,8 @@ namespace DragonBoxAlgebra.Gameplay
     {
         public event Action BoardChanged;
         public event Action HandChanged;
+        /// <summary>Fraction underlines under 5·x and the dice should refresh (drag/flip divisor).</summary>
+        public event Action FractionGuideChanged;
         public event Action<int, int> LevelCompleted;
         public event Action<int, int> WinSequenceStarted;
         public event Action<int, int> LevelLoaded;
@@ -43,6 +45,7 @@ namespace DragonBoxAlgebra.Gameplay
         private GameSnapshot _initialSnapshot;
         private BalancePending _pendingBalance;
         private DividePending _pendingDivide;
+        private int? _dragFractionDivisor;
         private int _levelIndex;
         private int _activeHandSlot = -1;
         private bool _levelComplete;
@@ -303,9 +306,9 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 if (level.Chapter >= 8)
                 {
-                    return "Multiply + add: flip hand opposites to cancel → 0. " +
-                           "Then put the same number under the line on both sides (3/3 and dice/3). " +
-                           "Tap 3/3 → 1; tap dice/3 to divide. Isolate x.";
+                    return "Cancel the addend with its opposite → 0. " +
+                           "Flip the coefficient (e.g. -5 → 5), drop it under the line below 5·x and under the dice. " +
+                           "5/5 → 1, dice/5 → answer, so x = dice/5.";
                 }
 
                 if (level.Chapter >= 7)
@@ -429,11 +432,18 @@ namespace DragonBoxAlgebra.Gameplay
             SyncHandTemplateForCard(_hand[handIndex]);
 
             HandChanged?.Invoke();
+            if (UsesMultiplyAdditionLevels)
+            {
+                FractionGuideChanged?.Invoke();
+            }
+
             bool creatureOnly = _hand[handIndex].VariableLetter == '\0';
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
                 ? creatureOnly || !UsesVariablePositiveNegative
                     ? $"Flipped to {LightTerm}. Click again for {DarkTerm}."
-                    : "Flipped to positive. Click again for negative."
+                    : UsesMultiplyAdditionLevels && BoardHasCoefficient(_hand[handIndex].Value)
+                        ? $"Flipped to {_hand[handIndex].Value}. Drop it under the line below {_hand[handIndex].Value}·x and under the dice."
+                        : "Flipped to positive. Click again for negative."
                 : creatureOnly || !UsesVariablePositiveNegative
                     ? $"Flipped to {DarkTerm}. Click again for {LightTerm}."
                     : "Flipped to negative. Click again for positive.");
@@ -690,8 +700,9 @@ namespace DragonBoxAlgebra.Gameplay
             };
 
             MessageChanged?.Invoke(
-                $"Line under {sideName.ToLowerInvariant()} — drop the same {denomTemplate.Value} under the other side.");
+                $"Line under {sideName.ToLowerInvariant()} — drop the same {denomTemplate.Value} under the dice / {denomTemplate.Value}·x on the other side.");
             BoardChanged?.Invoke();
+            FractionGuideChanged?.Invoke();
             return true;
         }
 
@@ -733,11 +744,12 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             Moves.RegisterCombine();
+            int d = holeSide.Denominator.Value.Value;
             MessageChanged?.Invoke(
-                $"Both sides have {holeSide.Denominator.Value.Value} under the line. " +
-                "Tap a matching number (3/3) for 1, or tap another dice (dice/3) to divide it.");
+                $"Both sides ÷{d}. Tap {d}/{d} → 1, tap the dice → dice/{d}. Result: x = dice/{d}.");
             HandChanged?.Invoke();
             BoardChanged?.Invoke();
+            FractionGuideChanged?.Invoke();
             return true;
         }
 
@@ -1302,6 +1314,172 @@ namespace DragonBoxAlgebra.Gameplay
         private CancelResultSymbol AdditionCancelSymbol =>
             UsesZeroCancelSymbol ? CancelResultSymbol.Zero : CancelResultSymbol.Swirl;
 
+        /// <summary>
+        /// Active divisor for fraction lines (e.g. 5 when isolating x from 5·x).
+        /// Set while dragging, after flip to +coeff, or when denoms are partially placed.
+        /// </summary>
+        public int? GetActiveFractionDivisor()
+        {
+            if (!UsesMultiplyAdditionLevels)
+            {
+                return null;
+            }
+
+            if (Board.Left.HasDenominator)
+            {
+                return Board.Left.Denominator.Value.Value;
+            }
+
+            if (Board.Right.HasDenominator)
+            {
+                return Board.Right.Denominator.Value.Value;
+            }
+
+            if (_pendingDivide != null)
+            {
+                return _pendingDivide.Card.Value;
+            }
+
+            if (_dragFractionDivisor.HasValue)
+            {
+                return _dragFractionDivisor;
+            }
+
+            for (int i = 0; i < _hand.Count; i++)
+            {
+                if (_spentHandIndices.Contains(i))
+                {
+                    continue;
+                }
+
+                BoardCard handCard = _hand[i];
+                if (handCard.Kind != CardKind.PositiveConstant)
+                {
+                    continue;
+                }
+
+                if (BoardHasCoefficient(handCard.Value))
+                {
+                    return handCard.Value;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Show a line under the coefficient (5 of 5·x) and under the dice so you can
+        /// place 5 under both → (5·x)/5 and dice/5 → x = dice/5.
+        /// </summary>
+        public bool ShouldShowFractionLineUnder(string sideName, int boardIndex)
+        {
+            int? divisor = GetActiveFractionDivisor();
+            if (divisor == null)
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            if (boardIndex < 0 || boardIndex >= side.Cards.Count)
+            {
+                return false;
+            }
+
+            BoardCard card = side.Cards[boardIndex];
+            if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                return false;
+            }
+
+            bool isCoefficient = boardIndex + 1 < side.Cards.Count
+                && VariableGoalRules.IsVariableXGoal(side.Cards[boardIndex + 1]);
+
+            // Line under the 5 of 5·x
+            if (isCoefficient && card.Value == divisor.Value)
+            {
+                return true;
+            }
+
+            // Line under the dice (side without x) — not under the addend beside x.
+            if (!isCoefficient && !SideHasVariableX(side))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool SideHasVariableX(BoardSide side)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (VariableGoalRules.IsVariableXGoal(side.Cards[i]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public void BeginFractionDrag(int handIndex)
+        {
+            if (!UsesMultiplyAdditionLevels || handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return;
+            }
+
+            BoardCard handCard = _hand[handIndex];
+            if (handCard.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                return;
+            }
+
+            // Only positive face places under the line (flip -5 → 5 first).
+            if (handCard.Kind != CardKind.PositiveConstant)
+            {
+                _dragFractionDivisor = null;
+                FractionGuideChanged?.Invoke();
+                return;
+            }
+
+            _dragFractionDivisor = handCard.Value;
+            FractionGuideChanged?.Invoke();
+            MessageChanged?.Invoke(
+                $"Drop {handCard.Value} under the line below {handCard.Value}·x and under the dice.");
+        }
+
+        public void EndFractionDrag()
+        {
+            if (!_dragFractionDivisor.HasValue)
+            {
+                return;
+            }
+
+            _dragFractionDivisor = null;
+            FractionGuideChanged?.Invoke();
+        }
+
+        private bool BoardHasCoefficient(int value)
+        {
+            return SideHasCoefficient(Board.Left, value) || SideHasCoefficient(Board.Right, value);
+        }
+
+        private static bool SideHasCoefficient(BoardSide side, int value)
+        {
+            for (int i = 0; i < side.Cards.Count - 1; i++)
+            {
+                if (side.Cards[i].Kind == CardKind.PositiveConstant
+                    && side.Cards[i].Value == value
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public bool TryGetBoxSideNames(out string boxSide, out string oppositeSide)
         {
             boxSide = null;
@@ -1382,6 +1560,14 @@ namespace DragonBoxAlgebra.Gameplay
                 if (!CombineRules.IsDiceOppositePair(placed, side.Cards[j]))
                 {
                     continue;
+                }
+
+                // Addition chapters: show 0 cancel marker instead of silently deleting dice.
+                if (UsesZeroCancelSymbol && TryCreateCancelMarker(sideName, placed.Id, side.Cards[j].Id))
+                {
+                    Moves.RegisterCombine();
+                    MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — 0 appears.");
+                    return true;
                 }
 
                 string partnerId = side.Cards[j].Id;

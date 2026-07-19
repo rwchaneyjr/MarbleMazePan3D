@@ -30,6 +30,8 @@ namespace DragonBoxAlgebra.UI
         private Image _creatureImage;
         private Text _creatureText;
         private Text _labelText;
+        private GameObject _fractionGuideRoot;
+        private Image _fractionLineImage;
         private CreatureReaction _reaction;
         private DraggableTile _draggable;
         private Vector2 _dragOffset;
@@ -140,8 +142,11 @@ namespace DragonBoxAlgebra.UI
             if (_labelText != null)
             {
                 bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled;
+                bool largeNumberText = !showIconOnly
+                    && Card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.One
+                    && (_creatureImage == null || !_creatureImage.enabled);
 
-                if (showIconOnly)
+                if (showIconOnly || largeNumberText)
                 {
                     _labelText.text = string.Empty;
                 }
@@ -156,6 +161,28 @@ namespace DragonBoxAlgebra.UI
             }
 
             ApplyHandSlotDimming();
+            RefreshFractionGuide();
+        }
+
+        /// <summary>Show the DragonBox fraction underline under 5·x / dice when dividing.</summary>
+        public void RefreshFractionGuide()
+        {
+            if (_fractionGuideRoot == null)
+            {
+                return;
+            }
+
+            bool show = SideName != "Hand"
+                && _controller != null
+                && _controller.UsesMultiplyAdditionLevels
+                && _controller.ShouldShowFractionLineUnder(SideName, Index);
+            _fractionGuideRoot.SetActive(show);
+            if (_fractionLineImage != null)
+            {
+                _fractionLineImage.color = show
+                    ? new Color(0.95f, 0.95f, 0.9f, 0.98f)
+                    : Color.clear;
+            }
         }
 
         private void ApplyHandSlotDimming()
@@ -219,10 +246,25 @@ namespace DragonBoxAlgebra.UI
 
             if (_creatureText != null)
             {
-                _creatureText.font = EmojiFont.Get();
-                _creatureText.text = CardVisuals.Emoji(Card);
-                _creatureText.fontSize = CardVisuals.EmojiFontSize(Card);
-                _creatureText.enabled = icon == null;
+                bool numberNeedsText = icon == null
+                    && Card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.One;
+                if (numberNeedsText)
+                {
+                    _creatureText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    _creatureText.text = CardVisuals.AlgebraLabel(Card);
+                    _creatureText.fontSize = Card.Value >= 10 ? 36 : 44;
+                    _creatureText.fontStyle = FontStyle.Bold;
+                    _creatureText.color = Color.black;
+                    _creatureText.enabled = true;
+                }
+                else
+                {
+                    _creatureText.font = EmojiFont.Get();
+                    _creatureText.text = CardVisuals.Emoji(Card);
+                    _creatureText.fontSize = CardVisuals.EmojiFontSize(Card);
+                    _creatureText.color = Color.white;
+                    _creatureText.enabled = icon == null;
+                }
             }
         }
 
@@ -446,6 +488,7 @@ namespace DragonBoxAlgebra.UI
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                 eventData.pressEventCamera, out _dragOffset);
             _dragOffset = (Vector2)transform.localPosition - _dragOffset;
+            _controller?.BeginFractionDrag(Index);
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -514,6 +557,7 @@ namespace DragonBoxAlgebra.UI
                         TryFlipHandOnTap();
                     }
 
+                    _controller?.EndFractionDrag();
                     return;
                 }
 
@@ -537,6 +581,7 @@ namespace DragonBoxAlgebra.UI
 
                 ClearSnapHighlight();
                 RestoreDragVisuals();
+                _controller?.EndFractionDrag();
 
                 if (_handPlayHandled)
                 {
@@ -819,6 +864,14 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            // Drop onto / under a card that has a fraction guide (5 of 5·x, or the dice).
+            CardWidget fractionTarget = FindFractionLineTarget(eventData);
+            if (fractionTarget != null
+                && TryPlaceDenominatorUnderCard(fractionTarget))
+            {
+                return;
+            }
+
             DenominatorDropZone denomZone = FindDenominatorZone(eventData);
             if (denomZone != null
                 && _controller.UsesMultiplyAdditionLevels
@@ -965,6 +1018,10 @@ namespace DragonBoxAlgebra.UI
                     if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
                     {
                         TryPlayHandOnBoardTarget(target);
+                    }
+                    else if (TryPlaceDenominatorUnderCard(target))
+                    {
+                        return false;
                     }
                 }
 
@@ -1176,6 +1233,11 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            if (TryPlaceDenominatorUnderCard(target))
+            {
+                return;
+            }
+
             if (_controller.UsesOppositeHandPlay)
             {
                 if (_controller.TryPlayHandOntoOppositeOnSide(Index, target.SideName))
@@ -1186,6 +1248,52 @@ namespace DragonBoxAlgebra.UI
             }
 
             // Do not call TryPlayFromHand here — that parks the tile at the end of the side.
+        }
+
+        private bool TryPlaceDenominatorUnderCard(CardWidget target)
+        {
+            if (target == null || _controller == null || !_controller.UsesMultiplyAdditionLevels)
+            {
+                return false;
+            }
+
+            if (Card.Kind != CardKind.PositiveConstant)
+            {
+                return false;
+            }
+
+            if (!_controller.ShouldShowFractionLineUnder(target.SideName, target.Index))
+            {
+                return false;
+            }
+
+            if (_controller.TryPlaceDenominatorFromHand(Index, target.SideName))
+            {
+                MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                return true;
+            }
+
+            return false;
+        }
+
+        private CardWidget FindFractionLineTarget(PointerEventData eventData)
+        {
+            foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
+            {
+                if (widget == null || widget == this || widget.SideName == "Hand")
+                {
+                    continue;
+                }
+
+                if (_controller != null
+                    && _controller.ShouldShowFractionLineUnder(widget.SideName, widget.Index))
+                {
+                    return widget;
+                }
+            }
+
+            return null;
         }
 
         public static CardWidget Create(Transform parent, BoardCard card, int index, string sideName,
@@ -1272,6 +1380,35 @@ namespace DragonBoxAlgebra.UI
             labelText.color = Color.white;
             labelText.raycastTarget = false;
             widget._labelText = labelText;
+
+            if (sideName != "Hand")
+            {
+                var fractionGo = new GameObject("FractionGuide", typeof(RectTransform), typeof(Image));
+                fractionGo.transform.SetParent(root.transform, false);
+                var fractionRect = fractionGo.GetComponent<RectTransform>();
+                fractionRect.anchorMin = new Vector2(0.08f, -0.22f);
+                fractionRect.anchorMax = new Vector2(0.92f, -0.02f);
+                fractionRect.offsetMin = Vector2.zero;
+                fractionRect.offsetMax = Vector2.zero;
+                var fractionHit = fractionGo.GetComponent<Image>();
+                fractionHit.color = new Color(1f, 1f, 1f, 0.01f);
+                fractionHit.raycastTarget = true;
+
+                var lineGo = new GameObject("FractionLine", typeof(RectTransform), typeof(Image));
+                lineGo.transform.SetParent(fractionGo.transform, false);
+                var lineRect = lineGo.GetComponent<RectTransform>();
+                lineRect.anchorMin = new Vector2(0.05f, 0.55f);
+                lineRect.anchorMax = new Vector2(0.95f, 0.78f);
+                lineRect.offsetMin = Vector2.zero;
+                lineRect.offsetMax = Vector2.zero;
+                var lineImage = lineGo.GetComponent<Image>();
+                lineImage.color = new Color(0.95f, 0.95f, 0.9f, 0.98f);
+                lineImage.raycastTarget = false;
+
+                widget._fractionGuideRoot = fractionGo;
+                widget._fractionLineImage = lineImage;
+                fractionGo.SetActive(false);
+            }
 
             var layoutElement = root.AddComponent<LayoutElement>();
             layoutElement.minWidth = tileWidth;

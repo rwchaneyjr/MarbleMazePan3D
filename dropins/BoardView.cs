@@ -64,6 +64,7 @@ namespace DragonBoxAlgebra.UI
             _controller.CombineOccurred += OnCombine;
             _controller.LevelLoaded += OnLevelLoaded;
             _controller.WinSequenceStarted += OnWinSequenceStarted;
+            _controller.FractionGuideChanged += OnFractionGuideChanged;
             Refresh();
         }
 
@@ -93,7 +94,18 @@ namespace DragonBoxAlgebra.UI
                 _controller.CombineOccurred -= OnCombine;
                 _controller.LevelLoaded -= OnLevelLoaded;
                 _controller.WinSequenceStarted -= OnWinSequenceStarted;
+                _controller.FractionGuideChanged -= OnFractionGuideChanged;
             }
+        }
+
+        private void OnFractionGuideChanged()
+        {
+            for (int i = 0; i < _widgets.Count; i++)
+            {
+                _widgets[i]?.RefreshFractionGuide();
+            }
+
+            RefreshDenominatorZones();
         }
 
         private void OnLevelLoaded(int current, int total)
@@ -509,11 +521,17 @@ namespace DragonBoxAlgebra.UI
         private void RefreshDenominatorZones()
         {
             EnsureDenominatorZones();
-            bool show = _controller.UsesMultiplyAdditionLevels && !_playingWinSequence;
+            bool chapterActive = _controller.UsesMultiplyAdditionLevels && !_playingWinSequence;
+            bool guideActive = chapterActive
+                && (_controller.GetActiveFractionDivisor() != null
+                    || _controller.Board.Left.HasDenominator
+                    || _controller.Board.Right.HasDenominator
+                    || _controller.HasPendingDivide);
+
             if (_leftDenomZone != null)
             {
-                _leftDenomZone.gameObject.SetActive(show);
-                if (show)
+                _leftDenomZone.gameObject.SetActive(guideActive);
+                if (guideActive)
                 {
                     _leftDenomZone.RefreshVisual(_controller);
                     _leftDenomZone.transform.SetAsLastSibling();
@@ -522,11 +540,19 @@ namespace DragonBoxAlgebra.UI
 
             if (_rightDenomZone != null)
             {
-                _rightDenomZone.gameObject.SetActive(show);
-                if (show)
+                _rightDenomZone.gameObject.SetActive(guideActive);
+                if (guideActive)
                 {
                     _rightDenomZone.RefreshVisual(_controller);
                     _rightDenomZone.transform.SetAsLastSibling();
+                }
+            }
+
+            if (chapterActive)
+            {
+                for (int i = 0; i < _widgets.Count; i++)
+                {
+                    _widgets[i]?.RefreshFractionGuide();
                 }
             }
         }

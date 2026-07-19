@@ -101,8 +101,26 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            gameObject.SetActive(true);
             var side = controller.Board.GetSide(SideName);
+            bool showZone = side.HasDenominator
+                || controller.GetActiveFractionDivisor() != null
+                || (controller.HasPendingDivide
+                    && (controller.PendingDivide.HoleSide == SideName
+                        || controller.PendingDivide.PlacedSide == SideName));
+            if (!showZone)
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+
+            gameObject.SetActive(true);
+
+            // Prefer the per-card fraction lines; keep this zone as a wide drop target.
+            Transform line = transform.Find("FractionLine");
+            if (line != null)
+            {
+                line.gameObject.SetActive(side.HasDenominator || controller.HasPendingDivide);
+            }
 
             if (controller.HasPendingDivide && controller.PendingDivide.HoleSide == SideName)
             {
@@ -140,7 +158,7 @@ namespace DragonBoxAlgebra.UI
                 hintRect.offsetMax = Vector2.zero;
                 var hintText = hint.GetComponent<Text>();
                 hintText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                hintText.text = "drop under line";
+                hintText.text = string.Empty;
                 hintText.fontSize = 14;
                 hintText.alignment = TextAnchor.MiddleCenter;
                 hintText.color = new Color(0.85f, 0.88f, 0.92f, 0.75f);
