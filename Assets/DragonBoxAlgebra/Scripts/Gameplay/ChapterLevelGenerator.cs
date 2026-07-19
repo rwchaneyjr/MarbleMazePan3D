@@ -53,7 +53,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-140-150-zero-and-x-one-side";
+        public const string CurriculumVersion = "2026-07-113-150-zero-opposite-x";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -123,11 +123,22 @@ namespace DragonBoxAlgebra.Gameplay
                 AddRandomExtraTileOppositeBox(levels[i], i);
             }
 
+            // 113–150: scene 0 on the side opposite x/box so addition ends as x = 0.
+            for (int globalLevel = PlusBetweenTilesStartLevel; globalLevel <= PlusBetweenTilesEndLevel; globalLevel++)
+            {
+                int index = globalLevel - 1;
+                if (index >= 0 && index < levels.Count)
+                {
+                    AddZeroOppositeGoal(levels[index]);
+                }
+            }
+
             // One unique image per hand — drop duplicates and light/dark (or +/-) pairs.
             HandRules.DedupeLevelHandDefinitions(levels);
             HandRules.AssertAllHandCardsFlippable(levels);
             HandRules.AssertVariableHandCardsFlippable(levels);
             AssertGoalXOnOneSideForNumberLevels(levels);
+            AssertZeroOppositeGoalForAdditionLevels(levels);
             return levels;
         }
 
@@ -659,6 +670,124 @@ namespace DragonBoxAlgebra.Gameplay
                     throw new System.InvalidOperationException(
                         $"Level {globalLevel} ({level.Title}) must have x on exactly one side " +
                         $"(left={leftX}, right={rightX}).");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Levels 113–150: put a scene 0 on the board side opposite the isolation goal (x or box).
+        /// </summary>
+        private static void AddZeroOppositeGoal(LevelDefinition level)
+        {
+            bool goalOnLeft = SideHasIsolationGoal(level.LeftCards, level.LeftVariableLetters);
+            bool goalOnRight = SideHasIsolationGoal(level.RightCards, level.RightVariableLetters);
+
+            List<CardKind> cards;
+            List<char> letters;
+            List<int> values;
+            if (goalOnLeft && !goalOnRight)
+            {
+                cards = level.RightCards;
+                letters = level.RightVariableLetters;
+                values = level.RightValues;
+            }
+            else if (goalOnRight && !goalOnLeft)
+            {
+                cards = level.LeftCards;
+                letters = level.LeftVariableLetters;
+                values = level.LeftValues;
+            }
+            else
+            {
+                // Goal missing/ambiguous — still place 0 on the right scene.
+                cards = level.RightCards;
+                letters = level.RightVariableLetters;
+                values = level.RightValues;
+            }
+
+            if (SideHasZeroConstant(cards, values))
+            {
+                return;
+            }
+
+            while (letters.Count < cards.Count)
+            {
+                letters.Add('\0');
+            }
+
+            while (values.Count < cards.Count)
+            {
+                values.Add(1);
+            }
+
+            cards.Add(CardKind.PositiveConstant);
+            letters.Add('\0');
+            values.Add(0);
+        }
+
+        private static bool SideHasIsolationGoal(List<CardKind> cards, List<char> letters)
+        {
+            for (int i = 0; i < cards.Count; i++)
+            {
+                if (cards[i] == CardKind.Box)
+                {
+                    return true;
+                }
+
+                if (cards[i] == CardKind.DayCreature
+                    && i < letters.Count
+                    && letters[i] == VariableGoalRules.GoalLetter)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool SideHasZeroConstant(List<CardKind> cards, List<int> values)
+        {
+            for (int i = 0; i < cards.Count; i++)
+            {
+                if (cards[i] is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                int value = i < values.Count ? values[i] : 1;
+                if (value == 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void AssertZeroOppositeGoalForAdditionLevels(IReadOnlyList<LevelDefinition> levels)
+        {
+            for (int globalLevel = PlusBetweenTilesStartLevel; globalLevel <= PlusBetweenTilesEndLevel; globalLevel++)
+            {
+                int index = globalLevel - 1;
+                if (index < 0 || index >= levels.Count)
+                {
+                    continue;
+                }
+
+                LevelDefinition level = levels[index];
+                bool goalOnLeft = SideHasIsolationGoal(level.LeftCards, level.LeftVariableLetters);
+                bool goalOnRight = SideHasIsolationGoal(level.RightCards, level.RightVariableLetters);
+                bool zeroOpposite = goalOnLeft && !goalOnRight
+                    ? SideHasZeroConstant(level.RightCards, level.RightValues)
+                    : goalOnRight && !goalOnLeft
+                        ? SideHasZeroConstant(level.LeftCards, level.LeftValues)
+                        : SideHasZeroConstant(level.LeftCards, level.LeftValues)
+                          || SideHasZeroConstant(level.RightCards, level.RightValues);
+
+                if (!zeroOpposite)
+                {
+                    throw new System.InvalidOperationException(
+                        $"Level {globalLevel} ({level.Title}) must have a scene 0 opposite x/box.");
                 }
             }
         }

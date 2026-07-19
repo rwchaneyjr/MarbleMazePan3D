@@ -56,15 +56,24 @@ namespace DragonBoxAlgebra.Core
             return board.Right.Cards.Count == 1;
         }
 
-        /// <summary>Box on one side only; the opposite side is completely empty.</summary>
+        /// <summary>Opposite side is empty, or only a lone 0 (addition: x = 0).</summary>
+        public static bool IsEmptyOrZeroOnlySide(BoardSide side) =>
+            side.Cards.Count == 0 || IsZeroOnlySide(side);
+
+        public static bool IsZeroOnlySide(BoardSide side) =>
+            side.Cards.Count == 1
+            && side.Cards[0].Kind is CardKind.PositiveConstant or CardKind.NegativeConstant
+            && side.Cards[0].Value == 0;
+
+        /// <summary>Box on one side only; the opposite side is empty or only 0.</summary>
         public static bool IsReadyForSidesTogether(AlgebraBoard board)
         {
-            if (board.Right.Cards.Count == 0)
+            if (IsEmptyOrZeroOnlySide(board.Right))
             {
                 return board.Left.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(board.Left.Cards[0]);
             }
 
-            if (board.Left.Cards.Count == 0)
+            if (IsEmptyOrZeroOnlySide(board.Left))
             {
                 return board.Right.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(board.Right.Cards[0]);
             }
@@ -72,15 +81,15 @@ namespace DragonBoxAlgebra.Core
             return false;
         }
 
-        /// <summary>Ch5: positive x alone on one side, opposite side empty.</summary>
+        /// <summary>Positive x alone on one side; opposite side empty or only 0 (x = 0).</summary>
         public static bool IsVariableXReadyForSidesTogether(AlgebraBoard board)
         {
-            if (board.Right.Cards.Count == 0)
+            if (IsEmptyOrZeroOnlySide(board.Right))
             {
                 return board.Left.Cards.Count == 1 && VariableGoalRules.IsVariableXGoal(board.Left.Cards[0]);
             }
 
-            if (board.Left.Cards.Count == 0)
+            if (IsEmptyOrZeroOnlySide(board.Left))
             {
                 return board.Right.Cards.Count == 1 && VariableGoalRules.IsVariableXGoal(board.Right.Cards[0]);
             }

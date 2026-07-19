@@ -48,8 +48,8 @@ namespace DragonBoxAlgebra.UI
             CardKind.NightCreature => UsesVariableLetter(card)
                 ? $"NEG {VariableLabel(card)}"
                 : $"NIGHT x{card.Value}",
-            CardKind.PositiveConstant => $"+{card.Value}",
-            CardKind.NegativeConstant => $"-{card.Value}",
+            CardKind.PositiveConstant => card.Value == 0 ? "0" : $"+{card.Value}",
+            CardKind.NegativeConstant => card.Value == 0 ? "0" : $"-{card.Value}",
             CardKind.One => "ONE",
             CardKind.DivideTool => "DIV",
             _ => "?"
@@ -175,8 +175,8 @@ namespace DragonBoxAlgebra.UI
             CardKind.NightCreature => UsesVariableLetter(card)
                 ? FormatVariableAlgebra(card, positive: false)
                 : card.Value == 1 ? "-x" : $"-{card.Value}x",
-            CardKind.PositiveConstant => $"+{card.Value}",
-            CardKind.NegativeConstant => $"-{card.Value}",
+            CardKind.PositiveConstant => card.Value == 0 ? "0" : $"+{card.Value}",
+            CardKind.NegativeConstant => card.Value == 0 ? "0" : $"-{card.Value}",
             CardKind.One => "1",
             CardKind.DivideTool => "÷",
             _ => "?"

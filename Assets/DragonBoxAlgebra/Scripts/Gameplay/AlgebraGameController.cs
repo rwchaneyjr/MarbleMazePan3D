@@ -943,9 +943,13 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            MessageChanged?.Invoke(UsesVariableXGoalWin
-                ? "You win! x is alone."
-                : "You win! The red box is alone.");
+            bool equalsZero = UsesPlusBetweenBoardTiles
+                && (WinChecker.IsZeroOnlySide(Board.Left) || WinChecker.IsZeroOnlySide(Board.Right));
+            MessageChanged?.Invoke(equalsZero
+                ? "You win! x = 0."
+                : UsesVariableXGoalWin
+                    ? "You win! x is alone."
+                    : "You win! The red box is alone.");
             WinSequenceStarted?.Invoke(stars, moves);
             HandChanged?.Invoke();
         }
