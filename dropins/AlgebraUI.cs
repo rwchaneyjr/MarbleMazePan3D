@@ -280,5 +280,26 @@ namespace DragonBoxAlgebra.UI
             go.GetComponent<Button>().onClick.AddListener(onClick);
             CreateText(go.transform, "Symbol", symbol, Vector2.zero, Vector2.one, Vector2.zero, 22, TextAnchor.MiddleCenter);
         }
+
+        /// <summary>White equals sign between the red-box / x side and the other side.</summary>
+        private static void CreateEqualsSign(Transform boardRow)
+        {
+            var go = new GameObject("EqualsSign", typeof(RectTransform), typeof(Text));
+            go.transform.SetParent(boardRow, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.47f, 0f);
+            rect.anchorMax = new Vector2(0.53f, 1f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var text = go.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.text = "=";
+            text.fontSize = 72;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = Color.white;
+            text.raycastTarget = false;
+        }
     }
 }
