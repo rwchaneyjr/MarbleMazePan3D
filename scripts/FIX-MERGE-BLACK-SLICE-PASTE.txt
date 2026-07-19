@@ -1,0 +1,22 @@
+# FIX MERGE BLACK SLICE — paste ALL of this into Git Bash ONCE
+# Removes the thin black seam between the red/light card and swirl body on merge.
+
+cd /c/Users/rober/SymbolAlgebra || { echo "Missing /c/Users/rober/SymbolAlgebra"; exit 1; }
+
+SRC_URL="https://github.com/rwchaneyjr/SymbolAlgebra2.git"
+git remote get-url source >/dev/null 2>&1 || git remote add source "$SRC_URL"
+git fetch source cursor/fix-merge-black-slice-6a42 \
+  || git fetch "$SRC_URL" cursor/fix-merge-black-slice-6a42
+
+REF="source/cursor/fix-merge-black-slice-6a42"
+git rev-parse --verify "$REF" >/dev/null 2>&1 || REF="FETCH_HEAD"
+
+mkdir -p Assets/DragonBoxAlgebra/Scripts/UI dropins
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs
+git show "$REF:dropins/AsteriskCancelWidget.cs" \
+  > dropins/AsteriskCancelWidget.cs
+
+rg -n "MergeHalfOffset = 12f|MergeHalfWidth = 68f|ImageSnapFinishAt" \
+  Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs dropins/AsteriskCancelWidget.cs \
+  && echo "OK — black-slice merge fix installed. Return to Unity, wait for compile, Play."
