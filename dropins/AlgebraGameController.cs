@@ -297,8 +297,8 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 if (level.Chapter >= 8)
                 {
-                    return "Multiply + add: flip the addend to cancel it (both sides). " +
-                           "Then drop the coefficient on the divide line under both sides → x equals the answer.";
+                    return "Multiply + add: hand cards are opposites (tap to flip +/-). " +
+                           "Cancel the addend → 0. Drop the coefficient on the divide line → 1, then x equals the answer.";
                 }
 
                 if (level.Chapter >= 7)
