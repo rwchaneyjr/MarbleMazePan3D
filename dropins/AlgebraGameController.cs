@@ -414,6 +414,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            // All hand number/creature cards stay flippable (including after other plays).
             return CardFlipRules.CanFlip(_hand[handIndex]);
         }
 
@@ -1353,12 +1354,9 @@ namespace DragonBoxAlgebra.Gameplay
                 }
 
                 BoardCard handCard = _hand[i];
-                if (handCard.Kind != CardKind.PositiveConstant)
-                {
-                    continue;
-                }
-
-                if (BoardHasCoefficient(handCard.Value))
+                // Positive face is ready to drop under the line; still treat as active guide.
+                if (handCard.Kind == CardKind.PositiveConstant
+                    && BoardHasCoefficient(handCard.Value))
                 {
                     return handCard.Value;
                 }
@@ -1368,8 +1366,8 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Show a line under the coefficient (5 of 5·x) and under the dice so you can
-        /// place 5 under both → (5·x)/5 and dice/5 → x = dice/5.
+        /// Show a line under 4·x (coefficient + x) and under the dice so you can
+        /// place 4 under both → (4·x)/4 and dice/4 → x = dice/4.
         /// </summary>
         public bool ShouldShowFractionLineUnder(string sideName, int boardIndex)
         {
@@ -1386,27 +1384,48 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             BoardCard card = side.Cards[boardIndex];
-            if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
-            {
-                return false;
-            }
 
-            bool isCoefficient = boardIndex + 1 < side.Cards.Count
+            bool isNumber = card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant;
+            bool isCoefficient = isNumber
+                && boardIndex + 1 < side.Cards.Count
                 && VariableGoalRules.IsVariableXGoal(side.Cards[boardIndex + 1]);
 
-            // Line under the 5 of 5·x
+            // Line under the 4 of 4·x
             if (isCoefficient && card.Value == divisor.Value)
             {
                 return true;
             }
 
+            // Line continues under the x of 4·x (same product term).
+            if (VariableGoalRules.IsVariableXGoal(card)
+                && boardIndex > 0
+                && side.Cards[boardIndex - 1].Kind is (CardKind.PositiveConstant or CardKind.NegativeConstant)
+                && side.Cards[boardIndex - 1].Value == divisor.Value)
+            {
+                return true;
+            }
+
             // Line under the dice (side without x) — not under the addend beside x.
-            if (!isCoefficient && !SideHasVariableX(side))
+            if (isNumber && !isCoefficient && !SideHasVariableX(side))
             {
                 return true;
             }
 
             return false;
+        }
+
+        /// <summary>True when this board index is the start of coeff·x for the active divisor.</summary>
+        public bool IsFractionProductAnchor(string sideName, int boardIndex)
+        {
+            if (!ShouldShowFractionLineUnder(sideName, boardIndex))
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            return boardIndex + 1 < side.Cards.Count
+                && side.Cards[boardIndex].Kind is CardKind.PositiveConstant or CardKind.NegativeConstant
+                && VariableGoalRules.IsVariableXGoal(side.Cards[boardIndex + 1]);
         }
 
         private static bool SideHasVariableX(BoardSide side)
@@ -1435,8 +1454,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            // Only positive face places under the line (flip -5 → 5 first).
-            if (handCard.Kind != CardKind.PositiveConstant)
+            // Coefficient of anything (e.g. 4 of 4·x): dragging it shows lines under 4·x and the dice.
+            if (!BoardHasCoefficient(handCard.Value))
             {
                 _dragFractionDivisor = null;
                 FractionGuideChanged?.Invoke();
@@ -1445,8 +1464,16 @@ namespace DragonBoxAlgebra.Gameplay
 
             _dragFractionDivisor = handCard.Value;
             FractionGuideChanged?.Invoke();
-            MessageChanged?.Invoke(
-                $"Drop {handCard.Value} under the line below {handCard.Value}·x and under the dice.");
+            if (handCard.Kind == CardKind.PositiveConstant)
+            {
+                MessageChanged?.Invoke(
+                    $"Drop {handCard.Value} under the line below {handCard.Value}·x and under the dice.");
+            }
+            else
+            {
+                MessageChanged?.Invoke(
+                    $"Flip to +{handCard.Value}, then drop it under the line below {handCard.Value}·x and under the dice.");
+            }
         }
 
         public void EndFractionDrag()
