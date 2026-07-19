@@ -1,5 +1,6 @@
-# FIX MERGE BLACK SLICE — paste ALL of this into Git Bash ONCE
-# Removes the thin black seam between the red/light card and swirl body on merge.
+# FIX RED BOX SLIDE + MERGE BLACK SLICE — paste ALL into Git Bash ONCE
+# 1) Keeps the red box from being slid over during opposite merges
+# 2) Closes the black seam beside the swirl / red card
 
 cd /c/Users/rober/SymbolAlgebra || { echo "Missing /c/Users/rober/SymbolAlgebra"; exit 1; }
 
@@ -11,12 +12,27 @@ git fetch source cursor/fix-merge-black-slice-6a42 \
 REF="source/cursor/fix-merge-black-slice-6a42"
 git rev-parse --verify "$REF" >/dev/null 2>&1 || REF="FETCH_HEAD"
 
-mkdir -p Assets/DragonBoxAlgebra/Scripts/UI dropins
+mkdir -p Assets/DragonBoxAlgebra/Scripts/UI \
+         Assets/DragonBoxAlgebra/Scripts/Gameplay \
+         dropins
+
 git show "$REF:Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs" \
   > Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs
-git show "$REF:dropins/AsteriskCancelWidget.cs" \
-  > dropins/AsteriskCancelWidget.cs
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/UI/BoardView.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/UI/BoardView.cs
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs
 
-rg -n "MergeHalfOffset = 12f|MergeHalfWidth = 68f|ImageSnapFinishAt" \
-  Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs dropins/AsteriskCancelWidget.cs \
-  && echo "OK — black-slice merge fix installed. Return to Unity, wait for compile, Play."
+cp Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs dropins/AsteriskCancelWidget.cs
+cp Assets/DragonBoxAlgebra/Scripts/UI/BoardView.cs dropins/BoardView.cs
+cp Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs dropins/CardWidget.cs
+cp Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs dropins/AlgebraGameController.cs
+
+rg -n "IsolationGoalNeighborGap|NudgeSnapAwayFromIsolationGoal|PreferAnchorAwayFromIsolationGoal|MergeHalfOffset = 12f" \
+  Assets/DragonBoxAlgebra/Scripts/UI/BoardView.cs \
+  Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs \
+  Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs \
+  Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs \
+  && echo "OK — red-box stay-put + black-slice fixes installed. Return to Unity, wait for compile, Play."

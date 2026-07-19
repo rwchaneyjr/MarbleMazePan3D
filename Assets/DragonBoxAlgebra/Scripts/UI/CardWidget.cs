@@ -675,8 +675,8 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
-            // Land visibly on top of the opposite, then merge.
-            transform.position = best.transform.position;
+            // Land on the opposite (nudged off the red box if needed), then merge.
+            transform.position = NudgeSnapAwayFromIsolationGoal(best);
             return HandleDropOnCard(best);
         }
 
@@ -1081,25 +1081,80 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Sit exactly on the opposite image (visible on top while dragging).
-            transform.position = target.transform.position;
+            // Sit on the opposite image, but never cover the red box / x beside it.
+            Vector3 snapWorld = NudgeSnapAwayFromIsolationGoal(target);
+            transform.position = snapWorld;
             if (_rect == null || _dragRoot == null)
             {
                 return;
             }
 
-            var targetRect = target.transform as RectTransform;
-            if (targetRect == null)
-            {
-                return;
-            }
-
             Camera cam = _canvas != null ? _canvas.worldCamera : null;
-            Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, targetRect.position);
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, snapWorld);
             if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, screen, cam, out Vector2 local))
             {
                 _rect.localPosition = local;
             }
+        }
+
+        /// <summary>
+        /// If the snap target sits next to the red box / x, push the landed position a little
+        /// farther away so the dragged tile cannot slide over the isolation goal.
+        /// </summary>
+        private static Vector3 NudgeSnapAwayFromIsolationGoal(CardWidget target)
+        {
+            Vector3 snapWorld = target.transform.position;
+            CardWidget goal = FindIsolationGoalOnSameSide(target);
+            if (goal == null || goal == target)
+            {
+                return snapWorld;
+            }
+
+            var targetRect = target.transform as RectTransform;
+            if (targetRect == null)
+            {
+                return snapWorld;
+            }
+
+            float dx = target.transform.position.x - goal.transform.position.x;
+            if (Mathf.Abs(dx) < 1f)
+            {
+                return snapWorld;
+            }
+
+            float tileWorldWidth = Mathf.Abs(targetRect.rect.width * targetRect.lossyScale.x);
+            float nudge = Mathf.Sign(dx) * Mathf.Max(18f, tileWorldWidth * 0.22f);
+            return snapWorld + new Vector3(nudge, 0f, 0f);
+        }
+
+        private static CardWidget FindIsolationGoalOnSameSide(CardWidget target)
+        {
+            if (target == null || target.SideName == "Hand")
+            {
+                return null;
+            }
+
+            Transform parent = target.transform.parent;
+            if (parent == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                CardWidget sibling = parent.GetChild(i).GetComponent<CardWidget>();
+                if (sibling == null || sibling.SideName != target.SideName || sibling.Card.Id == null)
+                {
+                    continue;
+                }
+
+                if (sibling.Card.IsIsolationGoal)
+                {
+                    return sibling;
+                }
+            }
+
+            return null;
         }
 
         private BalanceHoleWidget FindBalanceHole(PointerEventData eventData)

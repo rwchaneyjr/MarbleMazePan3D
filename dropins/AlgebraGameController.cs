@@ -452,8 +452,10 @@ namespace DragonBoxAlgebra.Gameplay
                 BoardCard cardB = side.Cards[indexB];
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
-                    // Anchor on the tile that was dropped onto (indexB) so the swirl replaces that slot.
-                    TryCreateCancelMarker(sideName, cardA.Id, cardB.Id, anchorCardId: cardB.Id);
+                    // Prefer the merge slot farther from the red box / x so the swirl does not
+                    // sit on top of the isolation goal after the pair collapses.
+                    string anchorId = PreferAnchorAwayFromIsolationGoal(side, cardA.Id, cardB.Id, cardB.Id);
+                    TryCreateCancelMarker(sideName, cardA.Id, cardB.Id, anchorCardId: anchorId);
                     MessageChanged?.Invoke(_pendingBalance != null
                         ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. The ? hole stays until you fill it."
                         : $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
