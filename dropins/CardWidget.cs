@@ -32,8 +32,6 @@ namespace DragonBoxAlgebra.UI
         private Text _labelText;
         private GameObject _fractionGuideRoot;
         private Image _fractionLineImage;
-        private GameObject _fractionSlotGo;
-        private Text _fractionSlotHint;
         private CreatureReaction _reaction;
         private DraggableTile _draggable;
         private Vector2 _dragOffset;
@@ -166,7 +164,7 @@ namespace DragonBoxAlgebra.UI
             RefreshFractionGuide();
         }
 
-        /// <summary>Show the DragonBox fraction underline + empty slot under 4·x / dice when dividing.</summary>
+        /// <summary>Show the DragonBox fraction underline under 5·x / dice when dividing.</summary>
         public void RefreshFractionGuide()
         {
             if (_fractionGuideRoot == null)
@@ -179,67 +177,11 @@ namespace DragonBoxAlgebra.UI
                 && _controller.UsesMultiplyAdditionLevels
                 && _controller.ShouldShowFractionLineUnder(SideName, Index);
             _fractionGuideRoot.SetActive(show);
-            if (!show)
-            {
-                return;
-            }
-
-            var fractionRect = _fractionGuideRoot.transform as RectTransform;
-            bool productAnchor = _controller.IsFractionProductAnchor(SideName, Index);
-            bool isVariablePart = VariableGoalRules.IsVariableXGoal(Card);
-            if (fractionRect != null)
-            {
-                // Span under 4·x from the coefficient; x half only extends the hit target lightly.
-                if (productAnchor)
-                {
-                    fractionRect.anchorMin = new Vector2(0.05f, -0.95f);
-                    fractionRect.anchorMax = new Vector2(1.95f, -0.04f);
-                }
-                else if (isVariablePart)
-                {
-                    // Coefficient already draws the shared line+slot; keep a slim drop target under x.
-                    fractionRect.anchorMin = new Vector2(0.05f, -0.95f);
-                    fractionRect.anchorMax = new Vector2(0.95f, -0.04f);
-                }
-                else
-                {
-                    fractionRect.anchorMin = new Vector2(0.08f, -0.95f);
-                    fractionRect.anchorMax = new Vector2(0.92f, -0.04f);
-                }
-            }
-
             if (_fractionLineImage != null)
             {
-                _fractionLineImage.color = new Color(0.95f, 0.95f, 0.9f, 0.98f);
-                _fractionLineImage.gameObject.SetActive(!isVariablePart || productAnchor);
-            }
-
-            if (_fractionSlotGo != null)
-            {
-                // One slot under 4·x (on the coefficient) and one under the dice — not under x alone.
-                bool showSlot = productAnchor || !isVariablePart;
-                _fractionSlotGo.SetActive(showSlot);
-            }
-
-            if (_fractionSlotHint != null)
-            {
-                var side = _controller.Board.GetSide(SideName);
-                if (side.HasDenominator)
-                {
-                    _fractionSlotHint.text = side.Denominator.Value.Value.ToString();
-                    _fractionSlotHint.color = Color.white;
-                }
-                else if (_controller.HasPendingDivide
-                         && _controller.PendingDivide.HoleSide == SideName)
-                {
-                    _fractionSlotHint.text = "?";
-                    _fractionSlotHint.color = new Color(0.92f, 0.94f, 0.98f, 0.9f);
-                }
-                else
-                {
-                    _fractionSlotHint.text = "?";
-                    _fractionSlotHint.color = new Color(0.92f, 0.94f, 0.98f, 0.9f);
-                }
+                _fractionLineImage.color = show
+                    ? new Color(0.95f, 0.95f, 0.9f, 0.98f)
+                    : Color.clear;
             }
         }
 
@@ -1315,8 +1257,7 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
-            // Flip to + first for a clear place; negative still accepted (becomes + under the line).
-            if (Card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            if (Card.Kind != CardKind.PositiveConstant)
             {
                 return false;
             }
@@ -1445,50 +1386,27 @@ namespace DragonBoxAlgebra.UI
                 var fractionGo = new GameObject("FractionGuide", typeof(RectTransform), typeof(Image));
                 fractionGo.transform.SetParent(root.transform, false);
                 var fractionRect = fractionGo.GetComponent<RectTransform>();
-                fractionRect.anchorMin = new Vector2(0.08f, -0.95f);
-                fractionRect.anchorMax = new Vector2(0.92f, -0.04f);
+                fractionRect.anchorMin = new Vector2(0.08f, -0.22f);
+                fractionRect.anchorMax = new Vector2(0.92f, -0.02f);
                 fractionRect.offsetMin = Vector2.zero;
                 fractionRect.offsetMax = Vector2.zero;
                 var fractionHit = fractionGo.GetComponent<Image>();
-                fractionHit.color = new Color(1f, 1f, 1f, 0.02f);
+                fractionHit.color = new Color(1f, 1f, 1f, 0.01f);
                 fractionHit.raycastTarget = true;
 
                 var lineGo = new GameObject("FractionLine", typeof(RectTransform), typeof(Image));
                 lineGo.transform.SetParent(fractionGo.transform, false);
                 var lineRect = lineGo.GetComponent<RectTransform>();
-                lineRect.anchorMin = new Vector2(0.04f, 0.78f);
-                lineRect.anchorMax = new Vector2(0.96f, 0.9f);
+                lineRect.anchorMin = new Vector2(0.05f, 0.55f);
+                lineRect.anchorMax = new Vector2(0.95f, 0.78f);
                 lineRect.offsetMin = Vector2.zero;
                 lineRect.offsetMax = Vector2.zero;
                 var lineImage = lineGo.GetComponent<Image>();
                 lineImage.color = new Color(0.95f, 0.95f, 0.9f, 0.98f);
                 lineImage.raycastTarget = false;
 
-                var slotGo = new GameObject("FractionSlot", typeof(RectTransform), typeof(Image), typeof(Text));
-                slotGo.transform.SetParent(fractionGo.transform, false);
-                var slotRect = slotGo.GetComponent<RectTransform>();
-                slotRect.anchorMin = new Vector2(0.18f, 0.05f);
-                slotRect.anchorMax = new Vector2(0.82f, 0.72f);
-                slotRect.offsetMin = Vector2.zero;
-                slotRect.offsetMax = Vector2.zero;
-                var slotBg = slotGo.GetComponent<Image>();
-                slotBg.sprite = SpriteFactory.RoundedCard;
-                slotBg.type = Image.Type.Sliced;
-                slotBg.color = new Color(0.16f, 0.2f, 0.3f, 0.92f);
-                slotBg.raycastTarget = true;
-                var slotHint = slotGo.GetComponent<Text>();
-                slotHint.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                slotHint.text = "?";
-                slotHint.fontSize = 36;
-                slotHint.fontStyle = FontStyle.Bold;
-                slotHint.alignment = TextAnchor.MiddleCenter;
-                slotHint.color = new Color(0.92f, 0.94f, 0.98f, 0.9f);
-                slotHint.raycastTarget = false;
-
                 widget._fractionGuideRoot = fractionGo;
                 widget._fractionLineImage = lineImage;
-                widget._fractionSlotGo = slotGo;
-                widget._fractionSlotHint = slotHint;
                 fractionGo.SetActive(false);
             }
 

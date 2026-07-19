@@ -162,7 +162,6 @@ namespace DragonBoxAlgebra.UI
                     if (existing.TryGetValue(i, out CardWidget remove))
                     {
                         Object.DestroyImmediate(remove.gameObject);
-                        existing.Remove(i);
                     }
 
                     continue;
@@ -177,21 +176,11 @@ namespace DragonBoxAlgebra.UI
                 if (existing.TryGetValue(i, out CardWidget widget))
                 {
                     widget.SetHandCard(card);
-                    existing.Remove(i);
                 }
                 else
                 {
                     CardWidget created = CardWidget.Create(_panel, card, i, "Hand", _controller, _canvas, _dragRoot);
                     created.SetHandCard(card);
-                }
-            }
-
-            // Drop leftover tiles from a previous level's larger hand (e.g. stray "-b").
-            foreach (KeyValuePair<int, CardWidget> leftover in existing)
-            {
-                if (leftover.Value != null)
-                {
-                    Object.DestroyImmediate(leftover.Value.gameObject);
                 }
             }
         }

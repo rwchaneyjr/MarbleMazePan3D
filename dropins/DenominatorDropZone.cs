@@ -115,27 +115,54 @@ namespace DragonBoxAlgebra.UI
 
             gameObject.SetActive(true);
 
-            // Per-card guides own the visible line/slot; this zone stays a wide drop catcher.
+            // Prefer the per-card fraction lines; keep this zone as a wide drop target.
             Transform line = transform.Find("FractionLine");
             if (line != null)
             {
-                line.gameObject.SetActive(false);
-            }
-
-            var image = GetComponent<Image>();
-            if (image != null)
-            {
-                image.color = new Color(0.1f, 0.12f, 0.18f, 0.01f);
-                image.raycastTarget = true;
+                line.gameObject.SetActive(side.HasDenominator || controller.HasPendingDivide);
             }
 
             if (controller.HasPendingDivide && controller.PendingDivide.HoleSide == SideName)
             {
+                var hole = new GameObject("DenomHole", typeof(RectTransform), typeof(Image), typeof(Text));
+                hole.transform.SetParent(slot, false);
+                var holeRect = hole.GetComponent<RectTransform>();
+                holeRect.anchorMin = Vector2.zero;
+                holeRect.anchorMax = Vector2.one;
+                holeRect.offsetMin = Vector2.zero;
+                holeRect.offsetMax = Vector2.zero;
+                var holeBg = hole.GetComponent<Image>();
+                holeBg.sprite = SpriteFactory.RoundedCard;
+                holeBg.type = Image.Type.Sliced;
+                holeBg.color = new Color(0.2f, 0.25f, 0.35f, 0.9f);
+                holeBg.raycastTarget = false;
+                var holeText = hole.GetComponent<Text>();
+                holeText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                holeText.text = "?";
+                holeText.fontSize = 42;
+                holeText.fontStyle = FontStyle.Bold;
+                holeText.alignment = TextAnchor.MiddleCenter;
+                holeText.color = Color.white;
+                holeText.raycastTarget = false;
                 return;
             }
 
             if (!side.HasDenominator)
             {
+                var hint = new GameObject("DenomHint", typeof(RectTransform), typeof(Text));
+                hint.transform.SetParent(slot, false);
+                var hintRect = hint.GetComponent<RectTransform>();
+                hintRect.anchorMin = Vector2.zero;
+                hintRect.anchorMax = Vector2.one;
+                hintRect.offsetMin = Vector2.zero;
+                hintRect.offsetMax = Vector2.zero;
+                var hintText = hint.GetComponent<Text>();
+                hintText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                hintText.text = string.Empty;
+                hintText.fontSize = 14;
+                hintText.alignment = TextAnchor.MiddleCenter;
+                hintText.color = new Color(0.85f, 0.88f, 0.92f, 0.75f);
+                hintText.raycastTarget = false;
                 return;
             }
 
