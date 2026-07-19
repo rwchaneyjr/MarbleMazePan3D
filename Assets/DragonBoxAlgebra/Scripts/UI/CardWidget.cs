@@ -1153,6 +1153,17 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            // With lines under both sides, dropping on a number resolves 3/3 → 1 or dice/3.
+            if (_controller.UsesMultiplyAdditionLevels
+                && _controller.Board.Left.HasDenominator
+                && _controller.Board.Right.HasDenominator
+                && _controller.TryResolveDivisionOnCard(target.SideName, target.Index))
+            {
+                MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCombine();
+                return;
+            }
+
             // Dropping on top of an opposite always merges + swirl (all chapters).
             if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
             {
