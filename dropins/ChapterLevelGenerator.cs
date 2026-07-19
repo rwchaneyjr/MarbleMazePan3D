@@ -53,7 +53,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-140-150-zero-and-opposite-var";
+        public const string CurriculumVersion = "2026-07-140-150-zero-cancel";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
