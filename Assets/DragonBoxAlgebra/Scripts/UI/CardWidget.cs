@@ -17,9 +17,10 @@ namespace DragonBoxAlgebra.UI
         public AlgebraGameController Controller => _controller;
 
         /// <summary>Screen-pixel snap radius — forwarded to DraggableTile.snapDistance.</summary>
-        public float snapDistance = 220f;
+        public float snapDistance = 140f;
 
-        private const float DragToMergeSnapDistance = 320f;
+        /// <summary>Must be nearly on the opposite. Farther drops snap back.</summary>
+        private const float DragToMergeSnapDistance = 140f;
 
         private AlgebraGameController _controller;
         private RectTransform _rect;
@@ -52,6 +53,7 @@ namespace DragonBoxAlgebra.UI
         private CardWidget _snapHighlight;
         private Vector2 _lastDragScreenPosition;
         private Vector2 _boardDragSize;
+        private GameObject _boardDragPlaceholder;
 
         /// <summary>True while this board/hand tile is mid-drag on the DragRoot.</summary>
         public bool IsActivelyDragging => _isDragging && _dragStarted;
@@ -388,6 +390,10 @@ namespace DragonBoxAlgebra.UI
                     layoutElement.ignoreLayout = true;
                 }
 
+                // Keep a blank slot in the row so the red box / other tiles do not slide
+                // toward the snap target when this card leaves the HorizontalLayoutGroup.
+                InsertBoardDragPlaceholder(_originalParent, _originalSiblingIndex, _boardDragSize);
+
                 _rect.anchorMin = _rect.anchorMax = new Vector2(0.5f, 0.5f);
                 _rect.pivot = new Vector2(0.5f, 0.5f);
                 _rect.sizeDelta = _boardDragSize;
@@ -397,12 +403,62 @@ namespace DragonBoxAlgebra.UI
             }
             else
             {
+                InsertBoardDragPlaceholder(_originalParent, _originalSiblingIndex, new Vector2(110f, 120f));
                 transform.SetParent(_dragRoot, true);
             }
 
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                 eventData.pressEventCamera, out _dragOffset);
             _dragOffset = (Vector2)_rect.localPosition - _dragOffset;
+        }
+
+        private void InsertBoardDragPlaceholder(Transform parent, int siblingIndex, Vector2 size)
+        {
+            ClearBoardDragPlaceholder();
+            if (parent == null)
+            {
+                return;
+            }
+
+            var go = new GameObject("BoardDragPlaceholder", typeof(RectTransform), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+            go.transform.SetSiblingIndex(Mathf.Clamp(siblingIndex, 0, parent.childCount - 1));
+
+            float width = Mathf.Max(1f, size.x);
+            float height = Mathf.Max(1f, size.y);
+            var layoutElement = go.GetComponent<LayoutElement>();
+            layoutElement.minWidth = width;
+            layoutElement.preferredWidth = width;
+            layoutElement.minHeight = height;
+            layoutElement.preferredHeight = height;
+            layoutElement.flexibleWidth = 0f;
+            layoutElement.flexibleHeight = 0f;
+            layoutElement.ignoreLayout = false;
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(width, height);
+            _boardDragPlaceholder = go;
+
+            if (parent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+            }
+        }
+
+        private void ClearBoardDragPlaceholder()
+        {
+            if (_boardDragPlaceholder == null)
+            {
+                return;
+            }
+
+            Transform parent = _boardDragPlaceholder.transform.parent;
+            DestroyImmediate(_boardDragPlaceholder);
+            _boardDragPlaceholder = null;
+            if (parent is RectTransform parentRect)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+            }
         }
 
         private void BeginHandDrag(PointerEventData eventData)
@@ -487,10 +543,9 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            _isDragging = false;
-
             if (SideName == "Hand")
             {
+                _isDragging = false;
                 if (!_dragStarted)
                 {
                     if (!_handPlayHandled && !ExceededFlipDragThreshold(eventData) && CanFlipHand())
@@ -544,35 +599,44 @@ namespace DragonBoxAlgebra.UI
             }
 
             ClearSnapHighlight();
-            RestoreDragVisuals();
             RestoreDragRaycasts();
+            // Do NOT RestoreDragVisuals yet — restoring alpha here is what flashed a card
+            // beside the new swirl for a frame.
 
-            // Board opposites (Ch1/Ch2 drag-to-merge): snap light onto dark on the same side.
-            if (!TryToSnap(eventData) && !TrySnapBoardOppositeNearby(eventData))
+            // Stay "actively dragging" until merge finishes so BoardChanged does not orphan-clear us.
+            bool merged = TryToSnap(eventData);
+            if (this == null)
             {
+                return;
+            }
+
+            if (!merged)
+            {
+                merged = TrySnapBoardOppositeNearby(eventData);
+            }
+
+            if (this == null)
+            {
+                return;
+            }
+
+            _isDragging = false;
+
+            if (!merged || !_dropHandled)
+            {
+                // Not close enough — snap back into the original slot.
+                EnsureDraggable().ClearSnappedFlag();
+                RestoreDragVisuals();
                 ReturnToStart();
                 return;
             }
 
-            if (_dropHandled)
-            {
-                // Board refresh owns cleanup when combine succeeded; only destroy if still on DragRoot.
-                if (this != null && gameObject != null && transform.parent == _dragRoot)
-                {
-                    Destroy(gameObject);
-                }
-
-                return;
-            }
-
-            // Snapped visually but merge did not apply — put the tile back.
-            EnsureDraggable().ClearSnappedFlag();
-            ReturnToStart();
+            // Merge already destroyed this dragged copy in ConsumeDraggedCopyAfterMerge.
         }
 
         /// <summary>
-        /// Wider same-side opposite search so light/dark pairs snap together even when not
-        /// exactly on top of each other (Ch1/Ch2 drag-to-merge levels).
+        /// Same-side opposite merge only when the pointer is close enough.
+        /// Otherwise the tile snaps back.
         /// </summary>
         private bool TrySnapBoardOppositeNearby(PointerEventData eventData)
         {
@@ -582,12 +646,12 @@ namespace DragonBoxAlgebra.UI
             }
 
             CardWidget best = null;
-            float bestDistance = DragToMergeSnapDistance;
+            float maxDistance = Mathf.Max(80f, snapDistance);
+            float bestDistance = maxDistance;
             Vector2 screen = eventData != null ? eventData.position : _lastDragScreenPosition;
             Camera cam = eventData != null
                 ? eventData.pressEventCamera
                 : (_canvas != null ? _canvas.worldCamera : null);
-            Vector3 selfPos = transform.position;
 
             foreach (TileSnapTarget target in FindObjectsOfType<TileSnapTarget>())
             {
@@ -596,10 +660,9 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                float screenDist = Vector2.Distance(screen,
+                // Screen distance only — avoids false "close" matches across the red box.
+                float distance = Vector2.Distance(screen,
                     RectTransformUtility.WorldToScreenPoint(cam, target.GetSnapPosition()));
-                float worldDist = Vector3.Distance(selfPos, target.GetSnapPosition()) * 100f;
-                float distance = Mathf.Min(screenDist, worldDist);
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
@@ -612,7 +675,8 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
-            transform.position = best.transform.position;
+            // Land on the opposite (nudged off the red box if needed), then merge.
+            transform.position = NudgeSnapAwayFromIsolationGoal(best);
             return HandleDropOnCard(best);
         }
 
@@ -651,19 +715,42 @@ namespace DragonBoxAlgebra.UI
         private void ReturnToStart()
         {
             ClearSnapHighlight();
-            EnsureDraggable().ReturnToStart();
+            EnsureDraggable().ClearSnappedFlag();
 
-            if (_originalParent != null && transform.parent != _originalParent)
+            // Put the card back into the held layout slot, then drop the placeholder so
+            // the red box never slides during the drag or the return.
+            if (_originalParent != null)
             {
+                int slotIndex = _boardDragPlaceholder != null
+                    ? _boardDragPlaceholder.transform.GetSiblingIndex()
+                    : _originalSiblingIndex;
                 transform.SetParent(_originalParent, false);
-                transform.SetSiblingIndex(_originalSiblingIndex);
+                ClearBoardDragPlaceholder();
+                transform.SetSiblingIndex(Mathf.Clamp(slotIndex, 0, _originalParent.childCount - 1));
+            }
+            else
+            {
+                ClearBoardDragPlaceholder();
+            }
+
+            var layoutElement = GetComponent<LayoutElement>();
+            if (layoutElement != null)
+            {
+                layoutElement.ignoreLayout = false;
             }
 
             if (_rect != null)
             {
+                _rect.anchorMin = new Vector2(0f, 0f);
+                _rect.anchorMax = new Vector2(0f, 0f);
+                _rect.pivot = new Vector2(0.5f, 0.5f);
                 _rect.anchoredPosition = Vector2.zero;
                 _rect.localRotation = Quaternion.identity;
                 _rect.localScale = _originalScale == Vector3.zero ? Vector3.one : _originalScale;
+                if (_boardDragSize.x > 1f && _boardDragSize.y > 1f)
+                {
+                    _rect.sizeDelta = _boardDragSize;
+                }
             }
 
             if (_originalParent is RectTransform parentRect)
@@ -673,6 +760,11 @@ namespace DragonBoxAlgebra.UI
 
             RestoreDragVisuals();
             RestoreDragRaycasts();
+        }
+
+        private void OnDestroy()
+        {
+            ClearBoardDragPlaceholder();
         }
 
         private void UpdateSnapHighlight(PointerEventData eventData)
@@ -923,36 +1015,146 @@ namespace DragonBoxAlgebra.UI
                 return false;
             }
 
+            // Visually sit on top of the opposite, then merge into swirl-only.
             SnapOnto(target);
+
+            // Hide BOTH tiles before BoardChanged rebuilds — otherwise the drop target
+            // (or this drag ghost) is visible beside the new swirl for a frame.
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 0f;
+            }
+
+            CanvasGroup targetGroup = target.GetComponent<CanvasGroup>();
+            if (targetGroup != null)
+            {
+                targetGroup.alpha = 0f;
+            }
+            else
+            {
+                target.gameObject.SetActive(false);
+            }
+
             if (_controller.TryCombine(SideName, Index, target.Index))
             {
                 _dropHandled = true;
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                ConsumeDraggedCopyAfterMerge();
                 return true;
+            }
+
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.alpha = 1f;
+            }
+
+            if (targetGroup != null)
+            {
+                targetGroup.alpha = 1f;
+            }
+            else if (target != null && target.gameObject != null)
+            {
+                target.gameObject.SetActive(true);
             }
 
             return false;
         }
 
+        /// <summary>
+        /// After a successful opposite merge, destroy the dragged copy so only the swirl remains.
+        /// </summary>
+        private void ConsumeDraggedCopyAfterMerge()
+        {
+            _isDragging = false;
+            ClearBoardDragPlaceholder();
+            ClearSnapHighlight();
+            if (this != null && gameObject != null)
+            {
+                DestroyImmediate(gameObject);
+            }
+        }
+
         private void SnapOnto(CardWidget target)
         {
+            if (target == null)
+            {
+                return;
+            }
+
+            // Sit on the opposite image, but never cover the red box / x beside it.
+            Vector3 snapWorld = NudgeSnapAwayFromIsolationGoal(target);
+            transform.position = snapWorld;
             if (_rect == null || _dragRoot == null)
             {
                 return;
             }
 
-            var targetRect = target.transform as RectTransform;
-            if (targetRect == null)
-            {
-                return;
-            }
-
             Camera cam = _canvas != null ? _canvas.worldCamera : null;
-            Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, targetRect.position);
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(cam, snapWorld);
             if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, screen, cam, out Vector2 local))
             {
                 _rect.localPosition = local;
             }
+        }
+
+        /// <summary>
+        /// If the snap target sits next to the red box / x, push the landed position a little
+        /// farther away so the dragged tile cannot slide over the isolation goal.
+        /// </summary>
+        private static Vector3 NudgeSnapAwayFromIsolationGoal(CardWidget target)
+        {
+            Vector3 snapWorld = target.transform.position;
+            CardWidget goal = FindIsolationGoalOnSameSide(target);
+            if (goal == null || goal == target)
+            {
+                return snapWorld;
+            }
+
+            var targetRect = target.transform as RectTransform;
+            if (targetRect == null)
+            {
+                return snapWorld;
+            }
+
+            float dx = target.transform.position.x - goal.transform.position.x;
+            if (Mathf.Abs(dx) < 1f)
+            {
+                return snapWorld;
+            }
+
+            float tileWorldWidth = Mathf.Abs(targetRect.rect.width * targetRect.lossyScale.x);
+            float nudge = Mathf.Sign(dx) * Mathf.Max(18f, tileWorldWidth * 0.22f);
+            return snapWorld + new Vector3(nudge, 0f, 0f);
+        }
+
+        private static CardWidget FindIsolationGoalOnSameSide(CardWidget target)
+        {
+            if (target == null || target.SideName == "Hand")
+            {
+                return null;
+            }
+
+            Transform parent = target.transform.parent;
+            if (parent == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                CardWidget sibling = parent.GetChild(i).GetComponent<CardWidget>();
+                if (sibling == null || sibling.SideName != target.SideName || sibling.Card.Id == null)
+                {
+                    continue;
+                }
+
+                if (sibling.Card.IsIsolationGoal)
+                {
+                    return sibling;
+                }
+            }
+
+            return null;
         }
 
         private BalanceHoleWidget FindBalanceHole(PointerEventData eventData)

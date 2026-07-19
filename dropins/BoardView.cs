@@ -17,6 +17,8 @@ namespace DragonBoxAlgebra.UI
         private const float DefaultTileHeight = 120f;
         private const float DefaultTileSpacing = 16f;
         private const float PlusSeparatorWidth = 28f;
+        /// <summary>Extra space between the red box / x and the nearest tile or swirl on its side.</summary>
+        private const float IsolationGoalNeighborGap = 36f;
         private const float MinTileWidth = 52f;
         private const float MinTileSpacing = 4f;
         private const int CompactPadding = 12;
@@ -405,7 +407,8 @@ namespace DragonBoxAlgebra.UI
                 Transform child = panel.GetChild(i);
                 if (child.GetComponent<BoardDropZone>() == null)
                 {
-                    Destroy(child.gameObject);
+                    // Immediate — deferred Destroy can leave an old tile beside the new swirl.
+                    DestroyImmediate(child.gameObject);
                 }
             }
 
@@ -426,6 +429,7 @@ namespace DragonBoxAlgebra.UI
 
             bool usePlus = _controller.UsesPlusBetweenBoardTiles;
             bool placedCard = false;
+            bool lastWasIsolationGoal = false;
             var placedMarkerIndexes = new HashSet<int>();
 
             for (int i = 0; i < side.Cards.Count; i++)
@@ -434,30 +438,27 @@ namespace DragonBoxAlgebra.UI
                 int markerIndex = FindPendingMarkerIndex(sideName, card.Id);
                 if (markerIndex >= 0)
                 {
-                    // Put the merge/swirl in the first pending card's slot so it stays where you dropped.
+                    // One swirl replaces the drop-target slot; the partner card is omitted entirely.
                     if (!placedMarkerIndexes.Contains(markerIndex)
-                        && IsEarlierCardOfPendingPair(side, _controller.PendingCancels[markerIndex], card.Id))
+                        && IsAnchorCardOfPendingPair(side, _controller.PendingCancels[markerIndex], card.Id))
                     {
                         if (usePlus && placedCard)
                         {
                             CreatePlusSeparator(panel, layout.Height);
                         }
 
-                        PendingCancelMarker marker = _controller.PendingCancels[markerIndex];
-                        BoardCard? cardA = FindCardById(side, marker.CardIdA);
-                        BoardCard? cardB = FindCardById(side, marker.CardIdB);
-                        if (cardA.HasValue && cardB.HasValue)
+                        // Keep the red box / x from sitting under the swirl after a merge.
+                        if (lastWasIsolationGoal)
                         {
-                            AsteriskCancelWidget.CreateMergePair(panel, _controller, markerIndex,
-                                cardA.Value, cardB.Value, layout.Width, layout.Height);
+                            CreateIsolationGoalGap(panel, layout.Height);
                         }
-                        else
-                        {
-                            AsteriskCancelWidget.Create(panel, _controller, markerIndex, layout.Width, layout.Height);
-                        }
+
+                        // Swirl only — both opposite cards are gone; no leftover card beside it.
+                        AsteriskCancelWidget.Create(panel, _controller, markerIndex, layout.Width, layout.Height);
 
                         placedMarkerIndexes.Add(markerIndex);
                         placedCard = true;
+                        lastWasIsolationGoal = false;
                     }
 
                     continue;
@@ -468,12 +469,68 @@ namespace DragonBoxAlgebra.UI
                     CreatePlusSeparator(panel, layout.Height);
                 }
 
+                bool isIsolationGoal = VariableGoalRules.IsIsolationGoal(card);
+                // Nudge the red box / x farther from its nearest neighbor so merges cannot
+                // slide over it and leave a black seam on its edge.
+                if (isIsolationGoal && placedCard)
+                {
+                    CreateIsolationGoalGap(panel, layout.Height);
+                }
+                else if (lastWasIsolationGoal)
+                {
+                    CreateIsolationGoalGap(panel, layout.Height);
+                }
+
                 CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot,
                     layout.Width, layout.Height);
                 widget.gameObject.AddComponent<CardDropZone>();
                 _widgets.Add(widget);
                 placedCard = true;
+                lastWasIsolationGoal = isIsolationGoal;
+
+                if (isIsolationGoal && HasLaterVisibleSlot(side, i, sideName))
+                {
+                    CreateIsolationGoalGap(panel, layout.Height);
+                    lastWasIsolationGoal = false;
+                }
             }
+        }
+
+        private bool HasLaterVisibleSlot(BoardSide side, int fromIndex, string sideName)
+        {
+            for (int i = fromIndex + 1; i < side.Cards.Count; i++)
+            {
+                if (!_controller.IsCardPendingCancelOnSide(side.Cards[i].Id, sideName))
+                {
+                    return true;
+                }
+
+                int markerIndex = FindPendingMarkerIndex(sideName, side.Cards[i].Id);
+                if (markerIndex >= 0
+                    && IsAnchorCardOfPendingPair(side, _controller.PendingCancels[markerIndex], side.Cards[i].Id))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void CreateIsolationGoalGap(Transform parent, float tileHeight)
+        {
+            var go = new GameObject("IsolationGoalGap", typeof(RectTransform), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+
+            var layoutElement = go.GetComponent<LayoutElement>();
+            layoutElement.minWidth = IsolationGoalNeighborGap;
+            layoutElement.preferredWidth = IsolationGoalNeighborGap;
+            layoutElement.minHeight = tileHeight;
+            layoutElement.preferredHeight = tileHeight;
+            layoutElement.flexibleWidth = 0f;
+            layoutElement.flexibleHeight = 0f;
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(IsolationGoalNeighborGap, tileHeight);
         }
 
         private int FindPendingMarkerIndex(string sideName, string cardId)
@@ -495,8 +552,14 @@ namespace DragonBoxAlgebra.UI
             return -1;
         }
 
-        private static bool IsEarlierCardOfPendingPair(BoardSide side, PendingCancelMarker marker, string cardId)
+        private static bool IsAnchorCardOfPendingPair(BoardSide side, PendingCancelMarker marker, string cardId)
         {
+            if (!string.IsNullOrEmpty(marker.AnchorCardId))
+            {
+                return marker.AnchorCardId == cardId;
+            }
+
+            // Fallback: earlier card of the pair.
             int indexA = IndexOfCardId(side, marker.CardIdA);
             int indexB = IndexOfCardId(side, marker.CardIdB);
             if (indexA < 0 || indexB < 0)
@@ -555,7 +618,7 @@ namespace DragonBoxAlgebra.UI
 
             foreach (GameObject go in toRemove)
             {
-                Destroy(go);
+                DestroyImmediate(go);
             }
         }
 
