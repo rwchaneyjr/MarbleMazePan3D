@@ -52,7 +52,8 @@ namespace DragonBoxAlgebra.Gameplay
                     SideName = marker.SideName,
                     CardIdA = marker.CardIdA,
                     CardIdB = marker.CardIdB,
-                    SwirlOnly = marker.SwirlOnly
+                    SwirlOnly = marker.SwirlOnly,
+                    ResultSymbol = marker.ResultSymbol
                 });
             }
 

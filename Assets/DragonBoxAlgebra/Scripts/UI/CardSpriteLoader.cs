@@ -217,8 +217,11 @@ namespace DragonBoxAlgebra.UI
             return sprite;
         }
 
-        /// <summary>Number tile 0.png — used as addition-cancel result on levels 140–150.</summary>
+        /// <summary>Number tile 0.png — addition-cancel result (opposites sum to 0).</summary>
         public static Sprite GetZeroSprite() => GetNumberSprite(0, positive: true);
+
+        /// <summary>Number tile 1.png — division-cancel result (a÷a = 1).</summary>
+        public static Sprite GetOneSprite() => GetNumberSprite(1, positive: true);
 
         private static void RegisterNumber(int value, bool positive, Sprite sprite, int priority)
         {

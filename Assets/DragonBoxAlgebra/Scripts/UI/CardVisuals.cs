@@ -138,6 +138,15 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
+            if (card.Kind == CardKind.One)
+            {
+                Sprite one = CardSpriteLoader.GetOneSprite();
+                if (one != null)
+                {
+                    return one;
+                }
+            }
+
             return card.Kind switch
             {
                 CardKind.DayCreature => CreatureArt.LightSprite(card),
@@ -153,6 +162,15 @@ namespace DragonBoxAlgebra.UI
             if (creature != null)
             {
                 return creature;
+            }
+
+            if (card.Kind == CardKind.One)
+            {
+                Sprite one = CardSpriteLoader.GetOneSprite();
+                if (one != null)
+                {
+                    return one;
+                }
             }
 
             return card.Kind switch

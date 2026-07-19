@@ -297,8 +297,8 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 if (level.Chapter >= 8)
                 {
-                    return "Multiply + add: flip the addend to cancel it (both sides). " +
-                           "Then drop the coefficient on the divide line under both sides → x equals the answer.";
+                    return "Multiply + add: hand cards are opposites (tap to flip +/-). " +
+                           "Cancel the addend → 0. Drop the coefficient on the divide line → 1, then x equals the answer.";
                 }
 
                 if (level.Chapter >= 7)
@@ -662,6 +662,9 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            // Coefficient ÷ itself becomes 1 beside x; show the 1 marker then clear identity.
+            ResolveOneIdentitiesAfterDivide();
+
             _spentHandIndices.Add(handIndex);
             Moves.RegisterCombine();
             if (UsesReusableVariableHandCards)
@@ -669,7 +672,7 @@ namespace DragonBoxAlgebra.Gameplay
                 RefreshHandSpentStateForReusableCards();
             }
 
-            MessageChanged?.Invoke($"Divided both sides by {divisor}.");
+            MessageChanged?.Invoke($"Divided both sides by {divisor} — 1 appears.");
             HandChanged?.Invoke();
             BoardChanged?.Invoke();
             CheckWin();
@@ -799,7 +802,7 @@ namespace DragonBoxAlgebra.Gameplay
                 Moves.RegisterCombine();
                 string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
                 MessageChanged?.Invoke(UsesMultiplyAdditionLevels
-                    ? $"{Capitalize(LightTerm)} met {DarkTerm} — canceled on both sides."
+                    ? $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} on both sides."
                     : $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
             }
             else
@@ -1064,14 +1067,20 @@ namespace DragonBoxAlgebra.Gameplay
         public bool UsesPlusBetweenBoardTiles =>
             ChapterLevelGenerator.UsesPlusBetweenBoardTiles(_levelIndex + 1);
 
-        /// <summary>Levels 140–150: show number 0 where the cancel swirl normally appears.</summary>
+        /// <summary>
+        /// Addition cancel shows 0 (113–150, and addition cancels on 151–165).
+        /// </summary>
         public bool UsesZeroCancelSymbol =>
-            _levelIndex + 1 >= ChapterLevelGenerator.NumberLevelsStartLevel
-            && _levelIndex + 1 <= ChapterLevelGenerator.PlusBetweenTilesEndLevel;
+            (_levelIndex + 1 >= ChapterLevelGenerator.PlusBetweenTilesStartLevel
+             && _levelIndex + 1 <= ChapterLevelGenerator.PlusBetweenTilesEndLevel)
+            || UsesMultiplyAdditionLevels;
 
         /// <summary>Levels 151–165: a·x + b = c with divide-both-sides on the line.</summary>
         public bool UsesMultiplyAdditionLevels =>
             ChapterLevelGenerator.UsesMultiplyAddition(_levelIndex + 1);
+
+        private CancelResultSymbol AdditionCancelSymbol =>
+            UsesZeroCancelSymbol ? CancelResultSymbol.Zero : CancelResultSymbol.Swirl;
 
         public bool TryGetBoxSideNames(out string boxSide, out string oppositeSide)
         {
@@ -1313,9 +1322,51 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 SideName = sideName,
                 CardIdA = cardIdA,
-                CardIdB = cardIdB
+                CardIdB = cardIdB,
+                ResultSymbol = AdditionCancelSymbol
             });
             return true;
+        }
+
+        private void CreateOneResultMarker(string sideName)
+        {
+            _pendingCancels.Add(new PendingCancelMarker
+            {
+                SideName = sideName,
+                CardIdA = string.Empty,
+                CardIdB = string.Empty,
+                SwirlOnly = true,
+                ResultSymbol = CancelResultSymbol.One
+            });
+        }
+
+        /// <summary>Remove identity 1 next to x after division (1·x → x), with a 1 dismiss marker.</summary>
+        private void ResolveOneIdentitiesAfterDivide()
+        {
+            ResolveOneIdentitiesOnSide("Left");
+            ResolveOneIdentitiesOnSide("Right");
+        }
+
+        private void ResolveOneIdentitiesOnSide(string sideName)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = side.Cards.Count - 1; i >= 0; i--)
+            {
+                if (side.Cards[i].Kind != CardKind.One)
+                {
+                    continue;
+                }
+
+                bool nextToX = (i + 1 < side.Cards.Count && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]))
+                    || (i > 0 && VariableGoalRules.IsVariableXGoal(side.Cards[i - 1]));
+                if (!nextToX && side.Cards.Count > 1)
+                {
+                    continue;
+                }
+
+                side.Cards.RemoveAt(i);
+                CreateOneResultMarker(sideName);
+            }
         }
 
         private static bool CardExistsOnlyOnSide(AlgebraBoard board, string sideName, string cardId)

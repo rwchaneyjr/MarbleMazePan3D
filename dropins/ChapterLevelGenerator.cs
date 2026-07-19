@@ -583,12 +583,13 @@ namespace DragonBoxAlgebra.Gameplay
             level.RightVariableLetters.Add('\0');
             level.RightValues.Add(rhs);
 
-            // Hand: coeff and addend (flip addend to cancel; drop coeff on divide line).
-            level.HandCards.Add(CardKind.PositiveConstant);
+            // Hand: opposites of board numbers (flippable +/-). Flip addend to cancel;
+            // flip coefficient to + before dropping on the divide line.
+            level.HandCards.Add(CardKind.NegativeConstant);
             level.HandVariableLetters.Add('\0');
             level.HandValues.Add(coeff);
 
-            level.HandCards.Add(CardKind.PositiveConstant);
+            level.HandCards.Add(CardKind.NegativeConstant);
             level.HandVariableLetters.Add('\0');
             level.HandValues.Add(addend);
 

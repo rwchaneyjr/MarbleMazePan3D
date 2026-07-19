@@ -113,7 +113,8 @@ namespace DragonBoxAlgebra.Core
             int coeffIndex = FindCoefficientIndex(side, divisor);
             if (coeffIndex >= 0)
             {
-                side.Cards.RemoveAt(coeffIndex);
+                // a÷a → 1 (DragonBox die / identity), kept beside x until merged.
+                side.Cards[coeffIndex] = new BoardCard(CardKind.One, 1);
             }
 
             for (int i = 0; i < side.Cards.Count; i++)
@@ -129,6 +130,13 @@ namespace DragonBoxAlgebra.Core
                 {
                     side.Cards.RemoveAt(i);
                     i--;
+                    continue;
+                }
+
+                // Exact self-division of a lone constant → 1.
+                if (newValue == 1 && card.Value == divisor)
+                {
+                    side.Cards[i] = new BoardCard(CardKind.One, 1);
                     continue;
                 }
 
