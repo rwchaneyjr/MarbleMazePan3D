@@ -97,6 +97,30 @@ namespace DragonBoxAlgebra.Core
             return false;
         }
 
+        /// <summary>Ch8: x alone on one side equals a single constant on the other (x = k).</summary>
+        public static bool IsVariableXEqualsConstant(AlgebraBoard board)
+        {
+            if (board.Left.Cards.Count == 1
+                && VariableGoalRules.IsVariableXGoal(board.Left.Cards[0])
+                && board.Right.Cards.Count == 1
+                && board.Right.Cards[0].Kind == CardKind.PositiveConstant
+                && board.Right.Cards[0].Value > 0)
+            {
+                return true;
+            }
+
+            if (board.Right.Cards.Count == 1
+                && VariableGoalRules.IsVariableXGoal(board.Right.Cards[0])
+                && board.Left.Cards.Count == 1
+                && board.Left.Cards[0].Kind == CardKind.PositiveConstant
+                && board.Left.Cards[0].Value > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>Red box alone on one side with the other side empty.</summary>
         public static bool IsRedBoxAloneWinState(AlgebraBoard board) => IsReadyForSidesTogether(board);
 
@@ -105,7 +129,8 @@ namespace DragonBoxAlgebra.Core
         /// and the player has made at least one move (no win on load).
         /// </summary>
         public static bool CanWin(AlgebraBoard board, int moves, bool hasPendingBalance, int pendingCancelCount,
-            int activeMergeAnimations, bool allowOppositeCreatures = false, bool useVariableXGoal = false)
+            int activeMergeAnimations, bool allowOppositeCreatures = false, bool useVariableXGoal = false,
+            bool useMultiplyAdditionWin = false)
         {
             if (hasPendingBalance || pendingCancelCount > 0 || activeMergeAnimations > 0)
             {
@@ -115,6 +140,11 @@ namespace DragonBoxAlgebra.Core
             if (moves <= 0)
             {
                 return false;
+            }
+
+            if (useMultiplyAdditionWin)
+            {
+                return IsVariableXEqualsConstant(board);
             }
 
             if (useVariableXGoal)

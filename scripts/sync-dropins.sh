@@ -58,7 +58,7 @@ gameplay_dropin() {
 
 core_dropin() {
   case "$1" in
-    AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs|VariableGoalRules.cs)
+    AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|DivisionRules.cs|WinChecker.cs|VariableGoalRules.cs)
       return 0
       ;;
     *)

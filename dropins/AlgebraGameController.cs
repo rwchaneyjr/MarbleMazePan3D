@@ -295,6 +295,12 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (count == 2)
             {
+                if (level.Chapter >= 8)
+                {
+                    return "Multiply + add: flip the addend to cancel it (both sides). " +
+                           "Then drop the coefficient on the divide line under both sides → x equals the answer.";
+                }
+
                 if (level.Chapter >= 7)
                 {
                     return "Sea creatures and x — tap to flip light/dark. Play each hand tile: drag to a side, " +
@@ -614,6 +620,62 @@ namespace DragonBoxAlgebra.Gameplay
             return TryPlayFromHand(handIndex, "Left");
         }
 
+        /// <summary>
+        /// Drop a hand number onto the divide line: divide both sides by that value
+        /// (removes matching a·x coefficient and divides constants).
+        /// </summary>
+        public bool TryDivideBothSidesFromHand(int handIndex)
+        {
+            if (!UsesMultiplyAdditionLevels || _levelComplete)
+            {
+                return false;
+            }
+
+            if (handIndex < 0 || handIndex >= _hand.Count || _spentHandIndices.Contains(handIndex))
+            {
+                return false;
+            }
+
+            if (_pendingBalance != null || _pendingCancels.Count > 0 || _activeMergeAnimations > 0)
+            {
+                MessageChanged?.Invoke("Finish cancels and ? holes before dividing.");
+                return false;
+            }
+
+            BoardCard handCard = _hand[handIndex];
+            if (handCard.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                MessageChanged?.Invoke("Drop a number card on the divide line.");
+                return false;
+            }
+
+            int divisor = handCard.Value;
+            if (!DivisionRules.CanDivideBothSides(Board, divisor))
+            {
+                MessageChanged?.Invoke($"Cannot divide both sides by {divisor} yet.");
+                return false;
+            }
+
+            PushUndo();
+            if (!DivisionRules.TryDivideBothSides(Board, divisor))
+            {
+                return false;
+            }
+
+            _spentHandIndices.Add(handIndex);
+            Moves.RegisterCombine();
+            if (UsesReusableVariableHandCards)
+            {
+                RefreshHandSpentStateForReusableCards();
+            }
+
+            MessageChanged?.Invoke($"Divided both sides by {divisor}.");
+            HandChanged?.Invoke();
+            BoardChanged?.Invoke();
+            CheckWin();
+            return true;
+        }
+
         public bool CanPlayHandOntoBoardCard(int handIndex, string sideName, int boardIndex)
         {
             if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count
@@ -704,6 +766,16 @@ namespace DragonBoxAlgebra.Gameplay
 
             PushUndo();
             _pendingBalance = null;
+
+            // Multiply levels: canceling a constant also applies that change on the other side
+            // (add the opposite to both sides), so 2x+3=9 with −3 becomes 2x=6.
+            if (UsesMultiplyAdditionLevels
+                && CombineRules.IsDiceOppositePair(handCard, targetCard))
+            {
+                string otherSideName = sideName == "Left" ? "Right" : "Left";
+                ApplyConstantToSide(Board.GetSide(otherSideName), handCard);
+            }
+
             if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
             {
                 // Place the hand clone beside the target so the swirl sits in that slot.
@@ -726,7 +798,9 @@ namespace DragonBoxAlgebra.Gameplay
                 _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
                 string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
-                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
+                MessageChanged?.Invoke(UsesMultiplyAdditionLevels
+                    ? $"{Capitalize(LightTerm)} met {DarkTerm} — canceled on both sides."
+                    : $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
             }
             else
             {
@@ -930,7 +1004,8 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             if (!WinChecker.CanWin(Board, Moves.Moves, _pendingBalance != null, _pendingCancels.Count,
-                    _activeMergeAnimations, UsesExtraOppositeTileLevel, UsesVariableXGoalWin))
+                    _activeMergeAnimations, UsesExtraOppositeTileLevel, UsesVariableXGoalWin,
+                    UsesMultiplyAdditionLevels))
             {
                 return;
             }
@@ -943,13 +1018,24 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            bool equalsZero = UsesPlusBetweenBoardTiles
-                && (WinChecker.IsZeroOnlySide(Board.Left) || WinChecker.IsZeroOnlySide(Board.Right));
-            MessageChanged?.Invoke(equalsZero
-                ? "You win! x = 0."
-                : UsesVariableXGoalWin
-                    ? "You win! x is alone."
-                    : "You win! The red box is alone.");
+            if (UsesMultiplyAdditionLevels && WinChecker.IsVariableXEqualsConstant(Board))
+            {
+                int answer = Board.Left.Cards.Count == 1 && Board.Left.Cards[0].Kind == CardKind.PositiveConstant
+                    ? Board.Left.Cards[0].Value
+                    : Board.Right.Cards[0].Value;
+                MessageChanged?.Invoke($"You win! x = {answer}.");
+            }
+            else
+            {
+                bool equalsZero = UsesPlusBetweenBoardTiles
+                    && (WinChecker.IsZeroOnlySide(Board.Left) || WinChecker.IsZeroOnlySide(Board.Right));
+                MessageChanged?.Invoke(equalsZero
+                    ? "You win! x = 0."
+                    : UsesVariableXGoalWin
+                        ? "You win! x is alone."
+                        : "You win! The red box is alone.");
+            }
+
             WinSequenceStarted?.Invoke(stars, moves);
             HandChanged?.Invoke();
         }
@@ -981,7 +1067,11 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Levels 140–150: show number 0 where the cancel swirl normally appears.</summary>
         public bool UsesZeroCancelSymbol =>
             _levelIndex + 1 >= ChapterLevelGenerator.NumberLevelsStartLevel
-            && _levelIndex + 1 <= ChapterLevelGenerator.TotalLevels;
+            && _levelIndex + 1 <= ChapterLevelGenerator.PlusBetweenTilesEndLevel;
+
+        /// <summary>Levels 151–165: a·x + b = c with divide-both-sides on the line.</summary>
+        public bool UsesMultiplyAdditionLevels =>
+            ChapterLevelGenerator.UsesMultiplyAddition(_levelIndex + 1);
 
         public bool TryGetBoxSideNames(out string boxSide, out string oppositeSide)
         {
@@ -1314,7 +1404,14 @@ namespace DragonBoxAlgebra.Gameplay
                 CardKind needed = handCard.Kind == CardKind.NegativeConstant
                     ? CardKind.PositiveConstant
                     : CardKind.NegativeConstant;
-                return CountConstantsOnBoard(needed, handCard.Value) > 0;
+                if (CountConstantsOnBoard(needed, handCard.Value) > 0)
+                {
+                    return true;
+                }
+
+                // Multiply levels: keep the coefficient card available to drop on the divide line.
+                return UsesMultiplyAdditionLevels
+                    && DivisionRules.CanDivideBothSides(Board, handCard.Value);
             }
 
             char letter = handCard.VariableLetter;
@@ -1325,6 +1422,39 @@ namespace DragonBoxAlgebra.Gameplay
 
             // Sea hand tile stays unlocked while any light sea remains on the board.
             return CountLightSeaCreaturesOnBoard() > 0;
+        }
+
+        /// <summary>
+        /// Fold a constant into the first number on a side (9 + −3 → 6), or append if none.
+        /// </summary>
+        private static void ApplyConstantToSide(BoardSide side, BoardCard delta)
+        {
+            int deltaSigned = delta.SignedValue;
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                int sum = card.SignedValue + deltaSigned;
+                if (sum == 0)
+                {
+                    side.Cards.RemoveAt(i);
+                    return;
+                }
+
+                side.Cards[i] = new BoardCard(
+                    sum > 0 ? CardKind.PositiveConstant : CardKind.NegativeConstant,
+                    Math.Abs(sum),
+                    card.StackCount,
+                    card.VisualTheme,
+                    '\0');
+                return;
+            }
+
+            side.Cards.Add(delta.CloneForPlacement());
         }
 
         private int CountConstantsOnBoard(CardKind kind, int value)

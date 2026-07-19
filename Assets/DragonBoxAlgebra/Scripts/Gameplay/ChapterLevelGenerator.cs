@@ -6,7 +6,8 @@ namespace DragonBoxAlgebra.Gameplay
     /// <summary>
     /// DragonBox-style intro: Ch1–Ch4 through level 62; Ch5 (63–80) variable images + red box;
     /// Ch6 (81–100) x + variables; Ch7 (101–150) sea + variables + numbers (+ between tiles from 113);
-    /// 129–139 exact copies of 118–128; 140–150 copy 129–139 with sea slots → number images.
+    /// 129–139 exact copies of 118–128; 140–150 copy 129–139 with sea slots → number images;
+    /// Ch8 (151–165) multiplication with addition (a·x + b = c) and divide-both-sides.
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -18,9 +19,11 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter5LevelCount = 18;
         public const int Chapter6LevelCount = 20;
         public const int Chapter7LevelCount = 50;
-        public const int ChapterCount = 7;
+        public const int Chapter8LevelCount = 15;
+        public const int ChapterCount = 8;
         public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
-            + Chapter4LevelCount + Chapter5LevelCount + Chapter6LevelCount + Chapter7LevelCount;
+            + Chapter4LevelCount + Chapter5LevelCount + Chapter6LevelCount + Chapter7LevelCount
+            + Chapter8LevelCount;
 
         /// <summary>First global level number (1-based) for Chapter 4 / Move Cards.</summary>
         public const int Chapter4StartLevel = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount + 1;
@@ -33,6 +36,9 @@ namespace DragonBoxAlgebra.Gameplay
 
         /// <summary>First global level number (1-based) for Chapter 7 / Sea Creatures.</summary>
         public const int Chapter7StartLevel = Chapter6StartLevel + Chapter6LevelCount;
+
+        /// <summary>First global level number (1-based) for Chapter 8 / Multiply + Addition.</summary>
+        public const int Chapter8StartLevel = Chapter7StartLevel + Chapter7LevelCount;
 
         /// <summary>Ch7 levels 1–6: x + sea creature light/dark images.</summary>
         public const int Chapter7SeaXLevelCount = 6;
@@ -53,7 +59,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-113-150-zero-opposite-x";
+        public const string CurriculumVersion = "2026-07-151-165-multiply-addition";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -69,7 +75,11 @@ namespace DragonBoxAlgebra.Gameplay
         public const int PlusBetweenTilesEndLevel = 150;
 
         public static bool UsesPlusBetweenBoardTiles(int globalLevel) =>
-            globalLevel >= PlusBetweenTilesStartLevel && globalLevel <= PlusBetweenTilesEndLevel;
+            (globalLevel >= PlusBetweenTilesStartLevel && globalLevel <= PlusBetweenTilesEndLevel)
+            || (globalLevel >= Chapter8StartLevel && globalLevel <= TotalLevels);
+
+        public static bool UsesMultiplyAddition(int globalLevel) =>
+            globalLevel >= Chapter8StartLevel && globalLevel <= TotalLevels;
 
         /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
         public const int OppositeExtraTileStartLevel = 40;
@@ -86,7 +96,8 @@ namespace DragonBoxAlgebra.Gameplay
             Chapter4LevelCount,
             Chapter5LevelCount,
             Chapter6LevelCount,
-            Chapter7LevelCount
+            Chapter7LevelCount,
+            Chapter8LevelCount
         };
 
         private static readonly string[] ChapterNames =
@@ -97,7 +108,31 @@ namespace DragonBoxAlgebra.Gameplay
             "Move Cards",
             "Variable Images",
             "x and Variables",
-            "Sea Creatures"
+            "Sea Creatures",
+            "Multiply and Add"
+        };
+
+        /// <summary>
+        /// Ch8 (151–165): (coeff, addend, xAnswer). RHS = coeff * xAnswer + addend.
+        /// Level 151 is the tutorial: 2·x + 3 = 9, hand 2 and 3.
+        /// </summary>
+        private static readonly int[,] MultiplyAdditionSpecs =
+        {
+            { 2, 3, 3 }, // 151: 2x+3=9
+            { 3, 2, 3 }, // 152: 3x+2=11
+            { 2, 5, 4 }, // 153: 2x+5=13
+            { 4, 1, 2 }, // 154: 4x+1=9
+            { 3, 4, 2 }, // 155: 3x+4=10
+            { 2, 1, 5 }, // 156: 2x+1=11
+            { 5, 2, 2 }, // 157: 5x+2=12
+            { 4, 3, 2 }, // 158: 4x+3=11
+            { 3, 1, 4 }, // 159: 3x+1=13
+            { 2, 6, 3 }, // 160: 2x+6=12
+            { 4, 2, 3 }, // 161: 4x+2=14
+            { 5, 1, 3 }, // 162: 5x+1=16
+            { 3, 5, 2 }, // 163: 3x+5=11
+            { 2, 4, 5 }, // 164: 2x+4=14
+            { 4, 5, 2 }, // 165: 4x+5=13 (distinct hand numbers)
         };
 
         private static readonly string[] SeaCreatureNames =
@@ -115,6 +150,7 @@ namespace DragonBoxAlgebra.Gameplay
             levels.AddRange(GenerateChapter5());
             levels.AddRange(GenerateChapter6());
             levels.AddRange(GenerateChapter7());
+            levels.AddRange(GenerateChapter8());
 
             for (int i = OppositeExtraTileStartIndex;
                  i <= OppositeExtraTileEndIndex && i < levels.Count;
@@ -497,6 +533,66 @@ namespace DragonBoxAlgebra.Gameplay
                 int theme = (7 * 3 + i) % 10;
                 yield return BuildChapter7Level(globalLevel, theme, displayNumber);
             }
+        }
+
+        private static IEnumerable<LevelDefinition> GenerateChapter8()
+        {
+            for (int i = 0; i < Chapter8LevelCount; i++)
+            {
+                int displayNumber = i + 1;
+                int coeff = MultiplyAdditionSpecs[i, 0];
+                int addend = MultiplyAdditionSpecs[i, 1];
+                int xAnswer = MultiplyAdditionSpecs[i, 2];
+                int rhs = coeff * xAnswer + addend;
+                string title =
+                    $"Ch8 • {ChapterNames[7]} {displayNumber} ({coeff}·x + {addend} = {rhs})";
+                yield return MakeMultiplyAdditionLevel(title, coeff, addend, xAnswer);
+            }
+        }
+
+        /// <summary>
+        /// a·x + b = c with hand a and b. Cancel b, then divide both sides by a → x = answer.
+        /// </summary>
+        private static LevelDefinition MakeMultiplyAdditionLevel(string title, int coeff, int addend, int xAnswer)
+        {
+            int rhs = coeff * xAnswer + addend;
+            var level = new LevelDefinition
+            {
+                Title = title,
+                Chapter = 8,
+                CreatureTheme = 0,
+                ParMoves = 6,
+                ParCards = 2
+            };
+
+            // Left: coeff · x + addend
+            level.LeftCards.Add(CardKind.PositiveConstant);
+            level.LeftVariableLetters.Add('\0');
+            level.LeftValues.Add(coeff);
+
+            level.LeftCards.Add(CardKind.DayCreature);
+            level.LeftVariableLetters.Add(VariableGoalRules.GoalLetter);
+            level.LeftValues.Add(1);
+
+            level.LeftCards.Add(CardKind.PositiveConstant);
+            level.LeftVariableLetters.Add('\0');
+            level.LeftValues.Add(addend);
+
+            // Right: rhs
+            level.RightCards.Add(CardKind.PositiveConstant);
+            level.RightVariableLetters.Add('\0');
+            level.RightValues.Add(rhs);
+
+            // Hand: coeff and addend (flip addend to cancel; drop coeff on divide line).
+            level.HandCards.Add(CardKind.PositiveConstant);
+            level.HandVariableLetters.Add('\0');
+            level.HandValues.Add(coeff);
+
+            level.HandCards.Add(CardKind.PositiveConstant);
+            level.HandVariableLetters.Add('\0');
+            level.HandValues.Add(addend);
+
+            return level;
         }
 
         /// <summary>

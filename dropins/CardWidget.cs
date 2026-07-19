@@ -803,12 +803,49 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            DivisionBarDropZone divisionBar = FindDivisionBar(eventData);
+            if (divisionBar != null
+                && _controller.UsesMultiplyAdditionLevels
+                && _controller.TryDivideBothSidesFromHand(Index))
+            {
+                MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                return;
+            }
+
             BoardDropZone zone = FindBoardZone(eventData);
             string dropSide = zone != null ? zone.SideName : SideUnderPointer(eventData);
             if (dropSide != null)
             {
                 TryPlayHandOnSide(dropSide);
             }
+        }
+
+        private static DivisionBarDropZone FindDivisionBar(PointerEventData eventData)
+        {
+            if (eventData == null || EventSystem.current == null)
+            {
+                return null;
+            }
+
+            var results = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(eventData, results);
+            foreach (RaycastResult result in results)
+            {
+                if (result.gameObject == null)
+                {
+                    continue;
+                }
+
+                DivisionBarDropZone bar = result.gameObject.GetComponent<DivisionBarDropZone>()
+                    ?? result.gameObject.GetComponentInParent<DivisionBarDropZone>();
+                if (bar != null)
+                {
+                    return bar;
+                }
+            }
+
+            return null;
         }
 
         private CardWidget FindOppositeBoardCardUnderPointer(PointerEventData eventData)

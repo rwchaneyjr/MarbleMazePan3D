@@ -17,6 +17,7 @@ namespace DragonBoxAlgebra.UI
         private const float DefaultTileHeight = 120f;
         private const float DefaultTileSpacing = 16f;
         private const float PlusSeparatorWidth = 28f;
+        private const float TimesSeparatorWidth = 22f;
         private const float MinTileWidth = 52f;
         private const float MinTileSpacing = 4f;
         private const int CompactPadding = 12;
@@ -24,6 +25,8 @@ namespace DragonBoxAlgebra.UI
 
         private RectTransform _leftPanel;
         private RectTransform _rightPanel;
+        private RectTransform _boardRow;
+        private RectTransform _divisionBar;
         private RectTransform _dragRoot;
         private Canvas _canvas;
         private AlgebraGameController _controller;
@@ -37,11 +40,12 @@ namespace DragonBoxAlgebra.UI
         private Coroutine _winSequenceCoroutine;
 
         public void Initialize(AlgebraGameController controller, RectTransform left, RectTransform right,
-            Canvas canvas, RectTransform dragRoot)
+            Canvas canvas, RectTransform dragRoot, RectTransform boardRow = null)
         {
             _controller = controller;
             _leftPanel = left;
             _rightPanel = right;
+            _boardRow = boardRow;
             _canvas = canvas;
             _dragRoot = dragRoot;
 
@@ -53,11 +57,51 @@ namespace DragonBoxAlgebra.UI
             left.gameObject.AddComponent<BoardDropZone>().SideName = "Left";
             right.gameObject.AddComponent<BoardDropZone>().SideName = "Right";
 
+            EnsureDivisionBar();
+
             _controller.BoardChanged += Refresh;
             _controller.CombineOccurred += OnCombine;
             _controller.LevelLoaded += OnLevelLoaded;
             _controller.WinSequenceStarted += OnWinSequenceStarted;
             Refresh();
+        }
+
+        private void EnsureDivisionBar()
+        {
+            if (_boardRow == null || _divisionBar != null)
+            {
+                return;
+            }
+
+            var go = new GameObject("DivisionBar", typeof(RectTransform), typeof(Image), typeof(DivisionBarDropZone));
+            go.transform.SetParent(_boardRow, false);
+            _divisionBar = go.GetComponent<RectTransform>();
+            _divisionBar.anchorMin = new Vector2(0.08f, -0.08f);
+            _divisionBar.anchorMax = new Vector2(0.92f, 0.02f);
+            _divisionBar.offsetMin = Vector2.zero;
+            _divisionBar.offsetMax = Vector2.zero;
+
+            var image = go.GetComponent<Image>();
+            image.color = new Color(0.92f, 0.93f, 0.96f, 0.95f);
+            image.raycastTarget = true;
+
+            go.GetComponent<DivisionBarDropZone>().Initialize(_controller);
+
+            var labelGo = new GameObject("DivideHint", typeof(RectTransform), typeof(Text));
+            labelGo.transform.SetParent(go.transform, false);
+            var labelRect = labelGo.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+            var label = labelGo.GetComponent<Text>();
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.text = "÷  drop number here to divide both sides";
+            label.fontSize = 16;
+            label.fontStyle = FontStyle.Bold;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.color = new Color(0.15f, 0.18f, 0.28f, 0.9f);
+            label.raycastTarget = false;
         }
 
         private void OnDestroy()
@@ -257,6 +301,7 @@ namespace DragonBoxAlgebra.UI
             TileLayout rightLayout = ComputeTileLayout(_rightPanel, rightSlots, rightPlus);
             RebuildSide(_leftPanel, _controller.Board.Left, "Left", leftLayout);
             RebuildSide(_rightPanel, _controller.Board.Right, "Right", rightLayout);
+            UpdateDivisionBarVisibility();
 
             if (_controller.HasPendingBalance)
             {
@@ -425,7 +470,9 @@ namespace DragonBoxAlgebra.UI
             horizontalLayout.padding = new RectOffset(layout.Padding, layout.Padding, layout.Padding, layout.Padding);
 
             bool usePlus = _controller.UsesPlusBetweenBoardTiles;
+            bool useMultiply = _controller.UsesMultiplyAdditionLevels;
             bool placedCard = false;
+            BoardCard? previousCard = null;
             var placedMarkerIndexes = new HashSet<int>();
 
             for (int i = 0; i < side.Cards.Count; i++)
@@ -440,7 +487,7 @@ namespace DragonBoxAlgebra.UI
                     {
                         if (usePlus && placedCard)
                         {
-                            CreatePlusSeparator(panel, layout.Height);
+                            CreateOperatorSeparator(panel, layout.Height, previousCard, card, useMultiply);
                         }
 
                         PendingCancelMarker marker = _controller.PendingCancels[markerIndex];
@@ -458,6 +505,7 @@ namespace DragonBoxAlgebra.UI
 
                         placedMarkerIndexes.Add(markerIndex);
                         placedCard = true;
+                        previousCard = card;
                     }
 
                     continue;
@@ -465,7 +513,7 @@ namespace DragonBoxAlgebra.UI
 
                 if (usePlus && placedCard)
                 {
-                    CreatePlusSeparator(panel, layout.Height);
+                    CreateOperatorSeparator(panel, layout.Height, previousCard, card, useMultiply);
                 }
 
                 CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot,
@@ -473,7 +521,18 @@ namespace DragonBoxAlgebra.UI
                 widget.gameObject.AddComponent<CardDropZone>();
                 _widgets.Add(widget);
                 placedCard = true;
+                previousCard = card;
             }
+        }
+
+        private void UpdateDivisionBarVisibility()
+        {
+            if (_divisionBar == null)
+            {
+                return;
+            }
+
+            _divisionBar.gameObject.SetActive(_controller.UsesMultiplyAdditionLevels && !_playingWinSequence);
         }
 
         private int FindPendingMarkerIndex(string sideName, string cardId)
@@ -559,24 +618,51 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
+        private static void CreateOperatorSeparator(Transform parent, float tileHeight, BoardCard? previous,
+            BoardCard next, bool useMultiply)
+        {
+            bool times = useMultiply
+                && previous.HasValue
+                && DivisionRules.IsCoefficientTimesXPair(previous.Value, next);
+            if (times)
+            {
+                CreateTimesSeparator(parent, tileHeight);
+            }
+            else
+            {
+                CreatePlusSeparator(parent, tileHeight);
+            }
+        }
+
         private static void CreatePlusSeparator(Transform parent, float tileHeight)
         {
-            var go = new GameObject("PlusSeparator", typeof(RectTransform), typeof(Text), typeof(LayoutElement));
+            CreateSymbolSeparator(parent, tileHeight, "PlusSeparator", "+", PlusSeparatorWidth, 34);
+        }
+
+        private static void CreateTimesSeparator(Transform parent, float tileHeight)
+        {
+            CreateSymbolSeparator(parent, tileHeight, "TimesSeparator", "·", TimesSeparatorWidth, 36);
+        }
+
+        private static void CreateSymbolSeparator(Transform parent, float tileHeight, string name, string symbol,
+            float width, int fontSize)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Text), typeof(LayoutElement));
             go.transform.SetParent(parent, false);
 
             var layoutElement = go.GetComponent<LayoutElement>();
-            layoutElement.minWidth = PlusSeparatorWidth;
-            layoutElement.preferredWidth = PlusSeparatorWidth;
+            layoutElement.minWidth = width;
+            layoutElement.preferredWidth = width;
             layoutElement.minHeight = tileHeight;
             layoutElement.preferredHeight = tileHeight;
 
             var rect = go.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(PlusSeparatorWidth, tileHeight);
+            rect.sizeDelta = new Vector2(width, tileHeight);
 
             var text = go.GetComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.text = "+";
-            text.fontSize = 34;
+            text.text = symbol;
+            text.fontSize = fontSize;
             text.fontStyle = FontStyle.Bold;
             text.alignment = TextAnchor.MiddleCenter;
             text.color = new Color(0.95f, 0.95f, 0.88f);
