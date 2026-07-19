@@ -30,6 +30,8 @@ namespace DragonBoxAlgebra.Gameplay
         public bool CanUndo => _undoStack.Count > 0;
         public bool HasPendingBalance => _pendingBalance != null;
         public BalancePending PendingBalance => _pendingBalance;
+        public bool HasPendingDivide => _pendingDivide != null;
+        public DividePending PendingDivide => _pendingDivide;
         public bool HasActiveMergeAnimations => _activeMergeAnimations > 0;
         public bool IsLevelComplete => _levelComplete;
 
@@ -40,6 +42,7 @@ namespace DragonBoxAlgebra.Gameplay
         private readonly Stack<GameSnapshot> _undoStack = new();
         private GameSnapshot _initialSnapshot;
         private BalancePending _pendingBalance;
+        private DividePending _pendingDivide;
         private int _levelIndex;
         private int _activeHandSlot = -1;
         private bool _levelComplete;
@@ -251,17 +254,20 @@ namespace DragonBoxAlgebra.Gameplay
             _undoStack.Clear();
             _levelComplete = false;
             _pendingBalance = null;
+            _pendingDivide = null;
+            Board.Left.ClearDenominator();
+            Board.Right.ClearDenominator();
             _pendingCancels.Clear();
             _spentHandIndices.Clear();
             _activeHandSlot = -1;
             _activeMergeAnimations = 0;
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
-                _spentHandIndices);
+                _spentHandIndices, _pendingDivide);
 
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
             ResolveCombines();
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
-                _spentHandIndices);
+                _spentHandIndices, _pendingDivide);
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
@@ -297,8 +303,9 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 if (level.Chapter >= 8)
                 {
-                    return "Multiply + add: hand cards are opposites (tap to flip +/-). " +
-                           "Cancel the addend → 0. Drop the coefficient on the divide line → 1, then x equals the answer.";
+                    return "Multiply + add: flip hand opposites to cancel → 0. " +
+                           "Then put the same number under the line on both sides (3/3 and dice/3). " +
+                           "Tap 3/3 → 1; tap dice/3 to divide. Isolate x.";
                 }
 
                 if (level.Chapter >= 7)
@@ -366,7 +373,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
+            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices,
+                out _pendingDivide);
             RestoreHandSlotFromSnapshot();
             _undoStack.Clear();
             _levelComplete = false;
@@ -382,7 +390,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
+            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices,
+                out _pendingDivide);
             RestoreHandSlotFromSnapshot();
             _levelComplete = false;
             BoardChanged?.Invoke();
@@ -621,10 +630,10 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Drop a hand number onto the divide line: divide both sides by that value
-        /// (removes matching a·x coefficient and divides constants).
+        /// DragonBox divide: drop a number under the line on one side, then the same under the other.
+        /// Matching a/a becomes 1; other numbers stay as dice/a until resolved.
         /// </summary>
-        public bool TryDivideBothSidesFromHand(int handIndex)
+        public bool TryPlaceDenominatorFromHand(int handIndex, string sideName)
         {
             if (!UsesMultiplyAdditionLevels || _levelComplete)
             {
@@ -642,41 +651,252 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            BoardCard handCard = _hand[handIndex];
-            if (handCard.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            if (sideName != "Left" && sideName != "Right")
             {
-                MessageChanged?.Invoke("Drop a number card on the divide line.");
                 return false;
             }
 
-            int divisor = handCard.Value;
-            if (!DivisionRules.CanDivideBothSides(Board, divisor))
+            BoardCard handCard = _hand[handIndex];
+            if (handCard.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
             {
-                MessageChanged?.Invoke($"Cannot divide both sides by {divisor} yet.");
+                MessageChanged?.Invoke("Drop a number under the line.");
+                return false;
+            }
+
+            // Use positive face for the denominator (flip if needed conceptually).
+            BoardCard denomTemplate = handCard.Kind == CardKind.NegativeConstant
+                ? new BoardCard(CardKind.PositiveConstant, handCard.Value)
+                : handCard.CloneForPlacement();
+
+            if (_pendingDivide != null)
+            {
+                return TryCompleteDenominator(handIndex, sideName, denomTemplate);
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            if (side.HasDenominator)
+            {
+                MessageChanged?.Invoke("That side already has a number under the line.");
                 return false;
             }
 
             PushUndo();
-            if (!DivisionRules.TryDivideBothSides(Board, divisor))
+            side.Denominator = denomTemplate;
+            _pendingDivide = new DividePending
             {
+                Card = denomTemplate.Clone(),
+                PlacedSide = sideName,
+                HandIndex = handIndex
+            };
+
+            MessageChanged?.Invoke(
+                $"Line under {sideName.ToLowerInvariant()} — drop the same {denomTemplate.Value} under the other side.");
+            BoardChanged?.Invoke();
+            return true;
+        }
+
+        private bool TryCompleteDenominator(int handIndex, string sideName, BoardCard denomTemplate)
+        {
+            if (handIndex != _pendingDivide.HandIndex)
+            {
+                MessageChanged?.Invoke("Finish the divide — use the same hand card under the other line.");
                 return false;
             }
 
-            // Coefficient ÷ itself becomes 1 beside x; show the 1 marker then clear identity.
-            ResolveOneIdentitiesAfterDivide();
+            if (sideName != _pendingDivide.HoleSide)
+            {
+                MessageChanged?.Invoke("Drop under the line on the other side.");
+                return false;
+            }
 
-            _spentHandIndices.Add(handIndex);
-            Moves.RegisterCombine();
+            if (!_pendingDivide.Matches(denomTemplate)
+                && !(_pendingDivide.Card.Value == denomTemplate.Value
+                     && denomTemplate.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                MessageChanged?.Invoke("The number under the line must match.");
+                return false;
+            }
+
+            PushUndo();
+            BoardSide holeSide = Board.GetSide(sideName);
+            holeSide.Denominator = new BoardCard(CardKind.PositiveConstant, denomTemplate.Value);
+            int handForSpend = _pendingDivide.HandIndex;
+            _pendingDivide = null;
+
             if (UsesReusableVariableHandCards)
             {
                 RefreshHandSpentStateForReusableCards();
             }
+            else
+            {
+                _spentHandIndices.Add(handForSpend);
+            }
 
-            MessageChanged?.Invoke($"Divided both sides by {divisor} — 1 appears.");
+            Moves.RegisterCombine();
+            MessageChanged?.Invoke(
+                $"Both sides have {holeSide.Denominator.Value.Value} under the line. " +
+                "Tap a matching number (3/3) for 1, or tap another dice (dice/3) to divide it.");
+            HandChanged?.Invoke();
+            BoardChanged?.Invoke();
+            return true;
+        }
+
+        /// <summary>
+        /// With denominators on both sides: tap/drop onto a card above the line.
+        /// Same value → 1 (3/3). Other divisible number → dice/d.
+        /// </summary>
+        public bool TryResolveDivisionOnCard(string sideName, int boardIndex)
+        {
+            if (!UsesMultiplyAdditionLevels || _levelComplete || _pendingDivide != null)
+            {
+                return false;
+            }
+
+            if (!Board.Left.HasDenominator || !Board.Right.HasDenominator)
+            {
+                return false;
+            }
+
+            int divisor = Board.Left.Denominator.Value.Value;
+            if (Board.Right.Denominator.Value.Value != divisor)
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            if (boardIndex < 0 || boardIndex >= side.Cards.Count)
+            {
+                return false;
+            }
+
+            BoardCard target = side.Cards[boardIndex];
+            if (VariableGoalRules.IsVariableXGoal(target) || target.Kind == CardKind.One)
+            {
+                return false;
+            }
+
+            if (target.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                return false;
+            }
+
+            PushUndo();
+
+            // Matching a/a → 1. Coefficient beside x uses the 1 cancel marker; lone dice become 1.
+            if (target.Value == divisor)
+            {
+                bool wasCoefficient = boardIndex + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[boardIndex + 1]);
+
+                if (wasCoefficient)
+                {
+                    side.Cards.RemoveAt(boardIndex);
+                    side.Cards.Insert(boardIndex, new BoardCard(CardKind.One, 1));
+                    ResolveOneIdentitiesOnSide(sideName);
+                }
+                else
+                {
+                    side.Cards[boardIndex] = new BoardCard(CardKind.PositiveConstant, 1);
+                    CreateOneResultMarker(sideName);
+                }
+
+                Moves.RegisterCombine();
+                MessageChanged?.Invoke($"{divisor}/{divisor} → 1");
+                TryClearDenominatorsIfResolved();
+                HandChanged?.Invoke();
+                BoardChanged?.Invoke();
+                CheckWin();
+                return true;
+            }
+
+            // dice/d → divide that constant.
+            if (target.Value % divisor != 0)
+            {
+                MessageChanged?.Invoke($"Cannot divide {target.Value} by {divisor}.");
+                PopUndoWithoutApply();
+                return false;
+            }
+
+            int newValue = target.Value / divisor;
+            side.Cards[boardIndex] = new BoardCard(
+                target.Kind == CardKind.NegativeConstant ? CardKind.NegativeConstant : CardKind.PositiveConstant,
+                newValue);
+
+            Moves.RegisterCombine();
+            MessageChanged?.Invoke($"{target.Value}/{divisor} → {newValue}");
+            TryClearDenominatorsIfResolved();
             HandChanged?.Invoke();
             BoardChanged?.Invoke();
             CheckWin();
             return true;
+        }
+
+        private void TryClearDenominatorsIfResolved()
+        {
+            if (!Board.Left.HasDenominator || !Board.Right.HasDenominator)
+            {
+                return;
+            }
+
+            int divisor = Board.Left.Denominator.Value.Value;
+            if (SideStillNeedsDenominator(Board.Left, divisor) || SideStillNeedsDenominator(Board.Right, divisor))
+            {
+                return;
+            }
+
+            Board.Left.ClearDenominator();
+            Board.Right.ClearDenominator();
+        }
+
+        private static bool SideStillNeedsDenominator(BoardSide side, int divisor)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                bool isCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+
+                // Coefficient a beside x still needs a/a → 1.
+                if (isCoefficient && card.Value == divisor)
+                {
+                    return true;
+                }
+
+                // Larger multiples still need dice/d.
+                if (card.Value > divisor && card.Value % divisor == 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Legacy single-bar entry: place under Left first when no denoms yet.</summary>
+        public bool TryDivideBothSidesFromHand(int handIndex)
+        {
+            if (Board.Left.HasDenominator && !Board.Right.HasDenominator)
+            {
+                return TryPlaceDenominatorFromHand(handIndex, "Right");
+            }
+
+            if (Board.Right.HasDenominator && !Board.Left.HasDenominator)
+            {
+                return TryPlaceDenominatorFromHand(handIndex, "Left");
+            }
+
+            if (Board.Left.HasDenominator && Board.Right.HasDenominator)
+            {
+                MessageChanged?.Invoke("Tap a number above the line (3/3 → 1, or dice/3).");
+                return false;
+            }
+
+            return TryPlaceDenominatorFromHand(handIndex, "Left");
         }
 
         public bool CanPlayHandOntoBoardCard(int handIndex, string sideName, int boardIndex)
@@ -1130,7 +1350,7 @@ namespace DragonBoxAlgebra.Gameplay
         private void PushUndo()
         {
             _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
-                _spentHandIndices));
+                _spentHandIndices, _pendingDivide));
         }
 
         private void ActivateOppositePairOrCancelDice(string sideName, int cardIndex)

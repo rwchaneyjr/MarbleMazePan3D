@@ -4,7 +4,10 @@ using UnityEngine.EventSystems;
 
 namespace DragonBoxAlgebra.UI
 {
-    /// <summary>Drop a hand number here to divide both sides (multiply chapters).</summary>
+    /// <summary>
+    /// Legacy shared bar — forwards to per-side denominator placement (Left first).
+    /// Prefer <see cref="DenominatorDropZone"/> under each board panel.
+    /// </summary>
     public class DivisionBarDropZone : MonoBehaviour, IDropHandler
     {
         private AlgebraGameController _controller;

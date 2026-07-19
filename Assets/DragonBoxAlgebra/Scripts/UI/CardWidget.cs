@@ -58,7 +58,23 @@ namespace DragonBoxAlgebra.UI
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (_didDrag || _dragStarted || SideName != "Hand" || _controller == null || !CanFlipHand())
+            if (_didDrag || _dragStarted || _controller == null)
+            {
+                return;
+            }
+
+            // Multiply levels: tap a number above the line (3/3 → 1, dice/3 → divide).
+            if (SideName != "Hand"
+                && _controller.UsesMultiplyAdditionLevels
+                && _controller.Board.Left.HasDenominator
+                && _controller.Board.Right.HasDenominator
+                && _controller.TryResolveDivisionOnCard(SideName, Index))
+            {
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCombine();
+                return;
+            }
+
+            if (SideName != "Hand" || !CanFlipHand())
             {
                 return;
             }
@@ -803,10 +819,10 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            DivisionBarDropZone divisionBar = FindDivisionBar(eventData);
-            if (divisionBar != null
+            DenominatorDropZone denomZone = FindDenominatorZone(eventData);
+            if (denomZone != null
                 && _controller.UsesMultiplyAdditionLevels
-                && _controller.TryDivideBothSidesFromHand(Index))
+                && _controller.TryPlaceDenominatorFromHand(Index, denomZone.SideName))
             {
                 MarkHandPlayHandled();
                 DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -821,7 +837,7 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private static DivisionBarDropZone FindDivisionBar(PointerEventData eventData)
+        private static DenominatorDropZone FindDenominatorZone(PointerEventData eventData)
         {
             if (eventData == null || EventSystem.current == null)
             {
@@ -837,11 +853,11 @@ namespace DragonBoxAlgebra.UI
                     continue;
                 }
 
-                DivisionBarDropZone bar = result.gameObject.GetComponent<DivisionBarDropZone>()
-                    ?? result.gameObject.GetComponentInParent<DivisionBarDropZone>();
-                if (bar != null)
+                DenominatorDropZone zone = result.gameObject.GetComponent<DenominatorDropZone>()
+                    ?? result.gameObject.GetComponentInParent<DenominatorDropZone>();
+                if (zone != null)
                 {
-                    return bar;
+                    return zone;
                 }
             }
 

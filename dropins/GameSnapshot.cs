@@ -18,11 +18,21 @@ namespace DragonBoxAlgebra.Gameplay
         public int PendingHoleInsertIndex;
         public BoardCard PendingCard;
 
+        public bool HasLeftDenominator;
+        public BoardCard LeftDenominator;
+        public bool HasRightDenominator;
+        public BoardCard RightDenominator;
+
+        public bool HasPendingDivide;
+        public string DividePlacedSide;
+        public int DivideHandIndex;
+        public BoardCard DivideCard;
+
         public List<int> SpentHandIndices = new();
 
         public static GameSnapshot Capture(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves,
             BalancePending pendingBalance, IReadOnlyList<PendingCancelMarker> pendingCancels,
-            IReadOnlyCollection<int> spentHandIndices)
+            IReadOnlyCollection<int> spentHandIndices, DividePending pendingDivide = null)
         {
             var snapshot = new GameSnapshot
             {
@@ -67,6 +77,26 @@ namespace DragonBoxAlgebra.Gameplay
                 snapshot.PendingCard = pendingBalance.Card.Clone();
             }
 
+            if (board.Left.Denominator.HasValue)
+            {
+                snapshot.HasLeftDenominator = true;
+                snapshot.LeftDenominator = board.Left.Denominator.Value.Clone();
+            }
+
+            if (board.Right.Denominator.HasValue)
+            {
+                snapshot.HasRightDenominator = true;
+                snapshot.RightDenominator = board.Right.Denominator.Value.Clone();
+            }
+
+            if (pendingDivide != null)
+            {
+                snapshot.HasPendingDivide = true;
+                snapshot.DividePlacedSide = pendingDivide.PlacedSide;
+                snapshot.DivideHandIndex = pendingDivide.HandIndex;
+                snapshot.DivideCard = pendingDivide.Card.Clone();
+            }
+
             foreach (int spentIndex in spentHandIndices)
             {
                 snapshot.SpentHandIndices.Add(spentIndex);
@@ -76,12 +106,15 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         public void Apply(AlgebraBoard board, List<BoardCard> hand, MoveTracker moves, out BalancePending pendingBalance,
-            List<PendingCancelMarker> pendingCancels, HashSet<int> spentHandIndices)
+            List<PendingCancelMarker> pendingCancels, HashSet<int> spentHandIndices, out DividePending pendingDivide)
         {
             board.Left.Cards.Clear();
             board.Right.Cards.Clear();
+            board.Left.ClearDenominator();
+            board.Right.ClearDenominator();
             hand.Clear();
             pendingBalance = null;
+            pendingDivide = null;
             pendingCancels.Clear();
 
             foreach (BoardCard card in Left)
@@ -123,6 +156,26 @@ namespace DragonBoxAlgebra.Gameplay
                     HandIndex = PendingHandIndex,
                     HoleInsertIndex = PendingHoleInsertIndex,
                     Card = PendingCard.Clone()
+                };
+            }
+
+            if (HasLeftDenominator)
+            {
+                board.Left.Denominator = LeftDenominator.Clone();
+            }
+
+            if (HasRightDenominator)
+            {
+                board.Right.Denominator = RightDenominator.Clone();
+            }
+
+            if (HasPendingDivide)
+            {
+                pendingDivide = new DividePending
+                {
+                    PlacedSide = DividePlacedSide,
+                    HandIndex = DivideHandIndex,
+                    Card = DivideCard.Clone()
                 };
             }
 

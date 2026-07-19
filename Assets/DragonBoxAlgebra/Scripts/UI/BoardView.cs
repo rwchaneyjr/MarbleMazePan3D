@@ -26,7 +26,8 @@ namespace DragonBoxAlgebra.UI
         private RectTransform _leftPanel;
         private RectTransform _rightPanel;
         private RectTransform _boardRow;
-        private RectTransform _divisionBar;
+        private DenominatorDropZone _leftDenomZone;
+        private DenominatorDropZone _rightDenomZone;
         private RectTransform _dragRoot;
         private Canvas _canvas;
         private AlgebraGameController _controller;
@@ -57,7 +58,7 @@ namespace DragonBoxAlgebra.UI
             left.gameObject.AddComponent<BoardDropZone>().SideName = "Left";
             right.gameObject.AddComponent<BoardDropZone>().SideName = "Right";
 
-            EnsureDivisionBar();
+            EnsureDenominatorZones();
 
             _controller.BoardChanged += Refresh;
             _controller.CombineOccurred += OnCombine;
@@ -66,42 +67,22 @@ namespace DragonBoxAlgebra.UI
             Refresh();
         }
 
-        private void EnsureDivisionBar()
+        private void EnsureDenominatorZones()
         {
-            if (_boardRow == null || _divisionBar != null)
+            if (_leftPanel == null || _rightPanel == null)
             {
                 return;
             }
 
-            var go = new GameObject("DivisionBar", typeof(RectTransform), typeof(Image), typeof(DivisionBarDropZone));
-            go.transform.SetParent(_boardRow, false);
-            _divisionBar = go.GetComponent<RectTransform>();
-            _divisionBar.anchorMin = new Vector2(0.08f, -0.08f);
-            _divisionBar.anchorMax = new Vector2(0.92f, 0.02f);
-            _divisionBar.offsetMin = Vector2.zero;
-            _divisionBar.offsetMax = Vector2.zero;
+            if (_leftDenomZone == null)
+            {
+                _leftDenomZone = DenominatorDropZone.Create(_leftPanel, _controller, "Left");
+            }
 
-            var image = go.GetComponent<Image>();
-            image.color = new Color(0.92f, 0.93f, 0.96f, 0.95f);
-            image.raycastTarget = true;
-
-            go.GetComponent<DivisionBarDropZone>().Initialize(_controller);
-
-            var labelGo = new GameObject("DivideHint", typeof(RectTransform), typeof(Text));
-            labelGo.transform.SetParent(go.transform, false);
-            var labelRect = labelGo.GetComponent<RectTransform>();
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = Vector2.zero;
-            labelRect.offsetMax = Vector2.zero;
-            var label = labelGo.GetComponent<Text>();
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            label.text = "÷  drop number here to divide both sides";
-            label.fontSize = 16;
-            label.fontStyle = FontStyle.Bold;
-            label.alignment = TextAnchor.MiddleCenter;
-            label.color = new Color(0.15f, 0.18f, 0.28f, 0.9f);
-            label.raycastTarget = false;
+            if (_rightDenomZone == null)
+            {
+                _rightDenomZone = DenominatorDropZone.Create(_rightPanel, _controller, "Right");
+            }
         }
 
         private void OnDestroy()
@@ -301,7 +282,7 @@ namespace DragonBoxAlgebra.UI
             TileLayout rightLayout = ComputeTileLayout(_rightPanel, rightSlots, rightPlus);
             RebuildSide(_leftPanel, _controller.Board.Left, "Left", leftLayout);
             RebuildSide(_rightPanel, _controller.Board.Right, "Right", rightLayout);
-            UpdateDivisionBarVisibility();
+            RefreshDenominatorZones();
 
             if (_controller.HasPendingBalance)
             {
@@ -525,14 +506,29 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
-        private void UpdateDivisionBarVisibility()
+        private void RefreshDenominatorZones()
         {
-            if (_divisionBar == null)
+            EnsureDenominatorZones();
+            bool show = _controller.UsesMultiplyAdditionLevels && !_playingWinSequence;
+            if (_leftDenomZone != null)
             {
-                return;
+                _leftDenomZone.gameObject.SetActive(show);
+                if (show)
+                {
+                    _leftDenomZone.RefreshVisual(_controller);
+                    _leftDenomZone.transform.SetAsLastSibling();
+                }
             }
 
-            _divisionBar.gameObject.SetActive(_controller.UsesMultiplyAdditionLevels && !_playingWinSequence);
+            if (_rightDenomZone != null)
+            {
+                _rightDenomZone.gameObject.SetActive(show);
+                if (show)
+                {
+                    _rightDenomZone.RefreshVisual(_controller);
+                    _rightDenomZone.transform.SetAsLastSibling();
+                }
+            }
         }
 
         private int FindPendingMarkerIndex(string sideName, string cardId)
