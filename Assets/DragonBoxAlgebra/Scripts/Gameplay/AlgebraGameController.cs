@@ -452,8 +452,10 @@ namespace DragonBoxAlgebra.Gameplay
                 BoardCard cardB = side.Cards[indexB];
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
-                    // Anchor on the tile that was dropped onto (indexB) so the swirl replaces that slot.
-                    TryCreateCancelMarker(sideName, cardA.Id, cardB.Id, anchorCardId: cardB.Id);
+                    // Prefer the merge slot farther from the red box / x so the swirl does not
+                    // sit on top of the isolation goal after the pair collapses.
+                    string anchorId = PreferAnchorAwayFromIsolationGoal(side, cardA.Id, cardB.Id, cardB.Id);
+                    TryCreateCancelMarker(sideName, cardA.Id, cardB.Id, anchorCardId: anchorId);
                     MessageChanged?.Invoke(_pendingBalance != null
                         ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. The ? hole stays until you fill it."
                         : $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
@@ -1155,6 +1157,50 @@ namespace DragonBoxAlgebra.Gameplay
                     _pendingCancels.RemoveAt(i);
                 }
             }
+        }
+
+        /// <summary>
+        /// Choose the merge swirl slot farther from the red box / x so the isolation goal
+        /// stays put and is not covered when the pair collapses.
+        /// </summary>
+        private static string PreferAnchorAwayFromIsolationGoal(BoardSide side, string cardIdA,
+            string cardIdB, string preferredFallback)
+        {
+            int goalIndex = -1;
+            int indexA = -1;
+            int indexB = -1;
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (VariableGoalRules.IsIsolationGoal(card))
+                {
+                    goalIndex = i;
+                }
+
+                if (card.Id == cardIdA)
+                {
+                    indexA = i;
+                }
+
+                if (card.Id == cardIdB)
+                {
+                    indexB = i;
+                }
+            }
+
+            if (goalIndex < 0 || indexA < 0 || indexB < 0)
+            {
+                return preferredFallback;
+            }
+
+            int distA = Math.Abs(indexA - goalIndex);
+            int distB = Math.Abs(indexB - goalIndex);
+            if (distA == distB)
+            {
+                return preferredFallback;
+            }
+
+            return distA > distB ? cardIdA : cardIdB;
         }
 
         private bool TryCreateCancelMarker(string sideName, string cardIdA, string cardIdB,

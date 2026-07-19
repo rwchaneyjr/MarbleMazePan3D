@@ -9,8 +9,16 @@ namespace DragonBoxAlgebra.UI
 {
     public class AsteriskCancelWidget : MonoBehaviour, IPointerClickHandler
     {
-        private const float MergeDuration = 1.15f;
-        private const float MergeHalfOffset = 28f;
+        private const float MergeDuration = 0.7f;
+        /// <summary>
+        /// Start offset of each merge half from center. Must stay below half-width/2 so the
+        /// halves overlap — otherwise the near-black swirl parent shows as a vertical black slice.
+        /// </summary>
+        private const float MergeHalfOffset = 12f;
+        private const float MergeHalfWidth = 68f;
+        private const float MergeHalfHeight = 100f;
+        /// <summary>Fraction of the merge where creature images must already be centered.</summary>
+        private const float ImageSnapFinishAt = 0.35f;
         private const float SwirlClickableAlpha = 0.25f;
         private const float AutoDismissDelay = 0.35f;
         private const string SwirlingLightResourcePath = "CreatureSprites/SwirlingLight";
@@ -171,13 +179,13 @@ namespace DragonBoxAlgebra.UI
 
         private void BuildMergePair(BoardCard lightCard, BoardCard darkCard)
         {
-            Image lightHalf = CreateMergeHalf(transform, "LightHalf", lightCard, true);
-            Image darkHalf = CreateMergeHalf(transform, "DarkHalf", darkCard, false);
+            Image lightHalf = CreateMergeHalf(transform, "LightHalf", lightCard);
+            Image darkHalf = CreateMergeHalf(transform, "DarkHalf", darkCard);
             lightHalf.rectTransform.anchoredPosition = new Vector2(-MergeHalfOffset, 0f);
             darkHalf.rectTransform.anchoredPosition = new Vector2(MergeHalfOffset, 0f);
         }
 
-        private static Image CreateMergeHalf(Transform parent, string name, BoardCard card, bool light)
+        private static Image CreateMergeHalf(Transform parent, string name, BoardCard card)
         {
             var halfGo = new GameObject(name, typeof(RectTransform), typeof(Image));
             halfGo.transform.SetParent(parent, false);
@@ -185,14 +193,15 @@ namespace DragonBoxAlgebra.UI
             halfRect.anchorMin = new Vector2(0.5f, 0.5f);
             halfRect.anchorMax = new Vector2(0.5f, 0.5f);
             halfRect.pivot = new Vector2(0.5f, 0.5f);
-            halfRect.sizeDelta = new Vector2(54f, 96f);
+            // Wider than 2*MergeHalfOffset so the halves overlap and hide the swirl parent seam.
+            halfRect.sizeDelta = new Vector2(MergeHalfWidth, MergeHalfHeight);
 
             var bg = halfGo.GetComponent<Image>();
             bg.sprite = SpriteFactory.RoundedCard;
             bg.type = Image.Type.Sliced;
-            bg.color = light
-                ? new Color(0.98f, 0.84f, 0.14f, 1f)
-                : new Color(0.08f, 0.08f, 0.12f, 1f);
+            // Use hand face colors (warm light / deep dark) so letterbox around the PNG
+            // never flashes the near-black swirl parent between the halves.
+            bg.color = CardVisuals.FaceBackground(card, "Hand");
             bg.raycastTarget = false;
 
             var spriteGo = new GameObject("Creature", typeof(RectTransform), typeof(Image));
@@ -200,14 +209,35 @@ namespace DragonBoxAlgebra.UI
             var spriteRect = spriteGo.GetComponent<RectTransform>();
             spriteRect.anchorMin = Vector2.zero;
             spriteRect.anchorMax = Vector2.one;
-            spriteRect.offsetMin = new Vector2(4f, 4f);
-            spriteRect.offsetMax = new Vector2(-4f, -4f);
+            spriteRect.offsetMin = new Vector2(2f, 2f);
+            spriteRect.offsetMax = new Vector2(-2f, -2f);
             var spriteImage = spriteGo.GetComponent<Image>();
-            spriteImage.sprite = CardVisuals.IconSprite(card);
+            // Prefer the full creature PNG so the merge snap is on the real card image.
+            spriteImage.sprite = CardVisuals.CreatureSprite(card) ?? CardVisuals.IconSprite(card);
             spriteImage.preserveAspect = true;
             spriteImage.raycastTarget = false;
 
             return bg;
+        }
+
+        private static void SetChildImageAlpha(Transform parent, float alpha)
+        {
+            if (parent == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Image childImage = parent.GetChild(i).GetComponent<Image>();
+                if (childImage == null)
+                {
+                    continue;
+                }
+
+                Color c = childImage.color;
+                childImage.color = new Color(c.r, c.g, c.b, alpha);
+            }
         }
 
         private IEnumerator PlayMergeAnimation()
@@ -229,35 +259,41 @@ namespace DragonBoxAlgebra.UI
             while (elapsed < MergeDuration)
             {
                 elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / MergeDuration));
+                float t = Mathf.Clamp01(elapsed / MergeDuration);
+                // Images slam together early so the black parent seam never peeks between them.
+                float imageT = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / ImageSnapFinishAt));
+                float fadeT = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - 0.15f) / 0.85f));
+                float swirlT = Mathf.SmoothStep(0f, 1f, t);
 
                 if (lightRect != null)
                 {
-                    lightRect.anchoredPosition = Vector2.Lerp(lightStart, Vector2.zero, t);
-                    lightRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.35f, t);
+                    lightRect.anchoredPosition = Vector2.Lerp(lightStart, Vector2.zero, imageT);
+                    lightRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.4f, imageT);
                 }
 
                 if (darkRect != null)
                 {
-                    darkRect.anchoredPosition = Vector2.Lerp(darkStart, Vector2.zero, t);
-                    darkRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.35f, t);
+                    darkRect.anchoredPosition = Vector2.Lerp(darkStart, Vector2.zero, imageT);
+                    darkRect.localScale = Vector3.one * Mathf.Lerp(1f, 0.4f, imageT);
                 }
 
                 if (lightHalf != null)
                 {
                     lightHalf.color = new Color(lightStartColor.r, lightStartColor.g, lightStartColor.b,
-                        Mathf.Lerp(1f, 0f, t));
+                        Mathf.Lerp(1f, 0f, fadeT));
+                    SetChildImageAlpha(lightHalf.transform, Mathf.Lerp(1f, 0f, fadeT));
                 }
 
                 if (darkHalf != null)
                 {
                     darkHalf.color = new Color(darkStartColor.r, darkStartColor.g, darkStartColor.b,
-                        Mathf.Lerp(1f, 0f, t));
+                        Mathf.Lerp(1f, 0f, fadeT));
+                    SetChildImageAlpha(darkHalf.transform, Mathf.Lerp(1f, 0f, fadeT));
                 }
 
                 if (_symbolGroup != null)
                 {
-                    float symbolAlpha = Mathf.Lerp(0f, 1f, t);
+                    float symbolAlpha = Mathf.Lerp(0f, 1f, swirlT);
                     _symbolGroup.alpha = symbolAlpha;
                     if (!_readyToClick && symbolAlpha >= SwirlClickableAlpha)
                     {
@@ -267,7 +303,7 @@ namespace DragonBoxAlgebra.UI
 
                 if (_symbolRect != null)
                 {
-                    _symbolRect.localScale = Vector3.one * Mathf.Lerp(0.2f, 1f, t);
+                    _symbolRect.localScale = Vector3.one * Mathf.Lerp(0.2f, 1f, swirlT);
                 }
 
                 yield return null;
@@ -275,11 +311,13 @@ namespace DragonBoxAlgebra.UI
 
             if (lightHalf != null)
             {
+                lightHalf.rectTransform.anchoredPosition = Vector2.zero;
                 lightHalf.gameObject.SetActive(false);
             }
 
             if (darkHalf != null)
             {
+                darkHalf.rectTransform.anchoredPosition = Vector2.zero;
                 darkHalf.gameObject.SetActive(false);
             }
 

@@ -1,0 +1,55 @@
+# FIX COMPILE + RED BOX STAY-PUT — paste ALL into Git Bash ONCE
+# Fixes CS0117/CS1061: PendingCancelMarker missing AnchorCardId
+# Also keeps red box from sliding over during merges / black seam
+
+cd /c/Users/rober/SymbolAlgebra || { echo "Missing /c/Users/rober/SymbolAlgebra"; exit 1; }
+
+SRC_URL="https://github.com/rwchaneyjr/SymbolAlgebra2.git"
+git remote get-url source >/dev/null 2>&1 || git remote add source "$SRC_URL"
+git fetch source cursor/fix-merge-black-slice-6a42 \
+  || git fetch "$SRC_URL" cursor/fix-merge-black-slice-6a42
+
+REF="source/cursor/fix-merge-black-slice-6a42"
+git rev-parse --verify "$REF" >/dev/null 2>&1 || REF="FETCH_HEAD"
+
+mkdir -p Assets/DragonBoxAlgebra/Scripts/UI \
+         Assets/DragonBoxAlgebra/Scripts/Gameplay \
+         dropins
+
+# Types first — BoardView/Controller need AnchorCardId + SwirlOnly
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/Gameplay/PendingCancelMarker.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/Gameplay/PendingCancelMarker.cs
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/Gameplay/GameSnapshot.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/Gameplay/GameSnapshot.cs
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/UI/BoardView.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/UI/BoardView.cs
+git show "$REF:Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs" \
+  > Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs
+
+# Keep dropins in sync so a later import does not wipe the fix
+cp Assets/DragonBoxAlgebra/Scripts/Gameplay/PendingCancelMarker.cs dropins/PendingCancelMarker.cs
+cp Assets/DragonBoxAlgebra/Scripts/Gameplay/GameSnapshot.cs dropins/GameSnapshot.cs
+cp Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs dropins/AlgebraGameController.cs
+cp Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs dropins/AsteriskCancelWidget.cs
+cp Assets/DragonBoxAlgebra/Scripts/UI/BoardView.cs dropins/BoardView.cs
+cp Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs dropins/CardWidget.cs
+
+# Stale UI copies of gameplay types cause CS0101 — remove if present
+rm -f Assets/DragonBoxAlgebra/Scripts/UI/PendingCancelMarker.cs \
+      Assets/DragonBoxAlgebra/Scripts/UI/PendingCancelMarker.cs.meta \
+      Assets/DragonBoxAlgebra/Scripts/UI/GameSnapshot.cs \
+      Assets/DragonBoxAlgebra/Scripts/UI/GameSnapshot.cs.meta \
+      Assets/DragonBoxAlgebra/Scripts/UI/AlgebraGameController.cs \
+      Assets/DragonBoxAlgebra/Scripts/UI/AlgebraGameController.cs.meta
+
+rg -n "AnchorCardId|SwirlOnly" Assets/DragonBoxAlgebra/Scripts/Gameplay/PendingCancelMarker.cs \
+  && rg -n "IsolationGoalNeighborGap|NudgeSnapAwayFromIsolationGoal|PreferAnchorAwayFromIsolationGoal|MergeHalfOffset = 12f" \
+       Assets/DragonBoxAlgebra/Scripts/UI/BoardView.cs \
+       Assets/DragonBoxAlgebra/Scripts/UI/CardWidget.cs \
+       Assets/DragonBoxAlgebra/Scripts/Gameplay/AlgebraGameController.cs \
+       Assets/DragonBoxAlgebra/Scripts/UI/AsteriskCancelWidget.cs \
+  && echo "OK — compile fix + red-box stay-put installed. Return to Unity, wait for compile, Play."
