@@ -58,6 +58,13 @@ namespace DragonBoxAlgebra.Gameplay
         public bool UsesOppositeHandPlay =>
             CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16;
 
+        /// <summary>
+        /// Hand tile may cancel directly onto a board opposite (Ch2 opposite-play, Ch8/Ch9 addend cancel).
+        /// Ch3+ balance chapters must NOT do this — night onto day should start ? balance, not merge.
+        /// </summary>
+        public bool UsesHandOntoOppositeCancel =>
+            UsesOppositeHandPlay || UsesMultiplyAdditionLevels;
+
         /// <summary>Ch1/Ch2 drag-to-merge: same-side light/dark tiles should snap together into *.</summary>
         public bool UsesDragToMergePairs => CurrentLevel.DragToMergePairs;
 
@@ -1167,11 +1174,11 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            // Snap / drop-on-top only targets true opposites (any chapter).
+            // Snap / drop-on-top onto opposites only when that is the intended hand mechanic.
             if (CombineRules.GetCombineAction(_hand[handIndex], targetCard)
                 == CombineActionType.OppositeCancel)
             {
-                return true;
+                return UsesHandOntoOppositeCancel;
             }
 
             // Older opposite-only chapters reject non-opposites; balance chapters still allow side drops elsewhere.
@@ -1203,6 +1210,11 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool TryPlayHandOntoOpposite(int handIndex, string sideName, int targetBoardIndex)
         {
+            if (!UsesHandOntoOppositeCancel)
+            {
+                return false;
+            }
+
             if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;

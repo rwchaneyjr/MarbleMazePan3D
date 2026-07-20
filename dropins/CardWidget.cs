@@ -855,18 +855,22 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandDrop(PointerEventData eventData)
         {
-            // 1) Opposite under the pointer → merge + swirl in that slot.
-            CardWidget opposite = FindOppositeBoardCardUnderPointer(eventData);
-            if (opposite == null && _snapHighlight != null
-                && CombineRules.GetCombineAction(Card, _snapHighlight.Card) == CombineActionType.OppositeCancel)
+            // 1) Opposite under the pointer → merge + swirl — only for opposite-hand / Ch8–9 cancel.
+            //    Ch3+ balance: night onto day must start ? balance, not cancel on one side.
+            if (_controller.UsesHandOntoOppositeCancel)
             {
-                opposite = _snapHighlight;
-            }
+                CardWidget opposite = FindOppositeBoardCardUnderPointer(eventData);
+                if (opposite == null && _snapHighlight != null
+                    && CombineRules.GetCombineAction(Card, _snapHighlight.Card) == CombineActionType.OppositeCancel)
+                {
+                    opposite = _snapHighlight;
+                }
 
-            if (opposite != null)
-            {
-                TryPlayHandOnBoardTarget(opposite);
-                return;
+                if (opposite != null)
+                {
+                    TryPlayHandOnBoardTarget(opposite);
+                    return;
+                }
             }
 
             if (_controller.HasPendingBalance)
@@ -935,9 +939,8 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
-            // Over a board tile: fill ?, start balance on that side, or ignore non-opposites.
-            // Addition levels (129–139) already have tiles — empty-padding-only was locking drops.
-            CardWidget boardTarget = FindHandBoardTarget(eventData);
+            // Over a board tile: fill ?, start balance on that side, or Ch8/9 cancel / denom.
+            CardWidget boardTarget = FindHandBoardTarget(eventData) ?? FindAnyBoardCardUnderPointer(eventData);
             if (boardTarget != null)
             {
                 if (_controller.HasPendingBalance
@@ -950,9 +953,14 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
-                if (!_controller.UsesOppositeHandPlay
-                    && CombineRules.GetCombineAction(Card, boardTarget.Card) != CombineActionType.OppositeCancel
-                    && _controller.TryPlayFromHand(Index, boardTarget.SideName))
+                if (_controller.UsesHandOntoOppositeCancel)
+                {
+                    TryPlayHandOnBoardTarget(boardTarget);
+                    return;
+                }
+
+                // Balance chapters: drop onto any tile on a side starts ? balance on that side.
+                if (_controller.TryPlayFromHand(Index, boardTarget.SideName))
                 {
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -1319,10 +1327,18 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Dropping on top of an opposite always merges + swirl (all chapters).
+            // Dropping on top of an opposite merges only for opposite-hand / Ch8–9.
+            // Ch3+ balance: same drop starts ? on the other side instead.
             if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
             {
-                if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index))
+                if (_controller.UsesHandOntoOppositeCancel
+                    && _controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+                else if (!_controller.UsesHandOntoOppositeCancel
+                    && _controller.TryPlayFromHand(Index, target.SideName))
                 {
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -1338,9 +1354,17 @@ namespace DragonBoxAlgebra.UI
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
+
+                return;
             }
 
-            // Do not call TryPlayFromHand here — that parks the tile at the end of the side.
+            if (_controller.TryPlayFromHand(Index, target.SideName))
+            {
+                MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+            }
+
+            // Do not fall through — balance chapters park via TryPlayFromHand above.
         }
 
         private bool TryPlaceDenominatorUnderCard(CardWidget target)
