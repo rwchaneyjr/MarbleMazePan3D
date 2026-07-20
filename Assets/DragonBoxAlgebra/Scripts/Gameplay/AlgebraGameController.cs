@@ -436,9 +436,12 @@ namespace DragonBoxAlgebra.Gameplay
             RestoreHandSlotFromSnapshot();
             _undoStack.Clear();
             _levelComplete = false;
+            SetOrderIntroVisible(UsesOrderOfOperationsIntro);
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
-            MessageChanged?.Invoke("Rewound to the start of the level.");
+            MessageChanged?.Invoke(UsesOrderOfOperationsIntro
+                ? "First undo addition and subtraction. Second undo multiplication."
+                : "Rewound to the start of the level.");
         }
 
         public void Undo()
