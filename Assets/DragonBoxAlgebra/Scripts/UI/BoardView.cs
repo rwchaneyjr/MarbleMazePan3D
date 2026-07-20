@@ -485,9 +485,12 @@ namespace DragonBoxAlgebra.UI
             }
 
             horizontalLayout.spacing = layout.Spacing;
-            // Extra bottom padding so fraction lines + slots under a·x / dice stay visible (151–165 only).
+            // Extra bottom padding so fraction lines + slots under a·x / dice stay visible.
+            // Multi-term letter answers need more room for the shared line + blank under (… ).
+            bool groupedLetterPad = _controller.UsesMultiplyAdditionLevels
+                && _controller.UsesGroupedLetterFraction(sideName);
             int bottomPad = _controller.UsesMultiplyAdditionLevels
-                ? Mathf.Max(layout.Padding, 72)
+                ? Mathf.Max(layout.Padding, groupedLetterPad ? 110 : 72)
                 : layout.Padding;
             horizontalLayout.padding = new RectOffset(layout.Padding, layout.Padding, layout.Padding, bottomPad);
 

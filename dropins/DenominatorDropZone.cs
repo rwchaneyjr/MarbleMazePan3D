@@ -43,14 +43,20 @@ namespace DragonBoxAlgebra.UI
         public static DenominatorDropZone Create(Transform parent, AlgebraGameController controller, string sideName)
         {
             var go = new GameObject($"DenomZone_{sideName}", typeof(RectTransform), typeof(Image),
-                typeof(DenominatorDropZone));
+                typeof(LayoutElement), typeof(DenominatorDropZone));
             go.transform.SetParent(parent, false);
 
+            // Sit under the whole side as an overlay — never participate in the card row layout
+            // (otherwise the shared line/blank collapses to zero width between tiles).
+            var layoutElement = go.GetComponent<LayoutElement>();
+            layoutElement.ignoreLayout = true;
+
             var rect = go.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.06f, -0.22f);
-            rect.anchorMax = new Vector2(0.94f, 0.02f);
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
+            rect.anchorMin = new Vector2(0.03f, 0f);
+            rect.anchorMax = new Vector2(0.97f, 0f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.sizeDelta = new Vector2(0f, 96f);
+            rect.anchoredPosition = new Vector2(0f, -6f);
 
             var image = go.GetComponent<Image>();
             image.color = new Color(0.1f, 0.12f, 0.18f, 0.01f);
@@ -59,23 +65,23 @@ namespace DragonBoxAlgebra.UI
             var zone = go.GetComponent<DenominatorDropZone>();
             zone.Initialize(controller, sideName);
 
-            // Visible fraction bar.
+            // Visible fraction bar across the grouped expression.
             var lineGo = new GameObject("FractionLine", typeof(RectTransform), typeof(Image));
             lineGo.transform.SetParent(go.transform, false);
             var lineRect = lineGo.GetComponent<RectTransform>();
-            lineRect.anchorMin = new Vector2(0.05f, 0.72f);
-            lineRect.anchorMax = new Vector2(0.95f, 0.82f);
+            lineRect.anchorMin = new Vector2(0.02f, 0.78f);
+            lineRect.anchorMax = new Vector2(0.98f, 0.88f);
             lineRect.offsetMin = Vector2.zero;
             lineRect.offsetMax = Vector2.zero;
             var lineImage = lineGo.GetComponent<Image>();
-            lineImage.color = new Color(0.95f, 0.95f, 0.9f, 0.95f);
+            lineImage.color = new Color(0.95f, 0.95f, 0.9f, 0.98f);
             lineImage.raycastTarget = false;
 
             var slotGo = new GameObject("DenomSlot", typeof(RectTransform));
             slotGo.transform.SetParent(go.transform, false);
             var slotRect = slotGo.GetComponent<RectTransform>();
-            slotRect.anchorMin = new Vector2(0.25f, 0.05f);
-            slotRect.anchorMax = new Vector2(0.75f, 0.68f);
+            slotRect.anchorMin = new Vector2(0.32f, 0.02f);
+            slotRect.anchorMax = new Vector2(0.68f, 0.72f);
             slotRect.offsetMin = Vector2.zero;
             slotRect.offsetMax = Vector2.zero;
 
@@ -84,6 +90,8 @@ namespace DragonBoxAlgebra.UI
 
         public void RefreshVisual(AlgebraGameController controller)
         {
+            EnsureOverlayLayout();
+
             Transform slot = transform.Find("DenomSlot");
             if (slot == null)
             {
@@ -102,11 +110,20 @@ namespace DragonBoxAlgebra.UI
             }
 
             var side = controller.Board.GetSide(SideName);
+            bool groupedLetter = controller.UsesGroupedLetterFraction(SideName);
             bool showZone = side.HasDenominator
                 || controller.GetActiveFractionDivisor() != null
                 || (controller.HasPendingDivide
                     && (controller.PendingDivide.HoleSide == SideName
                         || controller.PendingDivide.PlacedSide == SideName));
+
+            // Grouped letter side: always show the shared line + blank while a divisor is active
+            // on either side (left may already have 3/3 while right still needs the drop).
+            if (!showZone && groupedLetter && controller.GetActiveFractionDivisor() != null)
+            {
+                showZone = true;
+            }
+
             if (!showZone)
             {
                 gameObject.SetActive(false);
@@ -115,9 +132,8 @@ namespace DragonBoxAlgebra.UI
 
             gameObject.SetActive(true);
 
-            bool groupedLetter = controller.UsesGroupedLetterFraction(SideName);
             // Ch8/Ch9 single tiles: per-card guides own the line. Ch10 multi-term: this zone draws
-            // one shared bar + one denominator under the whole grouped expression.
+            // one shared bar + one blank/denominator under the whole grouped expression.
             Transform line = transform.Find("FractionLine");
             if (line != null)
             {
@@ -127,31 +143,41 @@ namespace DragonBoxAlgebra.UI
             var image = GetComponent<Image>();
             if (image != null)
             {
-                image.color = new Color(0.1f, 0.12f, 0.18f, 0.01f);
+                image.color = new Color(0.1f, 0.12f, 0.18f, groupedLetter ? 0.04f : 0.01f);
                 image.raycastTarget = true;
             }
 
-            if (controller.HasPendingDivide && controller.PendingDivide.HoleSide == SideName)
+            if (!groupedLetter)
             {
-                if (groupedLetter)
-                {
-                    CreateDenomHint(slot, "?");
-                }
-
                 return;
             }
 
-            if (!side.HasDenominator)
+            if (side.HasDenominator)
             {
-                if (groupedLetter && controller.GetActiveFractionDivisor() != null)
-                {
-                    CreateDenomHint(slot, "?");
-                }
-
+                CreateDenomCard(slot, side.Denominator.Value);
                 return;
             }
 
-            CreateDenomCard(slot, side.Denominator.Value);
+            // Blank waiting for the matching coefficient (e.g. 3).
+            CreateDenomHint(slot, "?");
+        }
+
+        private void EnsureOverlayLayout()
+        {
+            var layoutElement = GetComponent<LayoutElement>() ?? gameObject.AddComponent<LayoutElement>();
+            layoutElement.ignoreLayout = true;
+
+            var rect = transform as RectTransform;
+            if (rect == null)
+            {
+                return;
+            }
+
+            rect.anchorMin = new Vector2(0.03f, 0f);
+            rect.anchorMax = new Vector2(0.97f, 0f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.sizeDelta = new Vector2(0f, 96f);
+            rect.anchoredPosition = new Vector2(0f, -6f);
         }
 
         private static void CreateDenomHint(Transform slot, string label)
