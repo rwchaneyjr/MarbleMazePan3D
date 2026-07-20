@@ -48,6 +48,14 @@ namespace DragonBoxAlgebra.Core
             return -1;
         }
 
+        /// <summary>
+        /// True when left is a numeric coefficient of a variable tile (x or letter), e.g. 3·x or 6·a.
+        /// </summary>
+        public static bool IsCoefficientTimesVariablePair(BoardCard left, BoardCard right) =>
+            left.Kind == CardKind.PositiveConstant
+            && left.Value > 1
+            && (VariableGoalRules.IsVariableXGoal(right) || VariableGoalRules.IsPairVariable(right));
+
         public static bool IsCoefficientTimesXPair(BoardCard left, BoardCard right) =>
             left.Kind == CardKind.PositiveConstant
             && left.Value > 1

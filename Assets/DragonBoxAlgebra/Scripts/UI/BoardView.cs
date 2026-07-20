@@ -711,7 +711,7 @@ namespace DragonBoxAlgebra.UI
         {
             bool times = useMultiply
                 && previous.HasValue
-                && DivisionRules.IsCoefficientTimesXPair(previous.Value, next);
+                && DivisionRules.IsCoefficientTimesVariablePair(previous.Value, next);
             if (times)
             {
                 CreateTimesSeparator(parent, tileHeight);

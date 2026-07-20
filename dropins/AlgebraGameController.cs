@@ -296,6 +296,14 @@ namespace DragonBoxAlgebra.Gameplay
 
         private string HandMessage(LevelDefinition level)
         {
+            if (UsesMultiplyAdditionLevels)
+            {
+                return "Order of operations: addition is first — finish the addition " +
+                       "(cancel every addend → 0) until the addition is done. " +
+                       "Then divide both sides with the coefficient of x " +
+                       "(drop it under the line on each side).";
+            }
+
             int count = level.HandCards.Count;
             string pairPhrase = level.Chapter >= 5 ? "Positive + negative" : "Light + dark";
             if (count == 0)
@@ -312,13 +320,6 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (count == 2)
             {
-                if (UsesMultiplyAdditionLevels || level.Chapter >= 8)
-                {
-                    return "Order of operations: addition is first — finish the addition (cancel the addend → 0) " +
-                           "until the addition is done. Then divide both sides with the coefficient " +
-                           "(drop it under the line on each side).";
-                }
-
                 if (level.Chapter >= 7)
                 {
                     return "Sea creatures and x — tap to flip light/dark. Play each hand tile: drag to a side, " +
@@ -1251,9 +1252,8 @@ namespace DragonBoxAlgebra.Gameplay
 
             PushUndo();
 
-            // 151–165: drop −1 onto +1 → cancel on this side, blank ? on the other side to drag into.
+            // 151–200: drop opposite onto a term → cancel on this side, blank ? on the other side.
             if (UsesMultiplyAdditionLevels
-                && CombineRules.IsDiceOppositePair(handCard, targetCard)
                 && CombineRules.UsesAsteriskCancel(handCard, targetCard))
             {
                 return TryStartMultiplyCancelWithBalanceHole(handIndex, sideName, targetBoardIndex, handCard,
@@ -1320,8 +1320,8 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// 151–165 only: cancel addend on this side (0), and open a blank ? on the other side
-        /// so the same hand tile is dragged in to balance.
+        /// 151–200: cancel a term on this side (0), and open a blank ? on the other side
+        /// so the same hand tile is dragged in to balance (numbers or letters).
         /// </summary>
         private bool TryStartMultiplyCancelWithBalanceHole(int handIndex, string sideName,
             int targetBoardIndex, BoardCard handCard, BoardCard targetCard)
@@ -1346,7 +1346,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             string holeSide = sideName == "Left" ? "Right" : "Left";
             BoardCard template = handCard.Clone();
-            // Show blank before the dice: ? + 7 (then −3 into ? → 4).
+            // Show blank before existing terms: ? + …
             _pendingBalance = new BalancePending
             {
                 Card = template,
@@ -1713,7 +1713,7 @@ namespace DragonBoxAlgebra.Gameplay
              && _levelIndex + 1 <= ChapterLevelGenerator.PlusBetweenTilesEndLevel)
             || UsesMultiplyAdditionLevels;
 
-        /// <summary>Levels 151–180: a·x + b = c (number) or a·x + b = letter with divide-both-sides.</summary>
+        /// <summary>Levels 151–200: a·x + b = c/letter, or multi-letter both sides with divide-both-sides.</summary>
         public bool UsesMultiplyAdditionLevels =>
             ChapterLevelGenerator.UsesMultiplyAddition(_levelIndex + 1);
 
@@ -1878,14 +1878,29 @@ namespace DragonBoxAlgebra.Gameplay
             for (int i = 0; i < side.Cards.Count; i++)
             {
                 BoardCard card = side.Cards[i];
-                if (i > 0 && card.Kind is CardKind.PositiveConstant or CardKind.DayCreature)
+                BoardCard? previous = i > 0 ? side.Cards[i - 1] : null;
+                bool timesPair = previous.HasValue
+                    && DivisionRules.IsCoefficientTimesVariablePair(previous.Value, card);
+
+                if (i > 0 && !timesPair && card.Kind is CardKind.PositiveConstant or CardKind.DayCreature)
                 {
                     parts.Append('+');
+                }
+                else if (timesPair)
+                {
+                    parts.Append('·');
                 }
 
                 if (VariableGoalRules.IsPairVariable(card))
                 {
-                    parts.Append(card.VariableLetter);
+                    if (card.Kind == CardKind.NightCreature)
+                    {
+                        parts.Append('-').Append(card.VariableLetter);
+                    }
+                    else
+                    {
+                        parts.Append(card.VariableLetter);
+                    }
                 }
                 else if (card.Kind == CardKind.NegativeConstant)
                 {

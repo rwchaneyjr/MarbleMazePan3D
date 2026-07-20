@@ -174,7 +174,8 @@ namespace DragonBoxAlgebra.Core
         }
 
         /// <summary>
-        /// Ch9 win: x alone = letter expression (letter ± constants, optional /coeff), e.g. x = (b−2)/3.
+        /// Ch9/Ch10 win: x alone = letter expression (one or more letters ± constants, optional /coeff),
+        /// e.g. x = (b−2)/3 or x = (6·a + r − b − 5)/3.
         /// </summary>
         public static bool IsVariableXEqualsLetterExpression(AlgebraBoard board)
         {
@@ -217,7 +218,7 @@ namespace DragonBoxAlgebra.Core
                 return false;
             }
 
-            return letterCount == 1;
+            return letterCount >= 1;
         }
 
         /// <summary>Red box alone on one side with the other side empty.</summary>
