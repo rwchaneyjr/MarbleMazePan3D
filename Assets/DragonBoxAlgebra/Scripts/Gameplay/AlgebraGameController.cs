@@ -756,20 +756,25 @@ namespace DragonBoxAlgebra.Gameplay
 
         /// <summary>
         /// 151–165 only after both sides have the divisor under the line:
-        /// coeff/coeff → 1; even dice (6/3) → reduced integer; uneven (7/2) stays a fraction.
+        /// coeff/coeff → 1; even dice once (8/2 → 4); uneven (7/2) stays a fraction.
         /// </summary>
         private void TryAutoResolveAfterBothDenominators(int divisor)
         {
-            if (!UsesMultiplyAdditionLevels)
+            if (!UsesMultiplyAdditionLevels || divisor <= 0)
             {
                 return;
             }
 
             TryResolveMatchingCoefficientOnSide("Left", divisor);
             TryResolveMatchingCoefficientOnSide("Right", divisor);
-            TryAutoReduceEvenDiceOnSide("Left", divisor);
-            TryAutoReduceEvenDiceOnSide("Right", divisor);
+
+            // One division by the coefficient on each side — 8/2 → 4 (not left as 8/2).
+            ReduceEvenDiceOnce("Left", divisor);
+            ReduceEvenDiceOnce("Right", divisor);
+
             TryClearDenominatorsIfResolved();
+            HandChanged?.Invoke();
+            BoardChanged?.Invoke();
             FractionGuideChanged?.Invoke();
             CheckWin();
         }
@@ -797,26 +802,24 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
-                // Skip PushUndo — already pushed in TryCompleteDenominator.
                 side.Cards.RemoveAt(i);
                 side.Cards.Insert(i, new BoardCard(CardKind.One, 1));
                 ResolveOneIdentitiesOnSide(sideName);
                 Moves.RegisterCombine();
                 MessageChanged?.Invoke($"{divisor}/{divisor} → 1");
-                TryClearDenominatorsIfResolved();
-                HandChanged?.Invoke();
-                BoardChanged?.Invoke();
-                FractionGuideChanged?.Invoke();
                 return;
             }
         }
 
-        /// <summary>151–165: 6/3 → 2 when even; leave uneven dice as n/d.</summary>
-        private void TryAutoReduceEvenDiceOnSide(string sideName, int divisor)
+        /// <summary>
+        /// 151–165: divide dice by the coefficient once when even — 8/2 → 4, then clear that line.
+        /// Uneven (7/2) is left alone as a fraction.
+        /// </summary>
+        private bool ReduceEvenDiceOnce(string sideName, int divisor)
         {
             if (divisor <= 0)
             {
-                return;
+                return false;
             }
 
             BoardSide side = Board.GetSide(sideName);
@@ -835,26 +838,31 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
-                // Even reduction only (6/3 → 2). Uneven stays fraction above the line.
-                if (target.Value <= divisor || target.Value % divisor != 0)
+                // Must divide evenly and be a real quotient (8/2 → 4). Skip uneven fractions.
+                if (target.Value % divisor != 0)
                 {
                     continue;
                 }
 
                 int newValue = target.Value / divisor;
+                if (newValue <= 0)
+                {
+                    continue;
+                }
+
+                // Same value (2/2 as lone dice) → 1; larger (8/2) → 4.
                 side.Cards[i] = new BoardCard(
                     target.Kind == CardKind.NegativeConstant
                         ? CardKind.NegativeConstant
                         : CardKind.PositiveConstant,
                     newValue);
-                // Division finished — clear the line under this reduced integer (6/3 → 2, not 2/3).
                 side.ClearDenominator();
                 Moves.RegisterCombine();
                 MessageChanged?.Invoke($"{target.Value}/{divisor} → {newValue}");
-                HandChanged?.Invoke();
-                BoardChanged?.Invoke();
-                return;
+                return true;
             }
+
+            return false;
         }
 
         /// <summary>
@@ -925,7 +933,7 @@ namespace DragonBoxAlgebra.Gameplay
                 return true;
             }
 
-            // dice/d → integer divide when even; otherwise keep as fraction n/d (e.g. 9/2).
+            // dice/d → integer once when even (8/2 → 4); otherwise keep fraction (7/2).
             if (target.Value % divisor != 0)
             {
                 Moves.RegisterCombine();
@@ -942,12 +950,14 @@ namespace DragonBoxAlgebra.Gameplay
             side.Cards[boardIndex] = new BoardCard(
                 target.Kind == CardKind.NegativeConstant ? CardKind.NegativeConstant : CardKind.PositiveConstant,
                 newValue);
+            side.ClearDenominator();
 
             Moves.RegisterCombine();
             MessageChanged?.Invoke($"{target.Value}/{divisor} → {newValue}");
             TryClearDenominatorsIfResolved();
             HandChanged?.Invoke();
             BoardChanged?.Invoke();
+            FractionGuideChanged?.Invoke();
             CheckWin();
             return true;
         }
@@ -969,9 +979,28 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            // 151–165: clear denom under x after a/a→1; KEEP denom under dice for fractions like 9/2.
+            // 151–165: never leave an even fraction hanging (8/2 must become 4).
+            ForceReduceEvenDenominators("Left");
+            ForceReduceEvenDenominators("Right");
             MaybeClearSideDenominator("Left");
             MaybeClearSideDenominator("Right");
+        }
+
+        private void ForceReduceEvenDenominators(string sideName)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            if (!side.HasDenominator)
+            {
+                return;
+            }
+
+            int divisor = side.Denominator.Value.Value;
+            if (divisor <= 0)
+            {
+                return;
+            }
+
+            ReduceEvenDiceOnce(sideName, divisor);
         }
 
         private void MaybeClearSideDenominator(string sideName)
@@ -983,18 +1012,42 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             int divisor = side.Denominator.Value.Value;
-            if (SideStillNeedsDenominator(side, divisor))
-            {
-                return;
-            }
 
-            // Uneven fraction (9/2): keep the line + denominator — that IS the answer.
+            // Uneven fraction (7/2): keep the line + denominator — that IS the answer.
             if (SideHasUnevenFraction(side, divisor))
             {
                 return;
             }
 
+            // Coefficient a·x still needs a/a → 1.
+            if (SideStillNeedsCoefficientCancel(side, divisor))
+            {
+                return;
+            }
+
+            // Even dice already reduced (or nothing left to divide) — drop the line.
             side.ClearDenominator();
+        }
+
+        private static bool SideStillNeedsCoefficientCancel(BoardSide side, int divisor)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                bool isCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+                if (isCoefficient && card.Value == divisor)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool SideHasUnevenFraction(BoardSide side, int divisor)
