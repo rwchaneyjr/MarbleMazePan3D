@@ -397,13 +397,14 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
-        /// <summary>Jump to the first level of the next distinct problem type (⏭ button).</summary>
+        /// <summary>Jump to the first level of the next distinct problem type (Browse).</summary>
         public void SkipToNextProblemType()
         {
             int nextIndex = ChapterLevelGenerator.GetNextProblemTypeLevelIndex(_levelIndex);
             LoadLevel(nextIndex);
             int global = nextIndex + 1;
-            MessageChanged?.Invoke($"Skipped to next problem type — level {global}.");
+            int chapter = ChapterLevelGenerator.ChapterForLevelIndex(nextIndex);
+            MessageChanged?.Invoke($"Browsed to Ch{chapter} · {global}.");
         }
 
         public void LoadRandomLevel()

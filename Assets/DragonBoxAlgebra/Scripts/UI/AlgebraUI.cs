@@ -12,6 +12,7 @@ namespace DragonBoxAlgebra.UI
         private Text _progressText;
         private Text _messageText;
         private Text _spriteDebugText;
+        private Text _browseButtonLabel;
         private GameObject _orderIntroPanel;
         private LevelCompleteView _completeView;
         private RectTransform _dragRoot;
@@ -46,19 +47,32 @@ namespace DragonBoxAlgebra.UI
             if (total < expected)
             {
                 _progressText.text =
-                    $"{current}/{total} OLD — need {expected}!  ·  Ch{chapter}";
+                    $"Ch{chapter} · {current}/{total} OLD — need {expected}!";
                 _progressText.color = new Color(1f, 0.45f, 0.45f);
             }
             else
             {
-                _progressText.text = $"{current}/{total}  ·  Ch{chapter}";
+                _progressText.text = $"Ch{chapter} · {current}/{total}";
                 _progressText.color = Color.white;
             }
 
             _titleText.text = $"{Controller.CurrentLevel.Title}  •  {CreatureArt.ThemeName}";
+            RefreshBrowseButtonLabel(current);
             _completeView.Hide();
             SetOrderIntroVisible(Controller.IsOrderIntroVisible);
             RefreshSpriteDebugBanner();
+        }
+
+        private void RefreshBrowseButtonLabel(int currentGlobalLevel)
+        {
+            if (_browseButtonLabel == null)
+            {
+                return;
+            }
+
+            int nextGlobal = ChapterLevelGenerator.GetNextProblemTypeStartLevel(currentGlobalLevel);
+            int nextChapter = ChapterLevelGenerator.ChapterForLevelIndex(nextGlobal - 1);
+            _browseButtonLabel.text = $"Browse  Ch{nextChapter} · {nextGlobal}";
         }
 
         private void OnOrderIntroVisibilityChanged(bool visible) => SetOrderIntroVisible(visible);
@@ -170,7 +184,8 @@ namespace DragonBoxAlgebra.UI
             _orderIntroPanel = CreateOrderIntroPanel(background.transform);
             _orderIntroPanel.SetActive(false);
 
-            CreateLabeledButton(background.transform, "Browse", new Vector2(0.08f, 0.92f), OnBrowseClicked, 120f);
+            CreateLabeledButton(background.transform, "Browse", new Vector2(0.10f, 0.92f), OnBrowseClicked, 168f,
+                out _browseButtonLabel);
             CreateLabeledButton(background.transform, "Reset Problem", new Vector2(0.90f, 0.92f), OnResetProblemClicked,
                 168f);
 
@@ -284,7 +299,7 @@ namespace DragonBoxAlgebra.UI
         }
 
         private static Button CreateLabeledButton(Transform parent, string label, Vector2 anchor,
-            UnityEngine.Events.UnityAction onClick, float width = 120f)
+            UnityEngine.Events.UnityAction onClick, float width = 120f, out Text labelText)
         {
             var go = new GameObject(label.Replace(" ", "") + "Button", typeof(RectTransform), typeof(Image),
                 typeof(Button));
@@ -301,11 +316,15 @@ namespace DragonBoxAlgebra.UI
 
             var button = go.GetComponent<Button>();
             button.onClick.AddListener(onClick);
-            var labelText = CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 16,
+            labelText = CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 15,
                 TextAnchor.MiddleCenter);
             labelText.fontStyle = FontStyle.Bold;
             return button;
         }
+
+        private static Button CreateLabeledButton(Transform parent, string label, Vector2 anchor,
+            UnityEngine.Events.UnityAction onClick, float width = 120f) =>
+            CreateLabeledButton(parent, label, anchor, onClick, width, out _);
 
         private static Button CreateButton(Transform parent, string label, Vector2 anchor, UnityEngine.Events.UnityAction onClick)
         {
