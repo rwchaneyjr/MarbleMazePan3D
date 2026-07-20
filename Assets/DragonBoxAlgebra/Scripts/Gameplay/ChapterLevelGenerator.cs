@@ -41,6 +41,9 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>First global level number (1-based) for Chapter 8 / Multiply + Addition.</summary>
         public const int Chapter8StartLevel = Chapter7StartLevel + Chapter7LevelCount;
 
+        /// <summary>Last global level number (1-based) for Chapter 8 (151–165). Do not extend past this.</summary>
+        public const int Chapter8EndLevel = Chapter8StartLevel + Chapter8LevelCount - 1;
+
         /// <summary>Ch7 levels 1–6: x + sea creature light/dark images.</summary>
         public const int Chapter7SeaXLevelCount = 6;
 
@@ -60,7 +63,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-151-165-single-digit-rhs";
+        public const string CurriculumVersion = "2026-07-151-165-only-fraction-lines";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -77,10 +80,11 @@ namespace DragonBoxAlgebra.Gameplay
 
         public static bool UsesPlusBetweenBoardTiles(int globalLevel) =>
             (globalLevel >= PlusBetweenTilesStartLevel && globalLevel <= PlusBetweenTilesEndLevel)
-            || (globalLevel >= Chapter8StartLevel && globalLevel <= TotalLevels);
+            || (globalLevel >= Chapter8StartLevel && globalLevel <= Chapter8EndLevel);
 
+        /// <summary>Multiply+add divide UI/rules — ONLY levels 151–165. Never earlier chapters.</summary>
         public static bool UsesMultiplyAddition(int globalLevel) =>
-            globalLevel >= Chapter8StartLevel && globalLevel <= TotalLevels;
+            globalLevel >= Chapter8StartLevel && globalLevel <= Chapter8EndLevel;
 
         /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
         public const int OppositeExtraTileStartLevel = 40;

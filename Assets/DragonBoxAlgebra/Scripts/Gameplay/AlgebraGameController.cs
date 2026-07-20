@@ -746,11 +746,65 @@ namespace DragonBoxAlgebra.Gameplay
             Moves.RegisterCombine();
             int d = holeSide.Denominator.Value.Value;
             MessageChanged?.Invoke(
-                $"Both sides ÷{d}. Tap {d}/{d} → 1, tap the dice → dice/{d}. Result: x = dice/{d}.");
+                $"Both sides ÷{d}. {d}/{d} → 1 under the coefficient; dice ÷{d} on the other side.");
             HandChanged?.Invoke();
             BoardChanged?.Invoke();
             FractionGuideChanged?.Invoke();
+            TryAutoResolveCoefficientAfterDivide(d);
             return true;
+        }
+
+        /// <summary>
+        /// After both sides have the divisor under the line (151–165 only): merge coeff/coeff → 1
+        /// (identity One marker, not addition swirl).
+        /// </summary>
+        private void TryAutoResolveCoefficientAfterDivide(int divisor)
+        {
+            if (!UsesMultiplyAdditionLevels)
+            {
+                return;
+            }
+
+            TryResolveMatchingCoefficientOnSide("Left", divisor);
+            TryResolveMatchingCoefficientOnSide("Right", divisor);
+        }
+
+        private void TryResolveMatchingCoefficientOnSide(string sideName, int divisor)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard target = side.Cards[i];
+                if (target.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                if (target.Value != divisor)
+                {
+                    continue;
+                }
+
+                bool wasCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+                if (!wasCoefficient)
+                {
+                    continue;
+                }
+
+                // Skip PushUndo — already pushed in TryCompleteDenominator.
+                side.Cards.RemoveAt(i);
+                side.Cards.Insert(i, new BoardCard(CardKind.One, 1));
+                ResolveOneIdentitiesOnSide(sideName);
+                Moves.RegisterCombine();
+                MessageChanged?.Invoke($"{divisor}/{divisor} → 1");
+                TryClearDenominatorsIfResolved();
+                HandChanged?.Invoke();
+                BoardChanged?.Invoke();
+                FractionGuideChanged?.Invoke();
+                CheckWin();
+                return;
+            }
         }
 
         /// <summary>
@@ -1060,6 +1114,11 @@ namespace DragonBoxAlgebra.Gameplay
 
             HandChanged?.Invoke();
             BoardChanged?.Invoke();
+            if (UsesMultiplyAdditionLevels)
+            {
+                FractionGuideChanged?.Invoke();
+            }
+
             CheckWin();
             return true;
         }
@@ -1368,12 +1427,9 @@ namespace DragonBoxAlgebra.Gameplay
                 }
 
                 BoardCard handCard = _hand[i];
-                if (handCard.Kind != CardKind.PositiveConstant)
-                {
-                    continue;
-                }
-
-                if (BoardHasCoefficient(handCard.Value))
+                // Positive face ready to drop under the line (151–165 only).
+                if (handCard.Kind == CardKind.PositiveConstant
+                    && BoardHasCoefficient(handCard.Value))
                 {
                     return handCard.Value;
                 }
@@ -1383,11 +1439,16 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// Show a line under the coefficient (5 of 5·x) and under the dice so you can
-        /// place 5 under both → (5·x)/5 and dice/5 → x = dice/5.
+        /// Show a line under coeff·x and under the dice (151–165 only) so you can
+        /// place the coeff under both → (a·x)/a and dice/a → x = dice/a.
         /// </summary>
         public bool ShouldShowFractionLineUnder(string sideName, int boardIndex)
         {
+            if (!UsesMultiplyAdditionLevels)
+            {
+                return false;
+            }
+
             int? divisor = GetActiveFractionDivisor();
             if (divisor == null)
             {
@@ -1401,27 +1462,47 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             BoardCard card = side.Cards[boardIndex];
-            if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
-            {
-                return false;
-            }
-
-            bool isCoefficient = boardIndex + 1 < side.Cards.Count
+            bool isNumber = card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant;
+            bool isCoefficient = isNumber
+                && boardIndex + 1 < side.Cards.Count
                 && VariableGoalRules.IsVariableXGoal(side.Cards[boardIndex + 1]);
 
-            // Line under the 5 of 5·x
+            // Line under the a of a·x
             if (isCoefficient && card.Value == divisor.Value)
             {
                 return true;
             }
 
+            // Line continues under the x of a·x (same product term).
+            if (VariableGoalRules.IsVariableXGoal(card)
+                && boardIndex > 0
+                && side.Cards[boardIndex - 1].Kind is (CardKind.PositiveConstant or CardKind.NegativeConstant)
+                && side.Cards[boardIndex - 1].Value == divisor.Value)
+            {
+                return true;
+            }
+
             // Line under the dice (side without x) — not under the addend beside x.
-            if (!isCoefficient && !SideHasVariableX(side))
+            if (isNumber && !isCoefficient && !SideHasVariableX(side))
             {
                 return true;
             }
 
             return false;
+        }
+
+        /// <summary>True when this board index is the start of coeff·x for the active divisor (151–165).</summary>
+        public bool IsFractionProductAnchor(string sideName, int boardIndex)
+        {
+            if (!UsesMultiplyAdditionLevels || !ShouldShowFractionLineUnder(sideName, boardIndex))
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            return boardIndex + 1 < side.Cards.Count
+                && side.Cards[boardIndex].Kind is CardKind.PositiveConstant or CardKind.NegativeConstant
+                && VariableGoalRules.IsVariableXGoal(side.Cards[boardIndex + 1]);
         }
 
         private static bool SideHasVariableX(BoardSide side)
@@ -1450,8 +1531,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            // Only positive face places under the line (flip -5 → 5 first).
-            if (handCard.Kind != CardKind.PositiveConstant)
+            // Coefficient of a·x: dragging it shows lines under a·x and the dice (151–165 only).
+            if (!BoardHasCoefficient(handCard.Value))
             {
                 _dragFractionDivisor = null;
                 FractionGuideChanged?.Invoke();
@@ -1460,8 +1541,16 @@ namespace DragonBoxAlgebra.Gameplay
 
             _dragFractionDivisor = handCard.Value;
             FractionGuideChanged?.Invoke();
-            MessageChanged?.Invoke(
-                $"Drop {handCard.Value} under the line below {handCard.Value}·x and under the dice.");
+            if (handCard.Kind == CardKind.PositiveConstant)
+            {
+                MessageChanged?.Invoke(
+                    $"Drop {handCard.Value} under the line below {handCard.Value}·x and under the dice.");
+            }
+            else
+            {
+                MessageChanged?.Invoke(
+                    $"Flip to +{handCard.Value}, then drop it under the line below {handCard.Value}·x and under the dice.");
+            }
         }
 
         public void EndFractionDrag()

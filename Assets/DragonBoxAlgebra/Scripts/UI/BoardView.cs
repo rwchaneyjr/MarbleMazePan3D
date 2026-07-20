@@ -441,10 +441,14 @@ namespace DragonBoxAlgebra.UI
             for (int i = panel.childCount - 1; i >= 0; i--)
             {
                 Transform child = panel.GetChild(i);
-                if (child.GetComponent<BoardDropZone>() == null)
+                // Keep the panel drop zone and Ch8 (151–165) fraction denom slots across rebuilds.
+                if (child.GetComponent<BoardDropZone>() != null
+                    || child.GetComponent<DenominatorDropZone>() != null)
                 {
-                    Destroy(child.gameObject);
+                    continue;
                 }
+
+                Destroy(child.gameObject);
             }
 
             var horizontalLayout = panel.GetComponent<HorizontalLayoutGroup>();
@@ -460,7 +464,11 @@ namespace DragonBoxAlgebra.UI
             }
 
             horizontalLayout.spacing = layout.Spacing;
-            horizontalLayout.padding = new RectOffset(layout.Padding, layout.Padding, layout.Padding, layout.Padding);
+            // Extra bottom padding so fraction lines + slots under a·x / dice stay visible (151–165 only).
+            int bottomPad = _controller.UsesMultiplyAdditionLevels
+                ? Mathf.Max(layout.Padding, 72)
+                : layout.Padding;
+            horizontalLayout.padding = new RectOffset(layout.Padding, layout.Padding, layout.Padding, bottomPad);
 
             bool usePlus = _controller.UsesPlusBetweenBoardTiles;
             bool useMultiply = _controller.UsesMultiplyAdditionLevels;
