@@ -63,7 +63,51 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-151-165-eight-over-two-is-four";
+        public const string CurriculumVersion = "2026-07-next-skips-problem-types";
+
+        /// <summary>
+        /// First global level (1-based) of each distinct problem type.
+        /// Next/Skip jumps to these instead of every individual puzzle.
+        /// </summary>
+        public static readonly int[] ProblemTypeStartLevels =
+        {
+            1,   // Ch1 Matching Pairs
+            13,  // Ch2 Opposite Cards
+            29,  // Ch3 Balance Sides
+            44,  // Ch4 Move Cards
+            63,  // Ch5 Variable Images
+            81,  // Ch6 x and Variables
+            101, // Ch7 sea + x
+            107, // Ch7 variable letters
+            113, // Ch7 mixed + between tiles
+            129, // Ch7 copies of mixed
+            140, // Ch7 numbers + letter opposite x
+            151  // Ch8 multiply + add
+        };
+
+        /// <summary>
+        /// Next problem-type start after the current global level (1-based).
+        /// If already on/after the last type, wraps to level 1.
+        /// </summary>
+        public static int GetNextProblemTypeStartLevel(int currentGlobalLevel1Based)
+        {
+            for (int i = 0; i < ProblemTypeStartLevels.Length; i++)
+            {
+                if (ProblemTypeStartLevels[i] > currentGlobalLevel1Based)
+                {
+                    return ProblemTypeStartLevels[i];
+                }
+            }
+
+            return ProblemTypeStartLevels[0];
+        }
+
+        /// <summary>0-based level index for the next problem type after current 0-based index.</summary>
+        public static int GetNextProblemTypeLevelIndex(int currentLevelIndex0Based)
+        {
+            int nextGlobal = GetNextProblemTypeStartLevel(currentLevelIndex0Based + 1);
+            return Math.Clamp(nextGlobal - 1, 0, TotalLevels - 1);
+        }
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;

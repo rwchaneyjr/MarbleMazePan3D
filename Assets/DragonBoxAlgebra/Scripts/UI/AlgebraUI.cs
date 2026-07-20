@@ -89,6 +89,11 @@ namespace DragonBoxAlgebra.UI
             Controller.LoadNextLevel();
         }
 
+        public void OnSkipTypeClicked()
+        {
+            Controller.SkipToNextProblemType();
+        }
+
         public void OnUndoClicked()
         {
             Controller.Undo();
@@ -163,6 +168,7 @@ namespace DragonBoxAlgebra.UI
 
             CreateRoundButton(background.transform, "Menu", new Vector2(0.06f, 0.92f), OnRestartClicked, "⬆");
             CreateRoundButton(background.transform, "Random", new Vector2(0.12f, 0.92f), OnRandomClicked, "🎲");
+            CreateRoundButton(background.transform, "SkipType", new Vector2(0.18f, 0.92f), OnSkipTypeClicked, "⏭");
             CreateRoundButton(background.transform, "Undo", new Vector2(0.88f, 0.92f), OnUndoClicked, "↩");
             CreateRoundButton(background.transform, "Rewind", new Vector2(0.94f, 0.92f), OnRewindClicked, "⏪");
 

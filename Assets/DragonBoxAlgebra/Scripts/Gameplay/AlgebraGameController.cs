@@ -341,15 +341,15 @@ namespace DragonBoxAlgebra.Gameplay
 
         public void LoadNextLevel()
         {
-            if (_levelIndex + 1 < LevelLibrary.Levels.Count)
-            {
-                LoadLevel(_levelIndex + 1);
-            }
-            else
-            {
-                LoadRandomLevel();
-            }
+            // Skip to the first puzzle of the next problem type (not every individual level).
+            int nextIndex = ChapterLevelGenerator.GetNextProblemTypeLevelIndex(_levelIndex);
+            LoadLevel(nextIndex);
+            int global = nextIndex + 1;
+            MessageChanged?.Invoke($"Skipped to next problem type — level {global}.");
         }
+
+        /// <summary>Same as Next: jump to the first level of the next distinct problem type.</summary>
+        public void SkipToNextProblemType() => LoadNextLevel();
 
         public void LoadRandomLevel()
         {
