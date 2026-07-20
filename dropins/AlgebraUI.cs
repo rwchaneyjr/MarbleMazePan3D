@@ -100,6 +100,12 @@ namespace DragonBoxAlgebra.UI
             Controller.SkipToNextProblemType();
         }
 
+        public void OnNextClicked()
+        {
+            _completeView.Hide();
+            Controller.LoadNextLevel();
+        }
+
         public void OnUndoClicked()
         {
             Controller.Undo();
