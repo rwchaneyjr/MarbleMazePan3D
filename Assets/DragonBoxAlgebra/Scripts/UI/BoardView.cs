@@ -323,17 +323,6 @@ namespace DragonBoxAlgebra.UI
             RebuildSide(_rightPanel, _controller.Board.Right, "Right", rightLayout);
             RefreshDenominatorZones();
 
-            if (_controller.HasPendingBalance)
-            {
-                BalancePending pending = _controller.PendingBalance;
-                RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
-                TileLayout holeLayout = pending.HoleSide == "Left" ? leftLayout : rightLayout;
-                BalanceHoleWidget hole = BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card,
-                    holeLayout.Width, holeLayout.Height);
-                int holeSlot = Mathf.Clamp(pending.HoleInsertIndex, 0, holePanel.childCount - 1);
-                hole.transform.SetSiblingIndex(holeSlot);
-            }
-
             // SwirlOnly markers (cards already gone) still append at end of their side.
             BuildSwirlOnlyMarkers(_leftPanel, "Left", leftLayout);
             BuildSwirlOnlyMarkers(_rightPanel, "Right", rightLayout);
@@ -387,6 +376,11 @@ namespace DragonBoxAlgebra.UI
                 {
                     visibleCards++;
                 }
+            }
+
+            if (_controller.HasPendingBalance && _controller.PendingBalance.HoleSide == sideName)
+            {
+                visibleCards++;
             }
 
             return visibleCards > 1 ? visibleCards - 1 : 0;
@@ -503,8 +497,26 @@ namespace DragonBoxAlgebra.UI
             BoardCard? previousCard = null;
             var placedMarkerIndexes = new HashSet<int>();
 
+            int holeInsert = -1;
+            if (_controller.HasPendingBalance && _controller.PendingBalance.HoleSide == sideName)
+            {
+                holeInsert = Mathf.Clamp(_controller.PendingBalance.HoleInsertIndex, 0, side.Cards.Count);
+            }
+
             for (int i = 0; i < side.Cards.Count; i++)
             {
+                if (i == holeInsert)
+                {
+                    if (usePlus && placedCard)
+                    {
+                        CreatePlusSeparator(panel, layout.Height);
+                    }
+
+                    PlaceBalanceHole(panel, sideName, layout);
+                    placedCard = true;
+                    previousCard = null;
+                }
+
                 BoardCard card = side.Cards[i];
                 int markerIndex = FindPendingMarkerIndex(sideName, card.Id);
                 if (markerIndex >= 0)
@@ -551,6 +563,22 @@ namespace DragonBoxAlgebra.UI
                 placedCard = true;
                 previousCard = card;
             }
+
+            if (holeInsert == side.Cards.Count)
+            {
+                if (usePlus && placedCard)
+                {
+                    CreatePlusSeparator(panel, layout.Height);
+                }
+
+                PlaceBalanceHole(panel, sideName, layout);
+            }
+        }
+
+        private void PlaceBalanceHole(RectTransform panel, string sideName, TileLayout layout)
+        {
+            BalancePending pending = _controller.PendingBalance;
+            BalanceHoleWidget.Create(panel, _controller, sideName, pending.Card, layout.Width, layout.Height);
         }
 
         private void RefreshDenominatorZones()

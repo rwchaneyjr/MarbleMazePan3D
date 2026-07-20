@@ -1209,13 +1209,14 @@ namespace DragonBoxAlgebra.Gameplay
 
             string holeSide = sideName == "Left" ? "Right" : "Left";
             BoardCard template = handCard.Clone();
+            // Show blank before the dice: ? + 7 (then −3 into ? → 4).
             _pendingBalance = new BalancePending
             {
                 Card = template,
                 PlacedSide = sideName,
                 PlacedIndex = insertAt,
                 HandIndex = handIndex,
-                HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
+                HoleInsertIndex = 0
             };
             _activeHandSlot = handIndex;
             _spentHandIndices.Remove(handIndex);

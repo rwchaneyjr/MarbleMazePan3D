@@ -885,6 +885,18 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
+                // 151–165: dropping the balancing tile onto the dice side also fills the blank
+                // (? + 7 with −3 → 4).
+                CardWidget boardOnHoleSide = FindAnyBoardCardUnderPointer(eventData);
+                if (boardOnHoleSide != null
+                    && boardOnHoleSide.SideName == holeSide
+                    && _controller.TryPlayFromHand(Index, holeSide))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    return;
+                }
+
                 BoardDropZone boardZone = FindBoardZone(eventData);
                 string pendingSide = boardZone != null ? boardZone.SideName : SideUnderPointer(eventData);
                 if (pendingSide == holeSide && _controller.TryPlayFromHand(Index, holeSide))
