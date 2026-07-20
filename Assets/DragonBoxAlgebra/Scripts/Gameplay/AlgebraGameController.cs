@@ -1113,10 +1113,17 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             PushUndo();
-            _pendingBalance = null;
 
-            // Ch8: cancel addend to 0 on this side only — leave the dice (e.g. 9) so answer is 9/2.
-            // Do NOT subtract from the other side.
+            // 151–165: drop −1 onto +1 → cancel on this side, blank ? on the other side to drag into.
+            if (UsesMultiplyAdditionLevels
+                && CombineRules.IsDiceOppositePair(handCard, targetCard)
+                && CombineRules.UsesAsteriskCancel(handCard, targetCard))
+            {
+                return TryStartMultiplyCancelWithBalanceHole(handIndex, sideName, targetBoardIndex, handCard,
+                    targetCard);
+            }
+
+            _pendingBalance = null;
 
             if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
             {
@@ -1140,9 +1147,8 @@ namespace DragonBoxAlgebra.Gameplay
                 _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
                 string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
-                MessageChanged?.Invoke(UsesMultiplyAdditionLevels
-                    ? $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol}. Now divide both sides."
-                    : $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
+                MessageChanged?.Invoke(
+                    $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
             }
             else
             {
@@ -1173,6 +1179,53 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             CheckWin();
+            return true;
+        }
+
+        /// <summary>
+        /// 151–165 only: cancel addend on this side (0), and open a blank ? on the other side
+        /// so the same hand tile is dragged in to balance.
+        /// </summary>
+        private bool TryStartMultiplyCancelWithBalanceHole(int handIndex, string sideName,
+            int targetBoardIndex, BoardCard handCard, BoardCard targetCard)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            int insertAt = Math.Clamp(targetBoardIndex + 1, 0, side.Cards.Count);
+            side.Cards.Insert(insertAt, handCard.CloneForPlacement());
+            BoardCard placed = side.Cards[insertAt];
+            if (!TryCreateCancelMarker(sideName, targetCard.Id, placed.Id))
+            {
+                CombineRules.RemovePairById(side, targetCard.Id, placed.Id);
+                CombineOccurred?.Invoke(new CombineEvent
+                {
+                    SideName = sideName,
+                    Action = CombineActionType.OppositeCancel,
+                    IndexA = targetBoardIndex,
+                    IndexB = insertAt
+                });
+            }
+
+            Moves.RegisterCombine();
+
+            string holeSide = sideName == "Left" ? "Right" : "Left";
+            BoardCard template = handCard.Clone();
+            _pendingBalance = new BalancePending
+            {
+                Card = template,
+                PlacedSide = sideName,
+                PlacedIndex = insertAt,
+                HandIndex = handIndex,
+                HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
+            };
+            _activeHandSlot = handIndex;
+            _spentHandIndices.Remove(handIndex);
+
+            string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
+            MessageChanged?.Invoke(
+                $"{cancelSymbol} on this side — drag the same tile into the blank ? on the other side.");
+            HandChanged?.Invoke();
+            BoardChanged?.Invoke();
+            FractionGuideChanged?.Invoke();
             return true;
         }
 
@@ -1275,7 +1328,17 @@ namespace DragonBoxAlgebra.Gameplay
                 insertIndex = balancedSide.Cards.Count;
             }
 
-            balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
+            // 151–165: fold the balanced constant into the dice (9 + −1 → 8), not a stray tile.
+            if (UsesMultiplyAdditionLevels
+                && template.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+            {
+                ApplyConstantToSide(balancedSide, template);
+            }
+            else
+            {
+                balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
+            }
+
             int holePlacedIndex = insertIndex;
             string placedSide = _pendingBalance.PlacedSide;
             int placedBoardIndex = _pendingBalance.PlacedIndex;
@@ -1302,11 +1365,18 @@ namespace DragonBoxAlgebra.Gameplay
             HandChanged?.Invoke();
 
             Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke(UsesManualPairMerge
-                ? $"Balanced! Drag {LightTerm} onto {DarkTerm} on the same side to make *."
-                : "Balanced!");
+            MessageChanged?.Invoke(UsesMultiplyAdditionLevels
+                ? "Balanced both sides. Now divide with the coefficient."
+                : UsesManualPairMerge
+                    ? $"Balanced! Drag {LightTerm} onto {DarkTerm} on the same side to make *."
+                    : "Balanced!");
             PruneInvalidCancelMarkers();
             ResolveCombines();
+            if (UsesMultiplyAdditionLevels)
+            {
+                FractionGuideChanged?.Invoke();
+            }
+
             return true;
         }
 
@@ -2002,6 +2072,13 @@ namespace DragonBoxAlgebra.Gameplay
         {
             for (int i = 0; i < _hand.Count; i++)
             {
+                // Keep the tile free while a blank ? still needs this same hand card (151–165 balance).
+                if (_pendingBalance != null && _pendingBalance.HandIndex == i)
+                {
+                    _spentHandIndices.Remove(i);
+                    continue;
+                }
+
                 // Numbers use matching +/- board constants (not light-sea count).
                 // Sea / variable tiles use HandTileStillNeededOnBoard as before.
                 if (HandTileStillNeededOnBoard(i))
@@ -2020,6 +2097,12 @@ namespace DragonBoxAlgebra.Gameplay
             if (handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;
+            }
+
+            // 151–165: blank ? still waiting for this tile.
+            if (_pendingBalance != null && _pendingBalance.HandIndex == handIndex)
+            {
+                return true;
             }
 
             BoardCard handCard = _hand[handIndex];
