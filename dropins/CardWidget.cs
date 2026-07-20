@@ -896,6 +896,33 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            // 151–165 ONLY: drop coefficient under the ? on either side (coeff·x and dice).
+            // Must run before parking the tile on the board with TryPlayFromHand.
+            if (_controller.UsesMultiplyAdditionLevels)
+            {
+                CardWidget fractionTarget = FindFractionLineTarget(eventData);
+                if (fractionTarget != null && TryPlaceDenominatorUnderCard(fractionTarget))
+                {
+                    return;
+                }
+
+                DenominatorDropZone denomZone = FindDenominatorZone(eventData);
+                if (denomZone != null
+                    && _controller.TryPlaceDenominatorFromHand(Index, denomZone.SideName))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    return;
+                }
+
+                // Also accept drop on any board card that currently shows a fraction line.
+                CardWidget lineCard = FindHandBoardTarget(eventData) ?? FindAnyBoardCardUnderPointer(eventData);
+                if (lineCard != null && TryPlaceDenominatorUnderCard(lineCard))
+                {
+                    return;
+                }
+            }
+
             // Over a board tile: fill ?, start balance on that side, or ignore non-opposites.
             // Addition levels (129–139) already have tiles — empty-padding-only was locking drops.
             CardWidget boardTarget = FindHandBoardTarget(eventData);
@@ -922,30 +949,25 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Drop onto / under a card that has a fraction guide (5 of 5·x, or the dice).
-            CardWidget fractionTarget = FindFractionLineTarget(eventData);
-            if (fractionTarget != null
-                && TryPlaceDenominatorUnderCard(fractionTarget))
-            {
-                return;
-            }
-
-            DenominatorDropZone denomZone = FindDenominatorZone(eventData);
-            if (denomZone != null
-                && _controller.UsesMultiplyAdditionLevels
-                && _controller.TryPlaceDenominatorFromHand(Index, denomZone.SideName))
-            {
-                MarkHandPlayHandled();
-                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
-                return;
-            }
-
             BoardDropZone zone = FindBoardZone(eventData);
             string dropSide = zone != null ? zone.SideName : SideUnderPointer(eventData);
             if (dropSide != null)
             {
                 TryPlayHandOnSide(dropSide);
             }
+        }
+
+        private CardWidget FindAnyBoardCardUnderPointer(PointerEventData eventData)
+        {
+            foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
+            {
+                if (widget != null && widget != this && widget.SideName != "Hand")
+                {
+                    return widget;
+                }
+            }
+
+            return null;
         }
 
         private static DenominatorDropZone FindDenominatorZone(PointerEventData eventData)
@@ -1268,6 +1290,12 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            // 151–165: dropping on / under a lined card places the divisor (both sides).
+            if (TryPlaceDenominatorUnderCard(target))
+            {
+                return;
+            }
+
             // With lines under both sides, dropping on a number resolves 3/3 → 1 or dice/3.
             if (_controller.UsesMultiplyAdditionLevels
                 && _controller.Board.Left.HasDenominator
@@ -1288,11 +1316,6 @@ namespace DragonBoxAlgebra.UI
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
 
-                return;
-            }
-
-            if (TryPlaceDenominatorUnderCard(target))
-            {
                 return;
             }
 

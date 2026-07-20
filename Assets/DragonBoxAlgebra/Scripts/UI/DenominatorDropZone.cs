@@ -140,7 +140,8 @@ namespace DragonBoxAlgebra.UI
             }
 
             BoardCard denom = side.Denominator.Value;
-            var cardGo = new GameObject("DenomCard", typeof(RectTransform), typeof(Image), typeof(Text));
+            // Image and Text cannot share one GameObject in Unity UI.
+            var cardGo = new GameObject("DenomCard", typeof(RectTransform), typeof(Image));
             cardGo.transform.SetParent(slot, false);
             var cardRect = cardGo.GetComponent<RectTransform>();
             cardRect.anchorMin = new Vector2(0.15f, 0f);
@@ -171,7 +172,14 @@ namespace DragonBoxAlgebra.UI
             }
             else
             {
-                var text = cardGo.GetComponent<Text>();
+                var textGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+                textGo.transform.SetParent(cardGo.transform, false);
+                var textRect = textGo.GetComponent<RectTransform>();
+                textRect.anchorMin = Vector2.zero;
+                textRect.anchorMax = Vector2.one;
+                textRect.offsetMin = Vector2.zero;
+                textRect.offsetMax = Vector2.zero;
+                var text = textGo.GetComponent<Text>();
                 text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 text.text = denom.Value.ToString();
                 text.fontSize = 36;
