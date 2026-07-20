@@ -95,15 +95,7 @@ namespace DragonBoxAlgebra.UI
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayWin();
         }
 
-        public void OnRestartClicked() => Controller.RestartLevel();
-
-        public void OnNextClicked()
-        {
-            _completeView.Hide();
-            Controller.LoadNextLevel();
-        }
-
-        public void OnSkipTypeClicked()
+        public void OnBrowseClicked()
         {
             Controller.SkipToNextProblemType();
         }
@@ -118,11 +110,6 @@ namespace DragonBoxAlgebra.UI
         {
             Controller.RewindLevel();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
-        }
-
-        public void OnRandomClicked()
-        {
-            Controller.LoadRandomLevel();
         }
 
         private void BuildUI()
@@ -183,9 +170,7 @@ namespace DragonBoxAlgebra.UI
             _orderIntroPanel = CreateOrderIntroPanel(background.transform);
             _orderIntroPanel.SetActive(false);
 
-            CreateRoundButton(background.transform, "Menu", new Vector2(0.06f, 0.92f), OnRestartClicked, "⬆");
-            CreateRoundButton(background.transform, "Random", new Vector2(0.12f, 0.92f), OnRandomClicked, "🎲");
-            CreateRoundButton(background.transform, "SkipType", new Vector2(0.18f, 0.92f), OnSkipTypeClicked, "⏭");
+            CreateLabeledButton(background.transform, "Browse", new Vector2(0.08f, 0.92f), OnBrowseClicked);
             CreateRoundButton(background.transform, "Undo", new Vector2(0.88f, 0.92f), OnUndoClicked, "↩");
             CreateRoundButton(background.transform, "Rewind", new Vector2(0.94f, 0.92f), OnRewindClicked, "⏪");
 
@@ -296,6 +281,27 @@ namespace DragonBoxAlgebra.UI
             text.alignment = alignment;
             text.color = Color.white;
             return text;
+        }
+
+        private static Button CreateLabeledButton(Transform parent, string label, Vector2 anchor,
+            UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject(label + "Button", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(120f, 48f);
+            var image = go.GetComponent<Image>();
+            image.sprite = SpriteFactory.RoundedButton;
+            image.type = Image.Type.Sliced;
+            image.color = new Color(0.82f, 0.32f, 0.18f);
+
+            var button = go.GetComponent<Button>();
+            button.onClick.AddListener(onClick);
+            CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 18, TextAnchor.MiddleCenter);
+            return button;
         }
 
         private static Button CreateButton(Transform parent, string label, Vector2 anchor, UnityEngine.Events.UnityAction onClick)
