@@ -113,6 +113,12 @@ namespace DragonBoxAlgebra.Core
         /// <summary>Ch8: x alone on one side equals a single constant on the other (x = k).</summary>
         public static bool IsVariableXEqualsConstant(AlgebraBoard board)
         {
+            // Integer answer: no fraction line left under either side.
+            if (board.Left.HasDenominator || board.Right.HasDenominator)
+            {
+                return false;
+            }
+
             if (board.Left.Cards.Count == 1
                 && VariableGoalRules.IsVariableXGoal(board.Left.Cards[0])
                 && board.Right.Cards.Count == 1

@@ -746,19 +746,19 @@ namespace DragonBoxAlgebra.Gameplay
             Moves.RegisterCombine();
             int d = holeSide.Denominator.Value.Value;
             MessageChanged?.Invoke(
-                $"Both sides ÷{d}. {d}/{d} → 1 under the coefficient; dice ÷{d} on the other side.");
+                $"Both sides ÷{d}. Even dice reduce (e.g. 6/{d}→{6 / Math.Max(1, d)}); uneven stays a fraction.");
             HandChanged?.Invoke();
             BoardChanged?.Invoke();
             FractionGuideChanged?.Invoke();
-            TryAutoResolveCoefficientAfterDivide(d);
+            TryAutoResolveAfterBothDenominators(d);
             return true;
         }
 
         /// <summary>
-        /// After both sides have the divisor under the line (151–165 only): merge coeff/coeff → 1
-        /// (identity One marker, not addition swirl).
+        /// 151–165 only after both sides have the divisor under the line:
+        /// coeff/coeff → 1; even dice (6/3) → reduced integer; uneven (7/2) stays a fraction.
         /// </summary>
-        private void TryAutoResolveCoefficientAfterDivide(int divisor)
+        private void TryAutoResolveAfterBothDenominators(int divisor)
         {
             if (!UsesMultiplyAdditionLevels)
             {
@@ -767,6 +767,11 @@ namespace DragonBoxAlgebra.Gameplay
 
             TryResolveMatchingCoefficientOnSide("Left", divisor);
             TryResolveMatchingCoefficientOnSide("Right", divisor);
+            TryAutoReduceEvenDiceOnSide("Left", divisor);
+            TryAutoReduceEvenDiceOnSide("Right", divisor);
+            TryClearDenominatorsIfResolved();
+            FractionGuideChanged?.Invoke();
+            CheckWin();
         }
 
         private void TryResolveMatchingCoefficientOnSide(string sideName, int divisor)
@@ -802,7 +807,52 @@ namespace DragonBoxAlgebra.Gameplay
                 HandChanged?.Invoke();
                 BoardChanged?.Invoke();
                 FractionGuideChanged?.Invoke();
-                CheckWin();
+                return;
+            }
+        }
+
+        /// <summary>151–165: 6/3 → 2 when even; leave uneven dice as n/d.</summary>
+        private void TryAutoReduceEvenDiceOnSide(string sideName, int divisor)
+        {
+            if (divisor <= 0)
+            {
+                return;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard target = side.Cards[i];
+                if (target.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                bool isCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+                if (isCoefficient)
+                {
+                    continue;
+                }
+
+                // Even reduction only (6/3 → 2). Uneven stays fraction above the line.
+                if (target.Value <= divisor || target.Value % divisor != 0)
+                {
+                    continue;
+                }
+
+                int newValue = target.Value / divisor;
+                side.Cards[i] = new BoardCard(
+                    target.Kind == CardKind.NegativeConstant
+                        ? CardKind.NegativeConstant
+                        : CardKind.PositiveConstant,
+                    newValue);
+                // Division finished — clear the line under this reduced integer (6/3 → 2, not 2/3).
+                side.ClearDenominator();
+                Moves.RegisterCombine();
+                MessageChanged?.Invoke($"{target.Value}/{divisor} → {newValue}");
+                HandChanged?.Invoke();
+                BoardChanged?.Invoke();
                 return;
             }
         }
