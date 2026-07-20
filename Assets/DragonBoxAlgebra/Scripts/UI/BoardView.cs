@@ -493,6 +493,12 @@ namespace DragonBoxAlgebra.UI
 
             bool usePlus = _controller.UsesPlusBetweenBoardTiles;
             bool useMultiply = _controller.UsesMultiplyAdditionLevels;
+            bool groupedLetterFraction = useMultiply && _controller.UsesGroupedLetterFraction(sideName)
+                && (side.HasDenominator
+                    || _controller.GetActiveFractionDivisor() != null
+                    || (_controller.HasPendingDivide
+                        && (_controller.PendingDivide.HoleSide == sideName
+                            || _controller.PendingDivide.PlacedSide == sideName)));
             bool placedCard = false;
             BoardCard? previousCard = null;
             var placedMarkerIndexes = new HashSet<int>();
@@ -501,6 +507,11 @@ namespace DragonBoxAlgebra.UI
             if (_controller.HasPendingBalance && _controller.PendingBalance.HoleSide == sideName)
             {
                 holeInsert = Mathf.Clamp(_controller.PendingBalance.HoleInsertIndex, 0, side.Cards.Count);
+            }
+
+            if (groupedLetterFraction)
+            {
+                CreateParenSeparator(panel, layout.Height, "(");
             }
 
             for (int i = 0; i < side.Cards.Count; i++)
@@ -572,6 +583,11 @@ namespace DragonBoxAlgebra.UI
                 }
 
                 PlaceBalanceHole(panel, sideName, layout);
+            }
+
+            if (groupedLetterFraction)
+            {
+                CreateParenSeparator(panel, layout.Height, ")");
             }
         }
 
@@ -730,6 +746,12 @@ namespace DragonBoxAlgebra.UI
         private static void CreateTimesSeparator(Transform parent, float tileHeight)
         {
             CreateSymbolSeparator(parent, tileHeight, "TimesSeparator", "·", TimesSeparatorWidth, 36);
+        }
+
+        private static void CreateParenSeparator(Transform parent, float tileHeight, string paren)
+        {
+            CreateSymbolSeparator(parent, tileHeight, paren == "(" ? "OpenParen" : "CloseParen", paren,
+                TimesSeparatorWidth, 40);
         }
 
         private static void CreateSymbolSeparator(Transform parent, float tileHeight, string name, string symbol,

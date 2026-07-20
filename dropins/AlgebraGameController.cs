@@ -830,12 +830,19 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
-        /// 151–165: divide dice by the coefficient once when even — 8/2 → 4, then clear that line.
+        /// Divide dice by the coefficient once when even — 8/2 → 4, then clear that line.
         /// Uneven (7/2) is left alone as a fraction.
+        /// Multi-term letter numerators stay intact: (6·a + r − 5)/3 must not become 2/3 + a/3 + …
         /// </summary>
         private bool ReduceEvenDiceOnce(string sideName, int divisor)
         {
             if (divisor <= 0)
+            {
+                return false;
+            }
+
+            // Keep the whole grouped letter expression over one denominator.
+            if (UsesGroupedLetterFraction(sideName))
             {
                 return false;
             }
@@ -849,9 +856,17 @@ namespace DragonBoxAlgebra.Gameplay
                     continue;
                 }
 
-                bool isCoefficient = i + 1 < side.Cards.Count
+                bool isXCoefficient = i + 1 < side.Cards.Count
                     && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
-                if (isCoefficient)
+                if (isXCoefficient)
+                {
+                    continue;
+                }
+
+                // Never peel 6 off of 6·a — that coefficient belongs to the letter product.
+                bool isLetterCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsPairVariable(side.Cards[i + 1]);
+                if (isLetterCoefficient)
                 {
                     continue;
                 }
@@ -1774,12 +1789,34 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         /// <summary>
+        /// Multi-term letter answer (Ch10): e.g. 6·a + r − 5. Uses one shared fraction bar + parentheses,
+        /// not a /d under every tile.
+        /// </summary>
+        public bool UsesGroupedLetterFraction(string sideName)
+        {
+            if (!UsesMultiplyAdditionLevels)
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            return !SideHasVariableX(side) && SideHasPairVariable(side) && side.Cards.Count > 1;
+        }
+
+        /// <summary>
         /// Show a line under coeff·x and under the dice (151–165 only) so you can
         /// place the coeff under both → (a·x)/a and dice/a → x = dice/a.
+        /// Multi-term letter sides use the shared DenominatorDropZone bar instead.
         /// </summary>
         public bool ShouldShowFractionLineUnder(string sideName, int boardIndex)
         {
             if (!UsesMultiplyAdditionLevels)
+            {
+                return false;
+            }
+
+            // Ch10 grouped expression: one bar under the whole side, not per card.
+            if (UsesGroupedLetterFraction(sideName))
             {
                 return false;
             }

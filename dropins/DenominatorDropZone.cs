@@ -115,11 +115,13 @@ namespace DragonBoxAlgebra.UI
 
             gameObject.SetActive(true);
 
-            // Per-card guides own the visible line/slot (151–165); this zone stays a wide drop catcher.
+            bool groupedLetter = controller.UsesGroupedLetterFraction(SideName);
+            // Ch8/Ch9 single tiles: per-card guides own the line. Ch10 multi-term: this zone draws
+            // one shared bar + one denominator under the whole grouped expression.
             Transform line = transform.Find("FractionLine");
             if (line != null)
             {
-                line.gameObject.SetActive(false);
+                line.gameObject.SetActive(groupedLetter);
             }
 
             var image = GetComponent<Image>();
@@ -131,15 +133,48 @@ namespace DragonBoxAlgebra.UI
 
             if (controller.HasPendingDivide && controller.PendingDivide.HoleSide == SideName)
             {
+                if (groupedLetter)
+                {
+                    CreateDenomHint(slot, "?");
+                }
+
                 return;
             }
 
             if (!side.HasDenominator)
             {
+                if (groupedLetter && controller.GetActiveFractionDivisor() != null)
+                {
+                    CreateDenomHint(slot, "?");
+                }
+
                 return;
             }
 
-            BoardCard denom = side.Denominator.Value;
+            CreateDenomCard(slot, side.Denominator.Value);
+        }
+
+        private static void CreateDenomHint(Transform slot, string label)
+        {
+            var textGo = new GameObject("DenomHint", typeof(RectTransform), typeof(Text));
+            textGo.transform.SetParent(slot, false);
+            var textRect = textGo.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+            var text = textGo.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.text = label;
+            text.fontSize = 42;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = new Color(0.92f, 0.94f, 0.98f, 0.95f);
+            text.raycastTarget = false;
+        }
+
+        private static void CreateDenomCard(Transform slot, BoardCard denom)
+        {
             // Image and Text cannot share one GameObject in Unity UI.
             var cardGo = new GameObject("DenomCard", typeof(RectTransform), typeof(Image));
             cardGo.transform.SetParent(slot, false);
