@@ -107,7 +107,18 @@ namespace DragonBoxAlgebra.Gameplay
         public static int GetNextProblemTypeLevelIndex(int currentLevelIndex0Based)
         {
             int nextGlobal = GetNextProblemTypeStartLevel(currentLevelIndex0Based + 1);
-            return Math.Clamp(nextGlobal - 1, 0, TotalLevels - 1);
+            int index = nextGlobal - 1;
+            if (index < 0)
+            {
+                return 0;
+            }
+
+            if (index > TotalLevels - 1)
+            {
+                return TotalLevels - 1;
+            }
+
+            return index;
         }
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
