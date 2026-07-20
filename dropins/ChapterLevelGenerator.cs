@@ -11,7 +11,8 @@ namespace DragonBoxAlgebra.Gameplay
     /// and a letter opposite x (b,c,b,r,a,r,a,b,a,c,b) instead of scene 0;
     /// Ch8 (151–165) multiplication with addition (a·x + b = c) and divide-both-sides;
     /// Ch9 (166–180) same as Ch8 with a letter RHS (a·x + b = letter);
-    /// Ch10 (181–200) multi-term letters: c·x + b + 5 = 6·a + r.
+    /// Ch10 (181–200) mix: multi-letter both sides (e.g. 3·x + b + 5 = 6·a + r)
+    /// and simpler letter−const (e.g. 2·x + a = c − 7).
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -80,7 +81,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-181-200-multi-letter";
+        public const string CurriculumVersion = "2026-07-181-200-half-letter-minus";
 
         /// <summary>
         /// First global level (1-based) of each distinct problem type.
@@ -250,32 +251,50 @@ namespace DragonBoxAlgebra.Gameplay
         };
 
         /// <summary>
-        /// Ch10 (181–200): (coeffX, letterB, constAdd, coeffA, letterA, letterR)
+        /// Ch10 (181–200) type A — multi-letter both sides:
+        /// (coeffX, letterB, constAdd, coeffA, letterA, letterR)
         /// → coeffX·x + letterB + constAdd = coeffA·letterA + letterR
-        /// e.g. 3·x + b + 5 = 6·a + r. Cancel addends first, then divide by coeffX.
         /// </summary>
         private static readonly int[,] MultiplyMultiLetterSpecs =
         {
-            { 3, 'b', 5, 6, 'a', 'r' }, // 181
-            { 2, 'a', 3, 4, 'b', 'c' }, // 182
-            { 4, 'c', 2, 3, 'a', 'b' }, // 183
-            { 5, 'r', 1, 2, 'b', 'a' }, // 184
-            { 2, 'b', 4, 5, 'c', 'r' }, // 185
-            { 3, 'a', 2, 4, 'r', 'b' }, // 186
-            { 4, 'b', 3, 2, 'a', 'c' }, // 187
-            { 5, 'c', 4, 3, 'b', 'r' }, // 188
-            { 2, 'r', 5, 6, 'a', 'b' }, // 189
-            { 3, 'c', 1, 5, 'b', 'a' }, // 190
-            { 4, 'a', 5, 2, 'c', 'r' }, // 191
-            { 5, 'b', 2, 4, 'a', 'c' }, // 192
-            { 2, 'c', 3, 3, 'r', 'a' }, // 193
-            { 3, 'r', 4, 5, 'a', 'c' }, // 194
-            { 4, 'r', 1, 6, 'b', 'a' }, // 195
-            { 5, 'a', 3, 2, 'c', 'b' }, // 196
-            { 2, 'b', 1, 4, 'a', 'r' }, // 197
-            { 3, 'a', 5, 6, 'c', 'b' }, // 198
-            { 4, 'c', 4, 3, 'r', 'a' }, // 199
-            { 5, 'b', 5, 2, 'a', 'r' }, // 200
+            { 3, 'b', 5, 6, 'a', 'r' },
+            { 2, 'a', 3, 4, 'b', 'c' },
+            { 4, 'c', 2, 3, 'a', 'b' },
+            { 5, 'r', 1, 2, 'b', 'a' },
+            { 2, 'b', 4, 5, 'c', 'r' },
+            { 3, 'a', 2, 4, 'r', 'b' },
+            { 4, 'b', 3, 2, 'a', 'c' },
+            { 5, 'c', 4, 3, 'b', 'r' },
+            { 2, 'r', 5, 6, 'a', 'b' },
+            { 3, 'c', 1, 5, 'b', 'a' },
+        };
+
+        /// <summary>
+        /// Ch10 type B — simpler: (coeff, letterA, letterC, constSub)
+        /// → coeff·x + letterA = letterC − constSub
+        /// e.g. 2·x + a = c − 7. About half of 181–200 use this form.
+        /// </summary>
+        private static readonly int[,] MultiplyLetterMinusConstSpecs =
+        {
+            { 2, 'a', 'c', 7 },
+            { 3, 'b', 'a', 5 },
+            { 4, 'c', 'r', 3 },
+            { 5, 'r', 'b', 2 },
+            { 2, 'b', 'c', 4 },
+            { 3, 'a', 'r', 6 },
+            { 4, 'r', 'a', 1 },
+            { 5, 'c', 'b', 7 },
+            { 2, 'c', 'a', 5 },
+            { 3, 'b', 'c', 4 },
+        };
+
+        /// <summary>
+        /// Which Ch10 slots (0–19) use type B (letter − const). Fixed mix ≈ half, shuffled.
+        /// </summary>
+        private static readonly bool[] Chapter10UsesLetterMinusConst =
+        {
+            false, true, false, true, true, false, true, false, false, true,
+            true, false, true, false, true, false, false, true, false, true
         };
 
         private static readonly string[] SeaCreatureNames =
@@ -727,19 +746,36 @@ namespace DragonBoxAlgebra.Gameplay
 
         private static IEnumerable<LevelDefinition> GenerateChapter10()
         {
+            int multiIndex = 0;
+            int minusIndex = 0;
             for (int i = 0; i < Chapter10LevelCount; i++)
             {
                 int displayNumber = i + 1;
-                int coeffX = MultiplyMultiLetterSpecs[i, 0];
-                char letterB = (char)MultiplyMultiLetterSpecs[i, 1];
-                int constAdd = MultiplyMultiLetterSpecs[i, 2];
-                int coeffA = MultiplyMultiLetterSpecs[i, 3];
-                char letterA = (char)MultiplyMultiLetterSpecs[i, 4];
-                char letterR = (char)MultiplyMultiLetterSpecs[i, 5];
-                string title =
-                    $"Ch10 • {ChapterNames[9]} {displayNumber} ({coeffX}·x + {letterB} + {constAdd} = {coeffA}·{letterA} + {letterR})";
-                yield return MakeMultiplyMultiLetterLevel(title, coeffX, letterB, constAdd, coeffA, letterA,
-                    letterR);
+                if (Chapter10UsesLetterMinusConst[i])
+                {
+                    int coeff = MultiplyLetterMinusConstSpecs[minusIndex, 0];
+                    char letterA = (char)MultiplyLetterMinusConstSpecs[minusIndex, 1];
+                    char letterC = (char)MultiplyLetterMinusConstSpecs[minusIndex, 2];
+                    int constSub = MultiplyLetterMinusConstSpecs[minusIndex, 3];
+                    minusIndex++;
+                    string title =
+                        $"Ch10 • {ChapterNames[9]} {displayNumber} ({coeff}·x + {letterA} = {letterC} − {constSub})";
+                    yield return MakeMultiplyLetterMinusConstLevel(title, coeff, letterA, letterC, constSub);
+                }
+                else
+                {
+                    int coeffX = MultiplyMultiLetterSpecs[multiIndex, 0];
+                    char letterB = (char)MultiplyMultiLetterSpecs[multiIndex, 1];
+                    int constAdd = MultiplyMultiLetterSpecs[multiIndex, 2];
+                    int coeffA = MultiplyMultiLetterSpecs[multiIndex, 3];
+                    char letterA = (char)MultiplyMultiLetterSpecs[multiIndex, 4];
+                    char letterR = (char)MultiplyMultiLetterSpecs[multiIndex, 5];
+                    multiIndex++;
+                    string title =
+                        $"Ch10 • {ChapterNames[9]} {displayNumber} ({coeffX}·x + {letterB} + {constAdd} = {coeffA}·{letterA} + {letterR})";
+                    yield return MakeMultiplyMultiLetterLevel(title, coeffX, letterB, constAdd, coeffA, letterA,
+                        letterR);
+                }
             }
         }
 
@@ -890,6 +926,60 @@ namespace DragonBoxAlgebra.Gameplay
             level.HandCards.Add(CardKind.NightCreature);
             level.HandVariableLetters.Add(letterB);
             level.HandValues.Add(1);
+
+            return level;
+        }
+
+        /// <summary>
+        /// coeff·x + letterA = letterC − constSub (e.g. 2·x + a = c − 7).
+        /// Hand: coeff, letterA (cancel), +constSub (cancel the −const on the right).
+        /// </summary>
+        private static LevelDefinition MakeMultiplyLetterMinusConstLevel(string title, int coeff, char letterA,
+            char letterC, int constSub)
+        {
+            var level = new LevelDefinition
+            {
+                Title = title,
+                Chapter = 10,
+                CreatureTheme = 0,
+                ParMoves = 8,
+                ParCards = 3
+            };
+
+            // Left: coeff · x + letterA
+            level.LeftCards.Add(CardKind.PositiveConstant);
+            level.LeftVariableLetters.Add('\0');
+            level.LeftValues.Add(coeff);
+
+            level.LeftCards.Add(CardKind.DayCreature);
+            level.LeftVariableLetters.Add(VariableGoalRules.GoalLetter);
+            level.LeftValues.Add(1);
+
+            level.LeftCards.Add(CardKind.DayCreature);
+            level.LeftVariableLetters.Add(letterA);
+            level.LeftValues.Add(1);
+
+            // Right: letterC − constSub  (letter + negative constant)
+            level.RightCards.Add(CardKind.DayCreature);
+            level.RightVariableLetters.Add(letterC);
+            level.RightValues.Add(1);
+
+            level.RightCards.Add(CardKind.NegativeConstant);
+            level.RightVariableLetters.Add('\0');
+            level.RightValues.Add(constSub);
+
+            // Hand: divisor, cancel letterA, cancel −const with +const
+            level.HandCards.Add(CardKind.NegativeConstant);
+            level.HandVariableLetters.Add('\0');
+            level.HandValues.Add(coeff);
+
+            level.HandCards.Add(CardKind.NightCreature);
+            level.HandVariableLetters.Add(letterA);
+            level.HandValues.Add(1);
+
+            level.HandCards.Add(CardKind.PositiveConstant);
+            level.HandVariableLetters.Add('\0');
+            level.HandValues.Add(constSub);
 
             return level;
         }
