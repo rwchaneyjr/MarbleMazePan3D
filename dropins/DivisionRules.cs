@@ -100,6 +100,13 @@ namespace DragonBoxAlgebra.Core
                     continue;
                 }
 
+                // Letter variables (a/b/c/r) stay as the answer expression — OK to divide.
+                if (VariableGoalRules.IsPairVariable(card))
+                {
+                    changes = true;
+                    continue;
+                }
+
                 // Other creatures / tools block divide.
                 return false;
             }

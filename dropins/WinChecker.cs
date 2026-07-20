@@ -173,6 +173,53 @@ namespace DragonBoxAlgebra.Core
             return denom > 1 && fractionSide.Cards[0].Value % denom != 0;
         }
 
+        /// <summary>
+        /// Ch9 win: x alone = letter expression (letter ± constants, optional /coeff), e.g. x = (b−2)/3.
+        /// </summary>
+        public static bool IsVariableXEqualsLetterExpression(AlgebraBoard board)
+        {
+            return IsXEqualsLetterExpressionOnSides(board.Left, board.Right)
+                || IsXEqualsLetterExpressionOnSides(board.Right, board.Left);
+        }
+
+        private static bool IsXEqualsLetterExpressionOnSides(BoardSide xSide, BoardSide letterSide)
+        {
+            if (xSide.Cards.Count != 1 || !VariableGoalRules.IsVariableXGoal(xSide.Cards[0]))
+            {
+                return false;
+            }
+
+            if (xSide.HasDenominator)
+            {
+                return false;
+            }
+
+            int letterCount = 0;
+            for (int i = 0; i < letterSide.Cards.Count; i++)
+            {
+                BoardCard card = letterSide.Cards[i];
+                if (VariableGoalRules.IsVariableXGoal(card) || card.Kind == CardKind.Box)
+                {
+                    return false;
+                }
+
+                if (VariableGoalRules.IsPairVariable(card))
+                {
+                    letterCount++;
+                    continue;
+                }
+
+                if (card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.One)
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return letterCount == 1;
+        }
+
         /// <summary>Red box alone on one side with the other side empty.</summary>
         public static bool IsRedBoxAloneWinState(AlgebraBoard board) => IsReadyForSidesTogether(board);
 
@@ -196,7 +243,9 @@ namespace DragonBoxAlgebra.Core
 
             if (useMultiplyAdditionWin)
             {
-                return IsVariableXEqualsConstant(board) || IsVariableXEqualsFraction(board);
+                return IsVariableXEqualsConstant(board)
+                    || IsVariableXEqualsFraction(board)
+                    || IsVariableXEqualsLetterExpression(board);
             }
 
             if (useVariableXGoal)

@@ -9,7 +9,8 @@ namespace DragonBoxAlgebra.Gameplay
     /// Ch6 (81–100) x + variables; Ch7 (101–150) sea + variables + numbers (+ between tiles from 113);
     /// 129–139 exact copies of 118–128; 140–150 copy 129–139 with sea slots → number images
     /// and a letter opposite x (b,c,b,r,a,r,a,b,a,c,b) instead of scene 0;
-    /// Ch8 (151–165) multiplication with addition (a·x + b = c) and divide-both-sides.
+    /// Ch8 (151–165) multiplication with addition (a·x + b = c) and divide-both-sides;
+    /// Ch9 (166–180) same as Ch8 with a letter RHS (a·x + b = letter).
     /// </summary>
     public static class ChapterLevelGenerator
     {
@@ -22,10 +23,11 @@ namespace DragonBoxAlgebra.Gameplay
         public const int Chapter6LevelCount = 20;
         public const int Chapter7LevelCount = 50;
         public const int Chapter8LevelCount = 15;
-        public const int ChapterCount = 8;
+        public const int Chapter9LevelCount = 15;
+        public const int ChapterCount = 9;
         public const int TotalLevels = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount
             + Chapter4LevelCount + Chapter5LevelCount + Chapter6LevelCount + Chapter7LevelCount
-            + Chapter8LevelCount;
+            + Chapter8LevelCount + Chapter9LevelCount;
 
         /// <summary>First global level number (1-based) for Chapter 4 / Move Cards.</summary>
         public const int Chapter4StartLevel = Chapter1LevelCount + Chapter2LevelCount + Chapter3LevelCount + 1;
@@ -42,8 +44,14 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>First global level number (1-based) for Chapter 8 / Multiply + Addition.</summary>
         public const int Chapter8StartLevel = Chapter7StartLevel + Chapter7LevelCount;
 
-        /// <summary>Last global level number (1-based) for Chapter 8 (151–165). Do not extend past this.</summary>
+        /// <summary>Last global level number (1-based) for Chapter 8 (151–165).</summary>
         public const int Chapter8EndLevel = Chapter8StartLevel + Chapter8LevelCount - 1;
+
+        /// <summary>First global level number (1-based) for Chapter 9 / Multiply + Letter.</summary>
+        public const int Chapter9StartLevel = Chapter8EndLevel + 1;
+
+        /// <summary>Last global level number (1-based) for Chapter 9 (166–180).</summary>
+        public const int Chapter9EndLevel = Chapter9StartLevel + Chapter9LevelCount - 1;
 
         /// <summary>Ch7 levels 1–6: x + sea creature light/dark images.</summary>
         public const int Chapter7SeaXLevelCount = 6;
@@ -64,7 +72,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-next-skips-problem-types";
+        public const string CurriculumVersion = "2026-07-166-180-letter-rhs";
 
         /// <summary>
         /// First global level (1-based) of each distinct problem type.
@@ -83,7 +91,8 @@ namespace DragonBoxAlgebra.Gameplay
             113, // Ch7 mixed + between tiles
             129, // Ch7 copies of mixed
             140, // Ch7 numbers + letter opposite x
-            151  // Ch8 multiply + add
+            151, // Ch8 multiply + add (number RHS)
+            166  // Ch9 multiply + add (letter RHS)
         };
 
         /// <summary>
@@ -136,11 +145,15 @@ namespace DragonBoxAlgebra.Gameplay
 
         public static bool UsesPlusBetweenBoardTiles(int globalLevel) =>
             (globalLevel >= PlusBetweenTilesStartLevel && globalLevel <= PlusBetweenTilesEndLevel)
-            || (globalLevel >= Chapter8StartLevel && globalLevel <= Chapter8EndLevel);
+            || (globalLevel >= Chapter8StartLevel && globalLevel <= Chapter9EndLevel);
 
-        /// <summary>Multiply+add divide UI/rules — ONLY levels 151–165. Never earlier chapters.</summary>
+        /// <summary>Multiply+add divide UI/rules — levels 151–180 (Ch8 number RHS, Ch9 letter RHS).</summary>
         public static bool UsesMultiplyAddition(int globalLevel) =>
-            globalLevel >= Chapter8StartLevel && globalLevel <= Chapter8EndLevel;
+            globalLevel >= Chapter8StartLevel && globalLevel <= Chapter9EndLevel;
+
+        /// <summary>Levels 166–180: a·x + b = letter (same play as Ch8, letter instead of dice).</summary>
+        public static bool UsesMultiplyLetterRhs(int globalLevel) =>
+            globalLevel >= Chapter9StartLevel && globalLevel <= Chapter9EndLevel;
 
         /// <summary>Levels 40–63 get one random creature on the side opposite the red box.</summary>
         public const int OppositeExtraTileStartLevel = 40;
@@ -158,7 +171,8 @@ namespace DragonBoxAlgebra.Gameplay
             Chapter5LevelCount,
             Chapter6LevelCount,
             Chapter7LevelCount,
-            Chapter8LevelCount
+            Chapter8LevelCount,
+            Chapter9LevelCount
         };
 
         private static readonly string[] ChapterNames =
@@ -170,7 +184,8 @@ namespace DragonBoxAlgebra.Gameplay
             "Variable Images",
             "x and Variables",
             "Sea Creatures",
-            "Multiply and Add"
+            "Multiply and Add",
+            "Multiply and Letter"
         };
 
         /// <summary>
@@ -197,6 +212,29 @@ namespace DragonBoxAlgebra.Gameplay
             { 4, 5, 9 }, // 165: 4x+5=9 → x=9/4
         };
 
+        /// <summary>
+        /// Ch9 (166–180): (coeff, addend, letterCode) letterCode is char as int ('a','b','c','r').
+        /// Example: 3·x + 2 = b.
+        /// </summary>
+        private static readonly int[,] MultiplyLetterSpecs =
+        {
+            { 3, 2, 'b' }, // 166: 3x+2=b
+            { 2, 1, 'a' }, // 167: 2x+1=a
+            { 4, 3, 'c' }, // 168: 4x+3=c
+            { 2, 5, 'b' }, // 169: 2x+5=b
+            { 5, 1, 'r' }, // 170: 5x+1=r
+            { 3, 4, 'a' }, // 171: 3x+4=a
+            { 4, 1, 'b' }, // 172: 4x+1=b
+            { 2, 3, 'c' }, // 173: 2x+3=c
+            { 3, 1, 'r' }, // 174: 3x+1=r
+            { 5, 2, 'a' }, // 175: 5x+2=a
+            { 2, 4, 'b' }, // 176: 2x+4=b
+            { 4, 5, 'c' }, // 177: 4x+5=c
+            { 3, 5, 'r' }, // 178: 3x+5=r
+            { 5, 3, 'b' }, // 179: 5x+3=b
+            { 2, 2, 'a' }, // 180: 2x+2=a
+        };
+
         private static readonly string[] SeaCreatureNames =
         {
             "Fish", "Turtle", "Clam", "Dolphin", "Eel", "Lobster", "Sea Horse", "Starfish"
@@ -213,6 +251,7 @@ namespace DragonBoxAlgebra.Gameplay
             levels.AddRange(GenerateChapter6());
             levels.AddRange(GenerateChapter7());
             levels.AddRange(GenerateChapter8());
+            levels.AddRange(GenerateChapter9());
 
             for (int i = OppositeExtraTileStartIndex;
                  i <= OppositeExtraTileEndIndex && i < levels.Count;
@@ -628,6 +667,20 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
+        private static IEnumerable<LevelDefinition> GenerateChapter9()
+        {
+            for (int i = 0; i < Chapter9LevelCount; i++)
+            {
+                int displayNumber = i + 1;
+                int coeff = MultiplyLetterSpecs[i, 0];
+                int addend = MultiplyLetterSpecs[i, 1];
+                char letter = (char)MultiplyLetterSpecs[i, 2];
+                string title =
+                    $"Ch9 • {ChapterNames[8]} {displayNumber} ({coeff}·x + {addend} = {letter})";
+                yield return MakeMultiplyLetterLevel(title, coeff, addend, letter);
+            }
+        }
+
         /// <summary>
         /// a·x + b = c with hand a and b. Cancel b → 0; keep c; divide by a → x = c/a (e.g. 9/2).
         /// </summary>
@@ -662,6 +715,50 @@ namespace DragonBoxAlgebra.Gameplay
 
             // Hand: opposites of board numbers (flippable +/-). Flip addend to cancel;
             // flip coefficient to + before dropping on the divide line.
+            level.HandCards.Add(CardKind.NegativeConstant);
+            level.HandVariableLetters.Add('\0');
+            level.HandValues.Add(coeff);
+
+            level.HandCards.Add(CardKind.NegativeConstant);
+            level.HandVariableLetters.Add('\0');
+            level.HandValues.Add(addend);
+
+            return level;
+        }
+
+        /// <summary>
+        /// a·x + b = letter with hand a and b. Same play as Ch8; RHS is a variable letter.
+        /// </summary>
+        private static LevelDefinition MakeMultiplyLetterLevel(string title, int coeff, int addend, char letter)
+        {
+            var level = new LevelDefinition
+            {
+                Title = title,
+                Chapter = 9,
+                CreatureTheme = 0,
+                ParMoves = 6,
+                ParCards = 2
+            };
+
+            // Left: coeff · x + addend
+            level.LeftCards.Add(CardKind.PositiveConstant);
+            level.LeftVariableLetters.Add('\0');
+            level.LeftValues.Add(coeff);
+
+            level.LeftCards.Add(CardKind.DayCreature);
+            level.LeftVariableLetters.Add(VariableGoalRules.GoalLetter);
+            level.LeftValues.Add(1);
+
+            level.LeftCards.Add(CardKind.PositiveConstant);
+            level.LeftVariableLetters.Add('\0');
+            level.LeftValues.Add(addend);
+
+            // Right: letter (e.g. b)
+            level.RightCards.Add(CardKind.DayCreature);
+            level.RightVariableLetters.Add(letter);
+            level.RightValues.Add(1);
+
+            // Hand: opposites of board numbers (flippable +/-).
             level.HandCards.Add(CardKind.NegativeConstant);
             level.HandVariableLetters.Add('\0');
             level.HandValues.Add(coeff);

@@ -865,7 +865,12 @@ namespace DragonBoxAlgebra.Gameplay
                         ? CardKind.NegativeConstant
                         : CardKind.PositiveConstant,
                     newValue);
-                side.ClearDenominator();
+                // Keep the line when a letter remains (Ch9: x = (b−2)/3).
+                if (!SideHasPairVariable(side))
+                {
+                    side.ClearDenominator();
+                }
+
                 Moves.RegisterCombine();
                 MessageChanged?.Invoke($"{target.Value}/{divisor} → {newValue}");
                 return true;
@@ -1030,6 +1035,12 @@ namespace DragonBoxAlgebra.Gameplay
 
             // Coefficient a·x still needs a/a → 1.
             if (SideStillNeedsCoefficientCancel(side, divisor))
+            {
+                return;
+            }
+
+            // Ch9 letter answer: keep /coeff under the letter expression.
+            if (SideHasPairVariable(side))
             {
                 return;
             }
@@ -1441,11 +1452,18 @@ namespace DragonBoxAlgebra.Gameplay
                 insertIndex = balancedSide.Cards.Count;
             }
 
-            // 151–165: fold the balanced constant into the dice (9 + −1 → 8), not a stray tile.
+            // 151–180: fold into dice when numeric; beside a letter keep the constant (b + −2).
             if (UsesMultiplyAdditionLevels
                 && template.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
             {
-                ApplyConstantToSide(balancedSide, template);
+                if (SideHasPairVariable(balancedSide))
+                {
+                    balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
+                }
+                else
+                {
+                    ApplyConstantToSide(balancedSide, template);
+                }
             }
             else
             {
@@ -1549,9 +1567,16 @@ namespace DragonBoxAlgebra.Gameplay
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
             if (UsesMultiplyAdditionLevels
-                && (WinChecker.IsVariableXEqualsConstant(Board) || WinChecker.IsVariableXEqualsFraction(Board)))
+                && (WinChecker.IsVariableXEqualsConstant(Board)
+                    || WinChecker.IsVariableXEqualsFraction(Board)
+                    || WinChecker.IsVariableXEqualsLetterExpression(Board)))
             {
-                if (WinChecker.IsVariableXEqualsFraction(Board))
+                if (WinChecker.IsVariableXEqualsLetterExpression(Board))
+                {
+                    BoardSide letterSide = SideHasPairVariable(Board.Right) ? Board.Right : Board.Left;
+                    MessageChanged?.Invoke($"You win! x = {FormatLetterAnswer(letterSide)}.");
+                }
+                else if (WinChecker.IsVariableXEqualsFraction(Board))
                 {
                     BoardSide fractionSide = Board.Right.HasDenominator ? Board.Right : Board.Left;
                     int num = fractionSide.Cards[0].Value;
@@ -1628,9 +1653,12 @@ namespace DragonBoxAlgebra.Gameplay
              && _levelIndex + 1 <= ChapterLevelGenerator.PlusBetweenTilesEndLevel)
             || UsesMultiplyAdditionLevels;
 
-        /// <summary>Levels 151–165: a·x + b = c with divide-both-sides on the line.</summary>
+        /// <summary>Levels 151–180: a·x + b = c (number) or a·x + b = letter with divide-both-sides.</summary>
         public bool UsesMultiplyAdditionLevels =>
             ChapterLevelGenerator.UsesMultiplyAddition(_levelIndex + 1);
+
+        public bool UsesMultiplyLetterRhsLevels =>
+            ChapterLevelGenerator.UsesMultiplyLetterRhs(_levelIndex + 1);
 
         private CancelResultSymbol AdditionCancelSymbol =>
             UsesZeroCancelSymbol ? CancelResultSymbol.Zero : CancelResultSymbol.Swirl;
@@ -1735,6 +1763,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return true;
             }
 
+            // Ch9: line under the letter on the side opposite x (e.g. b in 3·x = b).
+            if (VariableGoalRules.IsPairVariable(card) && !SideHasVariableX(side))
+            {
+                return true;
+            }
+
             return false;
         }
 
@@ -1763,6 +1797,59 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return false;
+        }
+
+        private static bool SideHasPairVariable(BoardSide side)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (VariableGoalRules.IsPairVariable(side.Cards[i]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string FormatLetterAnswer(BoardSide side)
+        {
+            var parts = new System.Text.StringBuilder();
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (i > 0 && card.Kind is CardKind.PositiveConstant or CardKind.DayCreature)
+                {
+                    parts.Append('+');
+                }
+
+                if (VariableGoalRules.IsPairVariable(card))
+                {
+                    parts.Append(card.VariableLetter);
+                }
+                else if (card.Kind == CardKind.NegativeConstant)
+                {
+                    parts.Append('-').Append(card.Value);
+                }
+                else if (card.Kind == CardKind.PositiveConstant)
+                {
+                    parts.Append(card.Value);
+                }
+            }
+
+            string body = parts.Length > 0 ? parts.ToString() : "?";
+            if (side.HasDenominator)
+            {
+                int d = side.Denominator.Value.Value;
+                if (side.Cards.Count > 1)
+                {
+                    return $"({body})/{d}";
+                }
+
+                return $"{body}/{d}";
+            }
+
+            return body;
         }
 
         public void BeginFractionDrag(int handIndex)
