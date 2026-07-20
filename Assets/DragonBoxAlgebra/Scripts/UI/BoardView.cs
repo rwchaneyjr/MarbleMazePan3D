@@ -58,7 +58,11 @@ namespace DragonBoxAlgebra.UI
             left.gameObject.AddComponent<BoardDropZone>().SideName = "Left";
             right.gameObject.AddComponent<BoardDropZone>().SideName = "Right";
 
-            EnsureDenominatorZones();
+            // Denom drop zones only for 151–165 — never create on Ch1–Ch7.
+            if (_controller != null && _controller.UsesMultiplyAdditionLevels)
+            {
+                EnsureDenominatorZones();
+            }
 
             _controller.BoardChanged += Refresh;
             _controller.CombineOccurred += OnCombine;
@@ -75,14 +79,37 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
+            if (_controller == null || !_controller.UsesMultiplyAdditionLevels)
+            {
+                DestroyDenominatorZones();
+                return;
+            }
+
             if (_leftDenomZone == null)
             {
                 _leftDenomZone = DenominatorDropZone.Create(_leftPanel, _controller, "Left");
+                _leftDenomZone.gameObject.SetActive(false);
             }
 
             if (_rightDenomZone == null)
             {
                 _rightDenomZone = DenominatorDropZone.Create(_rightPanel, _controller, "Right");
+                _rightDenomZone.gameObject.SetActive(false);
+            }
+        }
+
+        private void DestroyDenominatorZones()
+        {
+            if (_leftDenomZone != null)
+            {
+                Destroy(_leftDenomZone.gameObject);
+                _leftDenomZone = null;
+            }
+
+            if (_rightDenomZone != null)
+            {
+                Destroy(_rightDenomZone.gameObject);
+                _rightDenomZone = null;
             }
         }
 
@@ -528,8 +555,14 @@ namespace DragonBoxAlgebra.UI
 
         private void RefreshDenominatorZones()
         {
+            if (_controller == null || !_controller.UsesMultiplyAdditionLevels)
+            {
+                DestroyDenominatorZones();
+                return;
+            }
+
             EnsureDenominatorZones();
-            bool chapterActive = _controller.UsesMultiplyAdditionLevels && !_playingWinSequence;
+            bool chapterActive = !_playingWinSequence;
             bool guideActive = chapterActive
                 && (_controller.GetActiveFractionDivisor() != null
                     || _controller.Board.Left.HasDenominator
@@ -556,12 +589,9 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
-            if (chapterActive)
+            for (int i = 0; i < _widgets.Count; i++)
             {
-                for (int i = 0; i < _widgets.Count; i++)
-                {
-                    _widgets[i]?.RefreshFractionGuide();
-                }
+                _widgets[i]?.RefreshFractionGuide();
             }
         }
 

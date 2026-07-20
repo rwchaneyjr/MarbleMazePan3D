@@ -1439,7 +1439,8 @@ namespace DragonBoxAlgebra.UI
             labelText.raycastTarget = false;
             widget._labelText = labelText;
 
-            if (sideName != "Hand")
+            // Fraction line/slot ONLY on 151–165. Never create on Ch1–Ch7 (would show on level 1).
+            if (sideName != "Hand" && controller != null && controller.UsesMultiplyAdditionLevels)
             {
                 var fractionGo = new GameObject("FractionGuide", typeof(RectTransform), typeof(Image));
                 fractionGo.transform.SetParent(root.transform, false);
@@ -1463,7 +1464,8 @@ namespace DragonBoxAlgebra.UI
                 lineImage.color = new Color(0.95f, 0.95f, 0.9f, 0.98f);
                 lineImage.raycastTarget = false;
 
-                var slotGo = new GameObject("FractionSlot", typeof(RectTransform), typeof(Image), typeof(Text));
+                // Image and Text cannot share one GameObject in Unity UI.
+                var slotGo = new GameObject("FractionSlot", typeof(RectTransform), typeof(Image));
                 slotGo.transform.SetParent(fractionGo.transform, false);
                 var slotRect = slotGo.GetComponent<RectTransform>();
                 slotRect.anchorMin = new Vector2(0.18f, 0.05f);
@@ -1475,7 +1477,15 @@ namespace DragonBoxAlgebra.UI
                 slotBg.type = Image.Type.Sliced;
                 slotBg.color = new Color(0.16f, 0.2f, 0.3f, 0.92f);
                 slotBg.raycastTarget = true;
-                var slotHint = slotGo.GetComponent<Text>();
+
+                var hintGo = new GameObject("Hint", typeof(RectTransform), typeof(Text));
+                hintGo.transform.SetParent(slotGo.transform, false);
+                var hintRect = hintGo.GetComponent<RectTransform>();
+                hintRect.anchorMin = Vector2.zero;
+                hintRect.anchorMax = Vector2.one;
+                hintRect.offsetMin = Vector2.zero;
+                hintRect.offsetMax = Vector2.zero;
+                var slotHint = hintGo.GetComponent<Text>();
                 slotHint.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 slotHint.text = "?";
                 slotHint.fontSize = 36;
