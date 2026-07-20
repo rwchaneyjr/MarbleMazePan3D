@@ -106,15 +106,9 @@ namespace DragonBoxAlgebra.UI
             Controller.LoadNextLevel();
         }
 
-        public void OnUndoClicked()
+        public void OnResetProblemClicked()
         {
-            Controller.Undo();
-            DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
-        }
-
-        public void OnRewindClicked()
-        {
-            Controller.RewindLevel();
+            Controller.RestartLevel();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
         }
 
@@ -176,9 +170,9 @@ namespace DragonBoxAlgebra.UI
             _orderIntroPanel = CreateOrderIntroPanel(background.transform);
             _orderIntroPanel.SetActive(false);
 
-            CreateLabeledButton(background.transform, "Browse", new Vector2(0.08f, 0.92f), OnBrowseClicked);
-            CreateRoundButton(background.transform, "Undo", new Vector2(0.88f, 0.92f), OnUndoClicked, "↩");
-            CreateRoundButton(background.transform, "Rewind", new Vector2(0.94f, 0.92f), OnRewindClicked, "⏪");
+            CreateLabeledButton(background.transform, "Browse", new Vector2(0.08f, 0.92f), OnBrowseClicked, 120f);
+            CreateLabeledButton(background.transform, "Reset Problem", new Vector2(0.90f, 0.92f), OnResetProblemClicked,
+                168f);
 
             var completePanel = CreatePanel(background.transform, "CompletePanel", new Color(0.05f, 0.12f, 0.18f, 0.92f),
                 new Vector2(0.2f, 0.25f), new Vector2(0.8f, 0.75f), Vector2.zero, Vector2.zero);
@@ -290,15 +284,16 @@ namespace DragonBoxAlgebra.UI
         }
 
         private static Button CreateLabeledButton(Transform parent, string label, Vector2 anchor,
-            UnityEngine.Events.UnityAction onClick)
+            UnityEngine.Events.UnityAction onClick, float width = 120f)
         {
-            var go = new GameObject(label + "Button", typeof(RectTransform), typeof(Image), typeof(Button));
+            var go = new GameObject(label.Replace(" ", "") + "Button", typeof(RectTransform), typeof(Image),
+                typeof(Button));
             go.transform.SetParent(parent, false);
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = anchor;
             rect.anchorMax = anchor;
             rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(120f, 48f);
+            rect.sizeDelta = new Vector2(width, 48f);
             var image = go.GetComponent<Image>();
             image.sprite = SpriteFactory.RoundedButton;
             image.type = Image.Type.Sliced;
@@ -306,7 +301,9 @@ namespace DragonBoxAlgebra.UI
 
             var button = go.GetComponent<Button>();
             button.onClick.AddListener(onClick);
-            CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 18, TextAnchor.MiddleCenter);
+            var labelText = CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 16,
+                TextAnchor.MiddleCenter);
+            labelText.fontStyle = FontStyle.Bold;
             return button;
         }
 
