@@ -182,6 +182,8 @@ namespace DragonBoxAlgebra.UI
             }
 
             _playingWinSequence = true;
+            // Keep answer (…)/3 box visible through the win presentation.
+            RefreshDenominatorZones();
             _winSequenceCoroutine = StartCoroutine(PlayWinSequence(stars, moves));
         }
 
@@ -609,17 +611,20 @@ namespace DragonBoxAlgebra.UI
             }
 
             EnsureDenominatorZones();
-            bool chapterActive = !_playingWinSequence;
-            bool guideActive = chapterActive
-                && (_controller.GetActiveFractionDivisor() != null
-                    || _controller.Board.Left.HasDenominator
-                    || _controller.Board.Right.HasDenominator
-                    || _controller.HasPendingDivide);
+            bool hasPlacedDenom = _controller.Board.Left.HasDenominator
+                || _controller.Board.Right.HasDenominator;
+            // Keep answer /coeff boxes visible through the end of the puzzle (including win).
+            bool guideActive = hasPlacedDenom
+                || (!_playingWinSequence
+                    && (_controller.GetActiveFractionDivisor() != null
+                        || _controller.HasPendingDivide));
 
             if (_leftDenomZone != null)
             {
-                _leftDenomZone.gameObject.SetActive(guideActive);
-                if (guideActive)
+                bool showLeft = guideActive
+                    || (_controller.UsesGroupedLetterFraction("Left") && _controller.Board.Left.HasDenominator);
+                _leftDenomZone.gameObject.SetActive(showLeft);
+                if (showLeft)
                 {
                     _leftDenomZone.RefreshVisual(_controller);
                     _leftDenomZone.transform.SetAsLastSibling();
@@ -634,15 +639,16 @@ namespace DragonBoxAlgebra.UI
 
             if (_rightDenomZone != null)
             {
-                _rightDenomZone.gameObject.SetActive(guideActive);
-                if (guideActive)
+                bool showRight = guideActive
+                    || (_controller.UsesGroupedLetterFraction("Right") && _controller.Board.Right.HasDenominator);
+                _rightDenomZone.gameObject.SetActive(showRight);
+                if (showRight)
                 {
                     _rightDenomZone.RefreshVisual(_controller);
                     _rightDenomZone.transform.SetAsLastSibling();
                     if (_controller.UsesGroupedLetterFraction("Right"))
                     {
                         SnapGroupedDenomUnderEquation(_rightDenomZone, "Right", _rightPanel);
-                        // Second pass after layout so the dragged-in number tile stays visible.
                         _rightDenomZone.RefreshVisual(_controller);
                         SnapGroupedDenomUnderEquation(_rightDenomZone, "Right", _rightPanel);
                     }

@@ -1051,6 +1051,12 @@ namespace DragonBoxAlgebra.Gameplay
 
             int divisor = side.Denominator.Value.Value;
 
+            // Ch10 grouped letter answer: keep /coeff visible until the puzzle ends (x = (…)/3).
+            if (UsesGroupedLetterFraction(sideName))
+            {
+                return;
+            }
+
             // Uneven fraction (7/2): keep the line + denominator — that IS the answer.
             if (SideHasUnevenFraction(side, divisor))
             {

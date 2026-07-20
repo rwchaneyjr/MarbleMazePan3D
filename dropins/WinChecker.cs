@@ -218,7 +218,7 @@ namespace DragonBoxAlgebra.Core
                 return false;
             }
 
-            return letterCount >= 1;
+            return letterCount >= 1 && letterSide.HasDenominator;
         }
 
         /// <summary>Red box alone on one side with the other side empty.</summary>

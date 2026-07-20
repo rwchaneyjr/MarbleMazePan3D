@@ -185,7 +185,7 @@ namespace DragonBoxAlgebra.UI
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 1f);
-            rect.sizeDelta = new Vector2(width, 86f);
+            rect.sizeDelta = new Vector2(width, 100f);
             // Pivot at top → top edge sits just under the tiles.
             rect.anchoredPosition = new Vector2(centerX, localBottom - 2f);
 
@@ -193,8 +193,8 @@ namespace DragonBoxAlgebra.UI
             if (line != null)
             {
                 var lineRect = line as RectTransform;
-                lineRect.anchorMin = new Vector2(0.02f, 0.84f);
-                lineRect.anchorMax = new Vector2(0.98f, 0.94f);
+                lineRect.anchorMin = new Vector2(0.02f, 0.86f);
+                lineRect.anchorMax = new Vector2(0.98f, 0.95f);
                 lineRect.offsetMin = Vector2.zero;
                 lineRect.offsetMax = Vector2.zero;
                 line.gameObject.SetActive(true);
@@ -204,8 +204,12 @@ namespace DragonBoxAlgebra.UI
             if (slot != null)
             {
                 var slotRect = slot as RectTransform;
-                slotRect.anchorMin = new Vector2(0.34f, 0.02f);
-                slotRect.anchorMax = new Vector2(0.66f, 0.78f);
+                // Same proportions as the fraction slot box under a·x.
+                float slotWidth = Mathf.Clamp(88f / Mathf.Max(width, 1f), 0.18f, 0.42f);
+                float slotMin = 0.5f - slotWidth * 0.5f;
+                float slotMax = 0.5f + slotWidth * 0.5f;
+                slotRect.anchorMin = new Vector2(slotMin, 0.02f);
+                slotRect.anchorMax = new Vector2(slotMax, 0.82f);
                 slotRect.offsetMin = Vector2.zero;
                 slotRect.offsetMax = Vector2.zero;
             }
@@ -228,8 +232,22 @@ namespace DragonBoxAlgebra.UI
 
         private static void CreateDenomHint(Transform slot, string label)
         {
+            // Match the per-card fraction slot under a·x (dark rounded box + ?).
+            var boxGo = new GameObject("DenomBox", typeof(RectTransform), typeof(Image));
+            boxGo.transform.SetParent(slot, false);
+            var boxRect = boxGo.GetComponent<RectTransform>();
+            boxRect.anchorMin = Vector2.zero;
+            boxRect.anchorMax = Vector2.one;
+            boxRect.offsetMin = Vector2.zero;
+            boxRect.offsetMax = Vector2.zero;
+            var boxBg = boxGo.GetComponent<Image>();
+            boxBg.sprite = SpriteFactory.RoundedCard;
+            boxBg.type = Image.Type.Sliced;
+            boxBg.color = new Color(0.16f, 0.2f, 0.3f, 0.92f);
+            boxBg.raycastTarget = false;
+
             var textGo = new GameObject("DenomHint", typeof(RectTransform), typeof(Text));
-            textGo.transform.SetParent(slot, false);
+            textGo.transform.SetParent(boxGo.transform, false);
             var textRect = textGo.GetComponent<RectTransform>();
             textRect.anchorMin = Vector2.zero;
             textRect.anchorMax = Vector2.one;
@@ -247,16 +265,16 @@ namespace DragonBoxAlgebra.UI
 
         private static void CreateDenomCard(Transform slot, BoardCard denom)
         {
-            // Image and Text cannot share one GameObject in Unity UI.
-            var cardGo = new GameObject("DenomCard", typeof(RectTransform), typeof(Image));
-            cardGo.transform.SetParent(slot, false);
-            var cardRect = cardGo.GetComponent<RectTransform>();
-            cardRect.anchorMin = new Vector2(0.15f, 0f);
-            cardRect.anchorMax = new Vector2(0.85f, 1f);
-            cardRect.offsetMin = Vector2.zero;
-            cardRect.offsetMax = Vector2.zero;
+            // Same chrome as the fraction slot under a·x once a number is dropped.
+            var boxGo = new GameObject("DenomCard", typeof(RectTransform), typeof(Image));
+            boxGo.transform.SetParent(slot, false);
+            var boxRect = boxGo.GetComponent<RectTransform>();
+            boxRect.anchorMin = Vector2.zero;
+            boxRect.anchorMax = Vector2.one;
+            boxRect.offsetMin = Vector2.zero;
+            boxRect.offsetMax = Vector2.zero;
 
-            var cardBg = cardGo.GetComponent<Image>();
+            var cardBg = boxGo.GetComponent<Image>();
             cardBg.sprite = SpriteFactory.RoundedCard;
             cardBg.type = Image.Type.Sliced;
             cardBg.color = new Color(0.96f, 0.97f, 1f, 0.98f);
@@ -266,7 +284,7 @@ namespace DragonBoxAlgebra.UI
             if (numberSprite != null)
             {
                 var spriteGo = new GameObject("Art", typeof(RectTransform), typeof(Image));
-                spriteGo.transform.SetParent(cardGo.transform, false);
+                spriteGo.transform.SetParent(boxGo.transform, false);
                 var spriteRect = spriteGo.GetComponent<RectTransform>();
                 spriteRect.anchorMin = new Vector2(0.1f, 0.1f);
                 spriteRect.anchorMax = new Vector2(0.9f, 0.9f);
@@ -280,7 +298,7 @@ namespace DragonBoxAlgebra.UI
             else
             {
                 var textGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
-                textGo.transform.SetParent(cardGo.transform, false);
+                textGo.transform.SetParent(boxGo.transform, false);
                 var textRect = textGo.GetComponent<RectTransform>();
                 textRect.anchorMin = Vector2.zero;
                 textRect.anchorMax = Vector2.one;
