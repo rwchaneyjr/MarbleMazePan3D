@@ -179,13 +179,13 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            float width = Mathf.Max(140f, localRight - localLeft);
+            float width = Mathf.Max(160f, localRight - localLeft);
             float centerX = (localLeft + localRight) * 0.5f;
 
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 1f);
-            rect.sizeDelta = new Vector2(width, 100f);
+            rect.sizeDelta = new Vector2(width, 108f);
             // Pivot at top → top edge sits just under the tiles.
             rect.anchoredPosition = new Vector2(centerX, localBottom - 2f);
 
@@ -193,8 +193,8 @@ namespace DragonBoxAlgebra.UI
             if (line != null)
             {
                 var lineRect = line as RectTransform;
-                lineRect.anchorMin = new Vector2(0.02f, 0.86f);
-                lineRect.anchorMax = new Vector2(0.98f, 0.95f);
+                lineRect.anchorMin = new Vector2(0f, 0.88f);
+                lineRect.anchorMax = new Vector2(1f, 0.96f);
                 lineRect.offsetMin = Vector2.zero;
                 lineRect.offsetMax = Vector2.zero;
                 line.gameObject.SetActive(true);
@@ -203,15 +203,14 @@ namespace DragonBoxAlgebra.UI
             Transform slot = transform.Find("DenomSlot");
             if (slot != null)
             {
+                // Fixed-size box centered under the equation (same idea as the slot under a·x).
+                // Fractional stretch slots drifted right when zone width was mis-measured.
                 var slotRect = slot as RectTransform;
-                // Same proportions as the fraction slot box under a·x.
-                float slotWidth = Mathf.Clamp(88f / Mathf.Max(width, 1f), 0.18f, 0.42f);
-                float slotMin = 0.5f - slotWidth * 0.5f;
-                float slotMax = 0.5f + slotWidth * 0.5f;
-                slotRect.anchorMin = new Vector2(slotMin, 0.02f);
-                slotRect.anchorMax = new Vector2(slotMax, 0.82f);
-                slotRect.offsetMin = Vector2.zero;
-                slotRect.offsetMax = Vector2.zero;
+                slotRect.anchorMin = new Vector2(0.5f, 0f);
+                slotRect.anchorMax = new Vector2(0.5f, 0f);
+                slotRect.pivot = new Vector2(0.5f, 0f);
+                slotRect.sizeDelta = new Vector2(74f, 78f);
+                slotRect.anchoredPosition = new Vector2(0f, 6f);
             }
         }
 

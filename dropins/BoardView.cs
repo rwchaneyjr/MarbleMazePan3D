@@ -182,6 +182,8 @@ namespace DragonBoxAlgebra.UI
             }
 
             _playingWinSequence = true;
+            // Keep answer (…)/3 box visible through the win presentation.
+            RefreshDenominatorZones();
             _winSequenceCoroutine = StartCoroutine(PlayWinSequence(stars, moves));
         }
 
@@ -626,12 +628,6 @@ namespace DragonBoxAlgebra.UI
                 {
                     _leftDenomZone.RefreshVisual(_controller);
                     _leftDenomZone.transform.SetAsLastSibling();
-                    if (_controller.UsesGroupedLetterFraction("Left"))
-                    {
-                        SnapGroupedDenomUnderEquation(_leftDenomZone, "Left", _leftPanel);
-                        _leftDenomZone.RefreshVisual(_controller);
-                        SnapGroupedDenomUnderEquation(_leftDenomZone, "Left", _leftPanel);
-                    }
                 }
             }
 
@@ -644,18 +640,43 @@ namespace DragonBoxAlgebra.UI
                 {
                     _rightDenomZone.RefreshVisual(_controller);
                     _rightDenomZone.transform.SetAsLastSibling();
-                    if (_controller.UsesGroupedLetterFraction("Right"))
-                    {
-                        SnapGroupedDenomUnderEquation(_rightDenomZone, "Right", _rightPanel);
-                        _rightDenomZone.RefreshVisual(_controller);
-                        SnapGroupedDenomUnderEquation(_rightDenomZone, "Right", _rightPanel);
-                    }
                 }
             }
 
             for (int i = 0; i < _widgets.Count; i++)
             {
                 _widgets[i]?.RefreshFractionGuide();
+            }
+
+            // Snap after layout so the ? / 3 box stays centered under ( … ), not shifted right.
+            if (_leftDenomZone != null && _leftDenomZone.gameObject.activeSelf
+                && _controller.UsesGroupedLetterFraction("Left"))
+            {
+                StartCoroutine(SnapGroupedDenomNextFrame(_leftDenomZone, "Left", _leftPanel));
+            }
+
+            if (_rightDenomZone != null && _rightDenomZone.gameObject.activeSelf
+                && _controller.UsesGroupedLetterFraction("Right"))
+            {
+                StartCoroutine(SnapGroupedDenomNextFrame(_rightDenomZone, "Right", _rightPanel));
+            }
+        }
+
+        private IEnumerator SnapGroupedDenomNextFrame(DenominatorDropZone zone, string sideName,
+            RectTransform panel)
+        {
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            if (panel != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(panel);
+            }
+
+            SnapGroupedDenomUnderEquation(zone, sideName, panel);
+            if (zone != null && _controller != null)
+            {
+                zone.RefreshVisual(_controller);
+                SnapGroupedDenomUnderEquation(zone, sideName, panel);
             }
         }
 
@@ -700,6 +721,7 @@ namespace DragonBoxAlgebra.UI
                 any = true;
             }
 
+            // Measure equation tiles + parentheses only (not the denom zone / separators).
             for (int i = 0; i < _widgets.Count; i++)
             {
                 CardWidget widget = _widgets[i];
@@ -714,20 +736,13 @@ namespace DragonBoxAlgebra.UI
             for (int i = 0; i < panel.childCount; i++)
             {
                 Transform child = panel.GetChild(i);
-                if (child == null)
-                {
-                    continue;
-                }
-
-                if (child.name is "OpenParen" or "CloseParen"
-                    || child.name.StartsWith("PlusSeparator", StringComparison.Ordinal)
-                    || child.name.StartsWith("TimesSeparator", StringComparison.Ordinal))
+                if (child != null && child.name is "OpenParen" or "CloseParen")
                 {
                     ExpandFrom(child as RectTransform);
                 }
             }
 
-            if (!any)
+            if (!any || localRight <= localLeft)
             {
                 return;
             }
