@@ -299,7 +299,7 @@ namespace DragonBoxAlgebra.UI
         }
 
         private static Button CreateLabeledButton(Transform parent, string label, Vector2 anchor,
-            UnityEngine.Events.UnityAction onClick, float width = 120f, out Text labelText)
+            UnityEngine.Events.UnityAction onClick, float width, out Text labelText)
         {
             var go = new GameObject(label.Replace(" ", "") + "Button", typeof(RectTransform), typeof(Image),
                 typeof(Button));
