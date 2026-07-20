@@ -166,7 +166,7 @@ namespace DragonBoxAlgebra.UI
             RefreshFractionGuide();
         }
 
-        /// <summary>Show the DragonBox fraction underline + empty slot under a·x / dice (151–165 only).</summary>
+        /// <summary>Show the DragonBox fraction underline + empty/?/number tile under a·x / dice.</summary>
         public void RefreshFractionGuide()
         {
             if (_fractionGuideRoot == null)
@@ -219,27 +219,81 @@ namespace DragonBoxAlgebra.UI
                 // One slot under a·x (on the coefficient) and one under the dice — not under x alone.
                 bool showSlot = productAnchor || !isVariablePart;
                 _fractionSlotGo.SetActive(showSlot);
+                if (showSlot)
+                {
+                    RefreshFractionSlotContents();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Blank ? until a number is dropped; then show a real number tile (visible each drag-in).
+        /// </summary>
+        private void RefreshFractionSlotContents()
+        {
+            if (_fractionSlotGo == null || _controller == null)
+            {
+                return;
+            }
+
+            Transform existingArt = _fractionSlotGo.transform.Find("DenomArt");
+            if (existingArt != null)
+            {
+                DestroyImmediate(existingArt.gameObject);
+            }
+
+            var slotBg = _fractionSlotGo.GetComponent<Image>();
+            var side = _controller.Board.GetSide(SideName);
+            if (side.HasDenominator)
+            {
+                int value = side.Denominator.Value.Value;
+                if (slotBg != null)
+                {
+                    slotBg.sprite = SpriteFactory.RoundedCard;
+                    slotBg.type = Image.Type.Sliced;
+                    slotBg.color = new Color(0.96f, 0.97f, 1f, 0.98f);
+                }
+
+                if (_fractionSlotHint != null)
+                {
+                    _fractionSlotHint.text = string.Empty;
+                }
+
+                Sprite numberSprite = CardSpriteLoader.GetNumberSprite(value, positive: true);
+                if (numberSprite != null)
+                {
+                    var artGo = new GameObject("DenomArt", typeof(RectTransform), typeof(Image));
+                    artGo.transform.SetParent(_fractionSlotGo.transform, false);
+                    var artRect = artGo.GetComponent<RectTransform>();
+                    artRect.anchorMin = new Vector2(0.1f, 0.1f);
+                    artRect.anchorMax = new Vector2(0.9f, 0.9f);
+                    artRect.offsetMin = Vector2.zero;
+                    artRect.offsetMax = Vector2.zero;
+                    var artImage = artGo.GetComponent<Image>();
+                    artImage.sprite = numberSprite;
+                    artImage.preserveAspect = true;
+                    artImage.raycastTarget = false;
+                }
+                else if (_fractionSlotHint != null)
+                {
+                    _fractionSlotHint.text = value.ToString();
+                    _fractionSlotHint.color = Color.black;
+                }
+
+                return;
+            }
+
+            if (slotBg != null)
+            {
+                slotBg.sprite = SpriteFactory.RoundedCard;
+                slotBg.type = Image.Type.Sliced;
+                slotBg.color = new Color(0.16f, 0.2f, 0.3f, 0.92f);
             }
 
             if (_fractionSlotHint != null)
             {
-                var side = _controller.Board.GetSide(SideName);
-                if (side.HasDenominator)
-                {
-                    _fractionSlotHint.text = side.Denominator.Value.Value.ToString();
-                    _fractionSlotHint.color = Color.white;
-                }
-                else if (_controller.HasPendingDivide
-                         && _controller.PendingDivide.HoleSide == SideName)
-                {
-                    _fractionSlotHint.text = "?";
-                    _fractionSlotHint.color = new Color(0.92f, 0.94f, 0.98f, 0.9f);
-                }
-                else
-                {
-                    _fractionSlotHint.text = "?";
-                    _fractionSlotHint.color = new Color(0.92f, 0.94f, 0.98f, 0.9f);
-                }
+                _fractionSlotHint.text = "?";
+                _fractionSlotHint.color = new Color(0.92f, 0.94f, 0.98f, 0.9f);
             }
         }
 

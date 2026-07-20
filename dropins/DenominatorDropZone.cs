@@ -101,7 +101,7 @@ namespace DragonBoxAlgebra.UI
 
             for (int i = slot.childCount - 1; i >= 0; i--)
             {
-                Object.Destroy(slot.GetChild(i).gameObject);
+                Object.DestroyImmediate(slot.GetChild(i).gameObject);
             }
 
             if (controller == null || !controller.UsesMultiplyAdditionLevels)

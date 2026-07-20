@@ -623,7 +623,12 @@ namespace DragonBoxAlgebra.UI
                 {
                     _leftDenomZone.RefreshVisual(_controller);
                     _leftDenomZone.transform.SetAsLastSibling();
-                    SnapGroupedDenomUnderEquation(_leftDenomZone, "Left", _leftPanel);
+                    if (_controller.UsesGroupedLetterFraction("Left"))
+                    {
+                        SnapGroupedDenomUnderEquation(_leftDenomZone, "Left", _leftPanel);
+                        _leftDenomZone.RefreshVisual(_controller);
+                        SnapGroupedDenomUnderEquation(_leftDenomZone, "Left", _leftPanel);
+                    }
                 }
             }
 
@@ -634,7 +639,13 @@ namespace DragonBoxAlgebra.UI
                 {
                     _rightDenomZone.RefreshVisual(_controller);
                     _rightDenomZone.transform.SetAsLastSibling();
-                    SnapGroupedDenomUnderEquation(_rightDenomZone, "Right", _rightPanel);
+                    if (_controller.UsesGroupedLetterFraction("Right"))
+                    {
+                        SnapGroupedDenomUnderEquation(_rightDenomZone, "Right", _rightPanel);
+                        // Second pass after layout so the dragged-in number tile stays visible.
+                        _rightDenomZone.RefreshVisual(_controller);
+                        SnapGroupedDenomUnderEquation(_rightDenomZone, "Right", _rightPanel);
+                    }
                 }
             }
 
