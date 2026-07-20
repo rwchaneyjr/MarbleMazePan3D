@@ -12,6 +12,7 @@ namespace DragonBoxAlgebra.UI
         private Text _progressText;
         private Text _messageText;
         private Text _spriteDebugText;
+        private GameObject _orderIntroPanel;
         private LevelCompleteView _completeView;
         private RectTransform _dragRoot;
         private Canvas _canvas;
@@ -23,6 +24,7 @@ namespace DragonBoxAlgebra.UI
             controller.LevelLoaded += OnLevelLoaded;
             controller.MessageChanged += OnMessageChanged;
             controller.LevelCompleted += OnLevelCompleted;
+            controller.OrderIntroVisibilityChanged += OnOrderIntroVisibilityChanged;
             controller.LoadLevel(0);
         }
 
@@ -33,6 +35,7 @@ namespace DragonBoxAlgebra.UI
                 Controller.LevelLoaded -= OnLevelLoaded;
                 Controller.MessageChanged -= OnMessageChanged;
                 Controller.LevelCompleted -= OnLevelCompleted;
+                Controller.OrderIntroVisibilityChanged -= OnOrderIntroVisibilityChanged;
             }
         }
 
@@ -54,7 +57,18 @@ namespace DragonBoxAlgebra.UI
 
             _titleText.text = $"{Controller.CurrentLevel.Title}  •  {CreatureArt.ThemeName}";
             _completeView.Hide();
+            SetOrderIntroVisible(Controller.IsOrderIntroVisible);
             RefreshSpriteDebugBanner();
+        }
+
+        private void OnOrderIntroVisibilityChanged(bool visible) => SetOrderIntroVisible(visible);
+
+        private void SetOrderIntroVisible(bool visible)
+        {
+            if (_orderIntroPanel != null)
+            {
+                _orderIntroPanel.SetActive(visible);
+            }
         }
 
         private void RefreshSpriteDebugBanner()
@@ -166,6 +180,9 @@ namespace DragonBoxAlgebra.UI
                 "Drag cards together on the same side, or drag from your hand to the board.",
                 new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 12f), 18, TextAnchor.LowerCenter);
 
+            _orderIntroPanel = CreateOrderIntroPanel(background.transform);
+            _orderIntroPanel.SetActive(false);
+
             CreateRoundButton(background.transform, "Menu", new Vector2(0.06f, 0.92f), OnRestartClicked, "⬆");
             CreateRoundButton(background.transform, "Random", new Vector2(0.12f, 0.92f), OnRandomClicked, "🎲");
             CreateRoundButton(background.transform, "SkipType", new Vector2(0.18f, 0.92f), OnSkipTypeClicked, "⏭");
@@ -195,6 +212,37 @@ namespace DragonBoxAlgebra.UI
             }
 
             _dragRoot.SetAsLastSibling();
+        }
+
+        private static GameObject CreateOrderIntroPanel(Transform parent)
+        {
+            // Non-blocking tip over the board — first drag hides it (151–180).
+            var panel = CreatePanel(parent, "OrderIntro", new Color(0.04f, 0.1f, 0.14f, 0.88f),
+                new Vector2(0.18f, 0.42f), new Vector2(0.82f, 0.68f), Vector2.zero, Vector2.zero);
+            panel.GetComponent<Image>().raycastTarget = false;
+
+            var line1 = CreateText(panel.transform, "Line1",
+                "First undo addition and subtraction",
+                new Vector2(0.5f, 0.62f), new Vector2(0.5f, 0.62f), Vector2.zero, 26, TextAnchor.MiddleCenter);
+            line1.rectTransform.sizeDelta = new Vector2(720f, 48f);
+            line1.fontStyle = FontStyle.Bold;
+            line1.raycastTarget = false;
+
+            var line2 = CreateText(panel.transform, "Line2",
+                "Second undo multiplication",
+                new Vector2(0.5f, 0.32f), new Vector2(0.5f, 0.32f), Vector2.zero, 26, TextAnchor.MiddleCenter);
+            line2.rectTransform.sizeDelta = new Vector2(720f, 48f);
+            line2.fontStyle = FontStyle.Bold;
+            line2.raycastTarget = false;
+
+            var hint = CreateText(panel.transform, "Hint",
+                "Drag a tile to begin",
+                new Vector2(0.5f, 0.08f), new Vector2(0.5f, 0.08f), Vector2.zero, 16, TextAnchor.MiddleCenter);
+            hint.rectTransform.sizeDelta = new Vector2(400f, 28f);
+            hint.color = new Color(0.75f, 0.9f, 0.95f, 0.85f);
+            hint.raycastTarget = false;
+
+            return panel.gameObject;
         }
 
         private static RectTransform CreateTexturedPanel(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)

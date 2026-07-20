@@ -81,7 +81,14 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-181-200-half-letter-minus";
+        public const string CurriculumVersion = "2026-07-151-180-order-intro";
+
+        /// <summary>
+        /// Levels 151–180: show "First undo addition… / Second undo multiplication"
+        /// until the player's first drag.
+        /// </summary>
+        public static bool UsesOrderOfOperationsIntro(int globalLevel) =>
+            globalLevel >= Chapter8StartLevel && globalLevel <= Chapter9EndLevel;
 
         /// <summary>
         /// First global level (1-based) of each distinct problem type.

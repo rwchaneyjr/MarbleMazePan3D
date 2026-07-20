@@ -23,6 +23,8 @@ namespace DragonBoxAlgebra.Gameplay
         public event Action<int, int> WinSequenceStarted;
         public event Action<int, int> LevelLoaded;
         public event Action<string> MessageChanged;
+        /// <summary>True when the 151–180 order-of-ops intro overlay should be visible.</summary>
+        public event Action<bool> OrderIntroVisibilityChanged;
         public event Action<CombineEvent> CombineOccurred;
 
         public AlgebraBoard Board { get; } = new();
@@ -49,6 +51,7 @@ namespace DragonBoxAlgebra.Gameplay
         private int _levelIndex;
         private int _activeHandSlot = -1;
         private bool _levelComplete;
+        private bool _orderIntroVisible;
         private int _activeMergeAnimations;
         private bool UsesManualPairMerge =>
             CurrentLevel.Chapter >= 3
@@ -274,6 +277,7 @@ namespace DragonBoxAlgebra.Gameplay
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
                 _spentHandIndices, _pendingDivide);
 
+            SetOrderIntroVisible(UsesOrderOfOperationsIntro);
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
             ResolveCombines();
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
@@ -294,8 +298,41 @@ namespace DragonBoxAlgebra.Gameplay
             CreatureSpriteDebug.LogLevel(Board, _hand, level);
         }
 
+        /// <summary>Levels 151–180 show the order-of-ops tip until the first drag.</summary>
+        public bool UsesOrderOfOperationsIntro =>
+            ChapterLevelGenerator.UsesOrderOfOperationsIntro(_levelIndex + 1);
+
+        public bool IsOrderIntroVisible => _orderIntroVisible;
+
+        /// <summary>Called when the player starts dragging a tile — hides the 151–180 intro tip.</summary>
+        public void NotifyPlayerDragStarted()
+        {
+            if (!_orderIntroVisible)
+            {
+                return;
+            }
+
+            SetOrderIntroVisible(false);
+        }
+
+        private void SetOrderIntroVisible(bool visible)
+        {
+            if (_orderIntroVisible == visible)
+            {
+                return;
+            }
+
+            _orderIntroVisible = visible;
+            OrderIntroVisibilityChanged?.Invoke(visible);
+        }
+
         private string HandMessage(LevelDefinition level)
         {
+            if (UsesOrderOfOperationsIntro)
+            {
+                return "First undo addition and subtraction. Second undo multiplication.";
+            }
+
             if (UsesMultiplyAdditionLevels)
             {
                 return "Order of operations: addition is first — finish the addition " +

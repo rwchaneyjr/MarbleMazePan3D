@@ -573,6 +573,7 @@ namespace DragonBoxAlgebra.UI
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                 eventData.pressEventCamera, out _dragOffset);
             _dragOffset = (Vector2)_rect.localPosition - _dragOffset;
+            _controller?.NotifyPlayerDragStarted();
         }
 
         private void BeginHandDrag(PointerEventData eventData)
@@ -601,6 +602,7 @@ namespace DragonBoxAlgebra.UI
                 eventData.pressEventCamera, out _dragOffset);
             _dragOffset = (Vector2)transform.localPosition - _dragOffset;
             _controller?.BeginFractionDrag(Index);
+            _controller?.NotifyPlayerDragStarted();
         }
 
         public void OnDrag(PointerEventData eventData)
