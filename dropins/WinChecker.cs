@@ -134,6 +134,39 @@ namespace DragonBoxAlgebra.Core
             return false;
         }
 
+        /// <summary>
+        /// Ch8 win: x alone = fraction n/d (dice above the line, divisor below), e.g. x = 9/2.
+        /// </summary>
+        public static bool IsVariableXEqualsFraction(AlgebraBoard board)
+        {
+            return IsXEqualsFractionOnSides(board.Left, board.Right)
+                || IsXEqualsFractionOnSides(board.Right, board.Left);
+        }
+
+        private static bool IsXEqualsFractionOnSides(BoardSide xSide, BoardSide fractionSide)
+        {
+            if (xSide.Cards.Count != 1 || !VariableGoalRules.IsVariableXGoal(xSide.Cards[0]))
+            {
+                return false;
+            }
+
+            if (xSide.HasDenominator)
+            {
+                return false;
+            }
+
+            if (fractionSide.Cards.Count != 1
+                || fractionSide.Cards[0].Kind != CardKind.PositiveConstant
+                || fractionSide.Cards[0].Value <= 0
+                || !fractionSide.HasDenominator)
+            {
+                return false;
+            }
+
+            int denom = fractionSide.Denominator.Value.Value;
+            return denom > 1 && fractionSide.Cards[0].Value % denom != 0;
+        }
+
         /// <summary>Red box alone on one side with the other side empty.</summary>
         public static bool IsRedBoxAloneWinState(AlgebraBoard board) => IsReadyForSidesTogether(board);
 
@@ -157,7 +190,7 @@ namespace DragonBoxAlgebra.Core
 
             if (useMultiplyAdditionWin)
             {
-                return IsVariableXEqualsConstant(board);
+                return IsVariableXEqualsConstant(board) || IsVariableXEqualsFraction(board);
             }
 
             if (useVariableXGoal)

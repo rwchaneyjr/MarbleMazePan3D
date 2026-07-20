@@ -875,12 +875,17 @@ namespace DragonBoxAlgebra.Gameplay
                 return true;
             }
 
-            // dice/d → divide that constant.
+            // dice/d → integer divide when even; otherwise keep as fraction n/d (e.g. 9/2).
             if (target.Value % divisor != 0)
             {
-                MessageChanged?.Invoke($"Cannot divide {target.Value} by {divisor}.");
-                PopUndoWithoutApply();
-                return false;
+                Moves.RegisterCombine();
+                MessageChanged?.Invoke($"{target.Value}/{divisor} stays as the answer.");
+                TryClearDenominatorsIfResolved();
+                HandChanged?.Invoke();
+                BoardChanged?.Invoke();
+                FractionGuideChanged?.Invoke();
+                CheckWin();
+                return true;
             }
 
             int newValue = target.Value / divisor;
@@ -899,19 +904,73 @@ namespace DragonBoxAlgebra.Gameplay
 
         private void TryClearDenominatorsIfResolved()
         {
-            if (!Board.Left.HasDenominator || !Board.Right.HasDenominator)
+            if (!UsesMultiplyAdditionLevels)
+            {
+                if (Board.Left.HasDenominator && Board.Right.HasDenominator)
+                {
+                    int d = Board.Left.Denominator.Value.Value;
+                    if (!SideStillNeedsDenominator(Board.Left, d) && !SideStillNeedsDenominator(Board.Right, d))
+                    {
+                        Board.Left.ClearDenominator();
+                        Board.Right.ClearDenominator();
+                    }
+                }
+
+                return;
+            }
+
+            // 151–165: clear denom under x after a/a→1; KEEP denom under dice for fractions like 9/2.
+            MaybeClearSideDenominator("Left");
+            MaybeClearSideDenominator("Right");
+        }
+
+        private void MaybeClearSideDenominator(string sideName)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            if (!side.HasDenominator)
             {
                 return;
             }
 
-            int divisor = Board.Left.Denominator.Value.Value;
-            if (SideStillNeedsDenominator(Board.Left, divisor) || SideStillNeedsDenominator(Board.Right, divisor))
+            int divisor = side.Denominator.Value.Value;
+            if (SideStillNeedsDenominator(side, divisor))
             {
                 return;
             }
 
-            Board.Left.ClearDenominator();
-            Board.Right.ClearDenominator();
+            // Uneven fraction (9/2): keep the line + denominator — that IS the answer.
+            if (SideHasUnevenFraction(side, divisor))
+            {
+                return;
+            }
+
+            side.ClearDenominator();
+        }
+
+        private static bool SideHasUnevenFraction(BoardSide side, int divisor)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                bool isCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+                if (isCoefficient)
+                {
+                    continue;
+                }
+
+                if (card.Value % divisor != 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool SideStillNeedsDenominator(BoardSide side, int divisor)
@@ -933,7 +992,7 @@ namespace DragonBoxAlgebra.Gameplay
                     return true;
                 }
 
-                // Larger multiples still need dice/d.
+                // Larger multiples still need dice/d → integer.
                 if (card.Value > divisor && card.Value % divisor == 0)
                 {
                     return true;
@@ -1056,14 +1115,8 @@ namespace DragonBoxAlgebra.Gameplay
             PushUndo();
             _pendingBalance = null;
 
-            // Multiply levels: canceling a constant also applies that change on the other side
-            // (add the opposite to both sides), so 2x+3=9 with −3 becomes 2x=6.
-            if (UsesMultiplyAdditionLevels
-                && CombineRules.IsDiceOppositePair(handCard, targetCard))
-            {
-                string otherSideName = sideName == "Left" ? "Right" : "Left";
-                ApplyConstantToSide(Board.GetSide(otherSideName), handCard);
-            }
+            // Ch8: cancel addend to 0 on this side only — leave the dice (e.g. 9) so answer is 9/2.
+            // Do NOT subtract from the other side.
 
             if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
             {
@@ -1088,7 +1141,7 @@ namespace DragonBoxAlgebra.Gameplay
                 Moves.RegisterCombine();
                 string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
                 MessageChanged?.Invoke(UsesMultiplyAdditionLevels
-                    ? $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} on both sides."
+                    ? $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol}. Now divide both sides."
                     : $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
             }
             else
@@ -1312,12 +1365,23 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            if (UsesMultiplyAdditionLevels && WinChecker.IsVariableXEqualsConstant(Board))
+            if (UsesMultiplyAdditionLevels
+                && (WinChecker.IsVariableXEqualsConstant(Board) || WinChecker.IsVariableXEqualsFraction(Board)))
             {
-                int answer = Board.Left.Cards.Count == 1 && Board.Left.Cards[0].Kind == CardKind.PositiveConstant
-                    ? Board.Left.Cards[0].Value
-                    : Board.Right.Cards[0].Value;
-                MessageChanged?.Invoke($"You win! x = {answer}.");
+                if (WinChecker.IsVariableXEqualsFraction(Board))
+                {
+                    BoardSide fractionSide = Board.Right.HasDenominator ? Board.Right : Board.Left;
+                    int num = fractionSide.Cards[0].Value;
+                    int den = fractionSide.Denominator.Value.Value;
+                    MessageChanged?.Invoke($"You win! x = {num}/{den}.");
+                }
+                else
+                {
+                    int answer = Board.Left.Cards.Count == 1 && Board.Left.Cards[0].Kind == CardKind.PositiveConstant
+                        ? Board.Left.Cards[0].Value
+                        : Board.Right.Cards[0].Value;
+                    MessageChanged?.Invoke($"You win! x = {answer}.");
+                }
             }
             else
             {

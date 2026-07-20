@@ -63,7 +63,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-151-165-no-fraction-on-ch1";
+        public const string CurriculumVersion = "2026-07-151-165-drop-both-sides";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -118,27 +118,27 @@ namespace DragonBoxAlgebra.Gameplay
         };
 
         /// <summary>
-        /// Ch8 (151–165): (coeff, addend, xAnswer). RHS = coeff * xAnswer + addend.
-        /// RHS (opposite x) is always a single digit 1–9 — no double-digit answers.
-        /// Level 151 is the tutorial: 2·x + 3 = 7, hand 2 and 3.
+        /// Ch8 (151–165): (coeff, addend, rhs). RHS is single-digit dice opposite x.
+        /// Cancel addend → 0; keep RHS; divide by coeff → x = rhs/coeff (e.g. 9/2).
+        /// Level 151: 2·x + 3 = 9, hand 2 and 3.
         /// </summary>
         private static readonly int[,] MultiplyAdditionSpecs =
         {
-            { 2, 3, 2 }, // 151: 2x+3=7
-            { 3, 1, 2 }, // 152: 3x+1=7
-            { 2, 1, 3 }, // 153: 2x+1=7
-            { 4, 1, 2 }, // 154: 4x+1=9
-            { 3, 2, 2 }, // 155: 3x+2=8
-            { 2, 5, 2 }, // 156: 2x+5=9
-            { 5, 1, 1 }, // 157: 5x+1=6
-            { 4, 3, 1 }, // 158: 4x+3=7
-            { 3, 4, 1 }, // 159: 3x+4=7
-            { 2, 1, 4 }, // 160: 2x+1=9
-            { 4, 1, 1 }, // 161: 4x+1=5
-            { 5, 2, 1 }, // 162: 5x+2=7
-            { 3, 1, 1 }, // 163: 3x+1=4
-            { 2, 3, 3 }, // 164: 2x+3=9
-            { 4, 5, 1 }, // 165: 4x+5=9
+            { 2, 3, 9 }, // 151: 2x+3=9 → x=9/2
+            { 3, 1, 7 }, // 152: 3x+1=7 → x=7/3
+            { 2, 1, 7 }, // 153: 2x+1=7 → x=7/2
+            { 4, 1, 9 }, // 154: 4x+1=9 → x=9/4
+            { 3, 2, 8 }, // 155: 3x+2=8 → x=8/3
+            { 2, 5, 9 }, // 156: 2x+5=9 → x=9/2
+            { 5, 1, 6 }, // 157: 5x+1=6 → x=6/5
+            { 4, 3, 7 }, // 158: 4x+3=7 → x=7/4
+            { 3, 4, 7 }, // 159: 3x+4=7 → x=7/3
+            { 2, 1, 9 }, // 160: 2x+1=9 → x=9/2
+            { 4, 1, 5 }, // 161: 4x+1=5 → x=5/4
+            { 5, 2, 7 }, // 162: 5x+2=7 → x=7/5
+            { 3, 1, 4 }, // 163: 3x+1=4 → x=4/3
+            { 2, 3, 9 }, // 164: 2x+3=9 → x=9/2
+            { 4, 5, 9 }, // 165: 4x+5=9 → x=9/4
         };
 
         private static readonly string[] SeaCreatureNames =
@@ -565,20 +565,18 @@ namespace DragonBoxAlgebra.Gameplay
                 int displayNumber = i + 1;
                 int coeff = MultiplyAdditionSpecs[i, 0];
                 int addend = MultiplyAdditionSpecs[i, 1];
-                int xAnswer = MultiplyAdditionSpecs[i, 2];
-                int rhs = coeff * xAnswer + addend;
+                int rhs = MultiplyAdditionSpecs[i, 2];
                 string title =
                     $"Ch8 • {ChapterNames[7]} {displayNumber} ({coeff}·x + {addend} = {rhs})";
-                yield return MakeMultiplyAdditionLevel(title, coeff, addend, xAnswer);
+                yield return MakeMultiplyAdditionLevel(title, coeff, addend, rhs);
             }
         }
 
         /// <summary>
-        /// a·x + b = c with hand a and b. Cancel b, then divide both sides by a → x = answer.
+        /// a·x + b = c with hand a and b. Cancel b → 0; keep c; divide by a → x = c/a (e.g. 9/2).
         /// </summary>
-        private static LevelDefinition MakeMultiplyAdditionLevel(string title, int coeff, int addend, int xAnswer)
+        private static LevelDefinition MakeMultiplyAdditionLevel(string title, int coeff, int addend, int rhs)
         {
-            int rhs = coeff * xAnswer + addend;
             var level = new LevelDefinition
             {
                 Title = title,
@@ -601,7 +599,7 @@ namespace DragonBoxAlgebra.Gameplay
             level.LeftVariableLetters.Add('\0');
             level.LeftValues.Add(addend);
 
-            // Right: rhs
+            // Right: rhs (stays after cancel — answer is rhs/coeff)
             level.RightCards.Add(CardKind.PositiveConstant);
             level.RightVariableLetters.Add('\0');
             level.RightValues.Add(rhs);
