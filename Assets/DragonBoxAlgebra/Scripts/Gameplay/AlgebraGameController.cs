@@ -312,11 +312,11 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (count == 2)
             {
-                if (level.Chapter >= 8)
+                if (UsesMultiplyAdditionLevels || level.Chapter >= 8)
                 {
-                    return "Cancel the addend with its opposite → 0. " +
-                           "Flip the coefficient (e.g. -5 → 5), drop it under the line below 5·x and under the dice. " +
-                           "5/5 → 1, dice/5 → answer, so x = dice/5.";
+                    return "Order of operations: addition is first — finish the addition (cancel the addend → 0) " +
+                           "until the addition is done. Then divide both sides with the coefficient " +
+                           "(drop it under the line on each side).";
                 }
 
                 if (level.Chapter >= 7)
