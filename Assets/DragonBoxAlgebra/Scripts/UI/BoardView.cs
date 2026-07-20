@@ -623,6 +623,7 @@ namespace DragonBoxAlgebra.UI
                 {
                     _leftDenomZone.RefreshVisual(_controller);
                     _leftDenomZone.transform.SetAsLastSibling();
+                    SnapGroupedDenomUnderEquation(_leftDenomZone, "Left", _leftPanel);
                 }
             }
 
@@ -633,6 +634,7 @@ namespace DragonBoxAlgebra.UI
                 {
                     _rightDenomZone.RefreshVisual(_controller);
                     _rightDenomZone.transform.SetAsLastSibling();
+                    SnapGroupedDenomUnderEquation(_rightDenomZone, "Right", _rightPanel);
                 }
             }
 
@@ -640,6 +642,82 @@ namespace DragonBoxAlgebra.UI
             {
                 _widgets[i]?.RefreshFractionGuide();
             }
+        }
+
+        /// <summary>
+        /// Pin the shared Ch10 fraction line flush under the ( equation ) on that side.
+        /// </summary>
+        private void SnapGroupedDenomUnderEquation(DenominatorDropZone zone, string sideName,
+            RectTransform panel)
+        {
+            if (zone == null || panel == null || _controller == null
+                || !_controller.UsesGroupedLetterFraction(sideName)
+                || !zone.gameObject.activeSelf)
+            {
+                return;
+            }
+
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(panel);
+
+            float localLeft = float.MaxValue;
+            float localRight = float.MinValue;
+            float localBottom = float.MaxValue;
+            bool any = false;
+            var corners = new Vector3[4];
+
+            void ExpandFrom(RectTransform rt)
+            {
+                if (rt == null)
+                {
+                    return;
+                }
+
+                rt.GetWorldCorners(corners);
+                for (int c = 0; c < 4; c++)
+                {
+                    Vector3 local = panel.InverseTransformPoint(corners[c]);
+                    localLeft = Mathf.Min(localLeft, local.x);
+                    localRight = Mathf.Max(localRight, local.x);
+                    localBottom = Mathf.Min(localBottom, local.y);
+                }
+
+                any = true;
+            }
+
+            for (int i = 0; i < _widgets.Count; i++)
+            {
+                CardWidget widget = _widgets[i];
+                if (widget == null || widget.SideName != sideName)
+                {
+                    continue;
+                }
+
+                ExpandFrom(widget.transform as RectTransform);
+            }
+
+            for (int i = 0; i < panel.childCount; i++)
+            {
+                Transform child = panel.GetChild(i);
+                if (child == null)
+                {
+                    continue;
+                }
+
+                if (child.name is "OpenParen" or "CloseParen"
+                    || child.name.StartsWith("PlusSeparator", StringComparison.Ordinal)
+                    || child.name.StartsWith("TimesSeparator", StringComparison.Ordinal))
+                {
+                    ExpandFrom(child as RectTransform);
+                }
+            }
+
+            if (!any)
+            {
+                return;
+            }
+
+            zone.SnapFlushUnderEquation(localLeft, localRight, localBottom);
         }
 
         private int FindPendingMarkerIndex(string sideName, string cardId)

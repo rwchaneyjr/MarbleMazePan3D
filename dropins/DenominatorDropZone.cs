@@ -90,7 +90,8 @@ namespace DragonBoxAlgebra.UI
 
         public void RefreshVisual(AlgebraGameController controller)
         {
-            EnsureOverlayLayout();
+            var layoutElement = GetComponent<LayoutElement>() ?? gameObject.AddComponent<LayoutElement>();
+            layoutElement.ignoreLayout = true;
 
             Transform slot = transform.Find("DenomSlot");
             if (slot == null)
@@ -149,6 +150,7 @@ namespace DragonBoxAlgebra.UI
 
             if (!groupedLetter)
             {
+                ApplyDefaultBottomOverlay();
                 return;
             }
 
@@ -162,11 +164,55 @@ namespace DragonBoxAlgebra.UI
             CreateDenomHint(slot, "?");
         }
 
-        private void EnsureOverlayLayout()
+        /// <summary>
+        /// Place the shared fraction bar flush under the equation tiles on this side.
+        /// localLeft/Right/Bottom are in the parent panel's local space (center origin).
+        /// </summary>
+        public void SnapFlushUnderEquation(float localLeft, float localRight, float localBottom)
         {
             var layoutElement = GetComponent<LayoutElement>() ?? gameObject.AddComponent<LayoutElement>();
             layoutElement.ignoreLayout = true;
 
+            var rect = transform as RectTransform;
+            if (rect == null)
+            {
+                return;
+            }
+
+            float width = Mathf.Max(140f, localRight - localLeft);
+            float centerX = (localLeft + localRight) * 0.5f;
+
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.sizeDelta = new Vector2(width, 86f);
+            // Pivot at top → top edge sits just under the tiles.
+            rect.anchoredPosition = new Vector2(centerX, localBottom - 2f);
+
+            Transform line = transform.Find("FractionLine");
+            if (line != null)
+            {
+                var lineRect = line as RectTransform;
+                lineRect.anchorMin = new Vector2(0.02f, 0.84f);
+                lineRect.anchorMax = new Vector2(0.98f, 0.94f);
+                lineRect.offsetMin = Vector2.zero;
+                lineRect.offsetMax = Vector2.zero;
+                line.gameObject.SetActive(true);
+            }
+
+            Transform slot = transform.Find("DenomSlot");
+            if (slot != null)
+            {
+                var slotRect = slot as RectTransform;
+                slotRect.anchorMin = new Vector2(0.34f, 0.02f);
+                slotRect.anchorMax = new Vector2(0.66f, 0.78f);
+                slotRect.offsetMin = Vector2.zero;
+                slotRect.offsetMax = Vector2.zero;
+            }
+        }
+
+        private void ApplyDefaultBottomOverlay()
+        {
             var rect = transform as RectTransform;
             if (rect == null)
             {
