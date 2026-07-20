@@ -139,6 +139,9 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>From global level 86: random 2 or 3 variable letters (one tile each).</summary>
         public const int HighVariableLetterCountStartLevel = 86;
 
+        /// <summary>Ch3 Balance Sides begins at global level 29 (after Ch1+Ch2).</summary>
+        public const int Chapter3BalanceStartLevel = 29;
+
         /// <summary>Levels 113–150 show a + sign between each board tile image.</summary>
         public const int PlusBetweenTilesStartLevel = 113;
         public const int PlusBetweenTilesEndLevel = 150;

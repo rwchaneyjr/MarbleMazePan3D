@@ -305,8 +305,9 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (count <= 1)
             {
-                return "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                       $"{pairPhrase} on the same side become one *. Pairs never cross the middle.";
+                string cancelHint = UsesZeroCancelSymbol ? "0" : "*";
+                return "Drag a tile onto a side (onto its opposite when present). A ? appears on the other side — " +
+                       $"drag the same tile to the ?. Opposites merge on top into {cancelHint}, then {cancelHint} clears.";
             }
 
             if (count == 2)
@@ -1174,11 +1175,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            // Snap / drop-on-top onto opposites only when that is the intended hand mechanic.
+            // Snap targeting allows any opposite so the hand tile can sit on top visually.
+            // Cancel-vs-balance is decided by UsesHandOntoOppositeCancel in the drop handlers.
             if (CombineRules.GetCombineAction(_hand[handIndex], targetCard)
                 == CombineActionType.OppositeCancel)
             {
-                return UsesHandOntoOppositeCancel;
+                return true;
             }
 
             // Older opposite-only chapters reject non-opposites; balance chapters still allow side drops elsewhere.
@@ -1408,9 +1410,13 @@ namespace DragonBoxAlgebra.Gameplay
         {
             PushUndo();
             BoardSide placedSide = Board.GetSide(targetSide);
-            placedSide.Cards.Add(template.CloneForPlacement());
-            int placedIndex = placedSide.Cards.Count - 1;
+            // Sit on / beside the opposite so the merge shows stacked in that slot (not a free end park).
+            int insertAt = FindInsertIndexBesideOpposite(placedSide, targetSide, template);
+            placedSide.Cards.Insert(insertAt, template.CloneForPlacement());
+            int placedIndex = insertAt;
             string holeSide = targetSide == "Left" ? "Right" : "Left";
+            BoardSide holeSideBoard = Board.GetSide(holeSide);
+            int holeInsert = FindInsertIndexBesideOpposite(holeSideBoard, holeSide, template);
 
             _pendingBalance = new BalancePending
             {
@@ -1418,7 +1424,7 @@ namespace DragonBoxAlgebra.Gameplay
                 PlacedSide = targetSide,
                 PlacedIndex = placedIndex,
                 HandIndex = handIndex,
-                HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
+                HoleInsertIndex = holeInsert
             };
 
             if (UsesPlayableHandDisplay)
@@ -1426,7 +1432,16 @@ namespace DragonBoxAlgebra.Gameplay
                 _activeHandSlot = handIndex;
             }
 
-            MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
+            // 29–150: night on day → merge on top → 0; ? stays on the other side until filled.
+            if (!UsesMultiplyAdditionLevels)
+            {
+                ActivateOppositePairOrCancelDice(targetSide, placedIndex);
+            }
+
+            string cancelHint = UsesZeroCancelSymbol ? "0" : "*";
+            MessageChanged?.Invoke(_pendingCancels.Count > 0
+                ? $"? on the other side — drag the same tile to fill it. {Capitalize(LightTerm)} met {DarkTerm}: {cancelHint} appears."
+                : "? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
             if (UsesPlayableHandDisplay && !UsesDualHandPanelDisplay)
             {
@@ -1461,7 +1476,7 @@ namespace DragonBoxAlgebra.Gameplay
             int insertIndex = _pendingBalance.HoleInsertIndex;
             if (insertIndex < 0 || insertIndex > balancedSide.Cards.Count)
             {
-                insertIndex = balancedSide.Cards.Count;
+                insertIndex = FindInsertIndexBesideOpposite(balancedSide, targetSide, template);
             }
 
             // 151–180: fold into dice when numeric; beside a letter keep the constant (b + −2).
@@ -1475,16 +1490,17 @@ namespace DragonBoxAlgebra.Gameplay
                 else
                 {
                     ApplyConstantToSide(balancedSide, template);
+                    insertIndex = -1;
                 }
             }
             else
             {
+                // Sit on the opposite (merge-on-top), not a free park at the end of the side.
+                insertIndex = FindInsertIndexBesideOpposite(balancedSide, targetSide, template);
                 balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
             }
 
             int holePlacedIndex = insertIndex;
-            string placedSide = _pendingBalance.PlacedSide;
-            int placedBoardIndex = _pendingBalance.PlacedIndex;
             _pendingBalance = null;
             if (UsesPlayableHandDisplay)
             {
@@ -1507,12 +1523,20 @@ namespace DragonBoxAlgebra.Gameplay
 
             HandChanged?.Invoke();
 
+            if (!UsesMultiplyAdditionLevels && holePlacedIndex >= 0)
+            {
+                ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
+            }
+
             Moves.RegisterBalancedPlay();
+            string cancelHint = UsesZeroCancelSymbol ? "0" : "*";
             MessageChanged?.Invoke(UsesMultiplyAdditionLevels
                 ? "Balanced both sides. Now divide with the coefficient."
-                : UsesManualPairMerge
-                    ? $"Balanced! Drag {LightTerm} onto {DarkTerm} on the same side to make *."
-                    : "Balanced!");
+                : _pendingCancels.Count > 0
+                    ? $"Balanced! {Capitalize(LightTerm)} met {DarkTerm} — {cancelHint} appears, then clears."
+                    : UsesManualPairMerge
+                        ? $"Balanced! Drag {LightTerm} onto {DarkTerm} on the same side to make {cancelHint}."
+                        : "Balanced!");
             PruneInvalidCancelMarkers();
             ResolveCombines();
             if (UsesMultiplyAdditionLevels)
@@ -1521,6 +1545,28 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Insert index so a new tile sits immediately after its opposite (merge-on-top slot),
+        /// or at the end when no opposite is present on that side.
+        /// </summary>
+        private int FindInsertIndexBesideOpposite(BoardSide side, string sideName, BoardCard template)
+        {
+            for (int j = 0; j < side.Cards.Count; j++)
+            {
+                if (IsCardPendingCancelOnSide(side.Cards[j].Id, sideName))
+                {
+                    continue;
+                }
+
+                if (CombineRules.GetCombineAction(template, side.Cards[j]) == CombineActionType.OppositeCancel)
+                {
+                    return j + 1;
+                }
+            }
+
+            return side.Cards.Count;
         }
 
         private void ResolveCombines()
@@ -1557,9 +1603,10 @@ namespace DragonBoxAlgebra.Gameplay
         {
             if (_pendingCancels.Count > 0)
             {
+                string clearing = UsesZeroCancelSymbol ? "0" : "Swirl";
                 MessageChanged?.Invoke(_pendingCancels.Count > 1
-                    ? "Swirls clearing…"
-                    : "Swirl clearing…");
+                    ? $"{clearing}s clearing…"
+                    : $"{clearing} clearing…");
                 return;
             }
 
@@ -1658,10 +1705,11 @@ namespace DragonBoxAlgebra.Gameplay
             ChapterLevelGenerator.UsesPlusBetweenBoardTiles(_levelIndex + 1);
 
         /// <summary>
-        /// Addition cancel shows 0 (113–150, and addition cancels on 151–165).
+        /// Levels 29–150: cancel shows 0 (then dismisses). Ch8/Ch9 addition cancels also use 0.
+        /// Ch1–Ch2 keep the swirl.
         /// </summary>
         public bool UsesZeroCancelSymbol =>
-            (_levelIndex + 1 >= ChapterLevelGenerator.PlusBetweenTilesStartLevel
+            (_levelIndex + 1 >= ChapterLevelGenerator.Chapter3BalanceStartLevel
              && _levelIndex + 1 <= ChapterLevelGenerator.PlusBetweenTilesEndLevel)
             || UsesMultiplyAdditionLevels;
 

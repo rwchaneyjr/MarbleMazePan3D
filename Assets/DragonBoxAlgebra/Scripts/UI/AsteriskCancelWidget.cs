@@ -13,6 +13,7 @@ namespace DragonBoxAlgebra.UI
         private const float MergeHalfOffset = 28f;
         private const float SwirlClickableAlpha = 0.25f;
         private const float AutoDismissDelay = 0.35f;
+        private const float ZeroAutoDismissDelay = 0.95f;
         private const string SwirlingLightResourcePath = "CreatureSprites/SwirlingLight";
 
         private AlgebraGameController _controller;
@@ -366,7 +367,10 @@ namespace DragonBoxAlgebra.UI
 
         private IEnumerator AutoDismissAfterSwirl()
         {
-            yield return new WaitForSeconds(AutoDismissDelay);
+            float delay = _resultSymbol is CancelResultSymbol.Zero or CancelResultSymbol.One
+                ? ZeroAutoDismissDelay
+                : AutoDismissDelay;
+            yield return new WaitForSeconds(delay);
             if (_controller == null || !_readyToClick)
             {
                 yield break;
