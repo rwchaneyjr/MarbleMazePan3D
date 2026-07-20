@@ -60,7 +60,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-140-150-letter-opposite";
+        public const string CurriculumVersion = "2026-07-151-165-single-digit-rhs";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -115,25 +115,26 @@ namespace DragonBoxAlgebra.Gameplay
 
         /// <summary>
         /// Ch8 (151–165): (coeff, addend, xAnswer). RHS = coeff * xAnswer + addend.
-        /// Level 151 is the tutorial: 2·x + 3 = 9, hand 2 and 3.
+        /// RHS (opposite x) is always a single digit 1–9 — no double-digit answers.
+        /// Level 151 is the tutorial: 2·x + 3 = 7, hand 2 and 3.
         /// </summary>
         private static readonly int[,] MultiplyAdditionSpecs =
         {
-            { 2, 3, 3 }, // 151: 2x+3=9
-            { 3, 2, 3 }, // 152: 3x+2=11
-            { 2, 5, 4 }, // 153: 2x+5=13
+            { 2, 3, 2 }, // 151: 2x+3=7
+            { 3, 1, 2 }, // 152: 3x+1=7
+            { 2, 1, 3 }, // 153: 2x+1=7
             { 4, 1, 2 }, // 154: 4x+1=9
-            { 3, 4, 2 }, // 155: 3x+4=10
-            { 2, 1, 5 }, // 156: 2x+1=11
-            { 5, 2, 2 }, // 157: 5x+2=12
-            { 4, 3, 2 }, // 158: 4x+3=11
-            { 3, 1, 4 }, // 159: 3x+1=13
-            { 2, 6, 3 }, // 160: 2x+6=12
-            { 4, 2, 3 }, // 161: 4x+2=14
-            { 5, 1, 3 }, // 162: 5x+1=16
-            { 3, 5, 2 }, // 163: 3x+5=11
-            { 2, 4, 5 }, // 164: 2x+4=14
-            { 4, 5, 2 }, // 165: 4x+5=13 (distinct hand numbers)
+            { 3, 2, 2 }, // 155: 3x+2=8
+            { 2, 5, 2 }, // 156: 2x+5=9
+            { 5, 1, 1 }, // 157: 5x+1=6
+            { 4, 3, 1 }, // 158: 4x+3=7
+            { 3, 4, 1 }, // 159: 3x+4=7
+            { 2, 1, 4 }, // 160: 2x+1=9
+            { 4, 1, 1 }, // 161: 4x+1=5
+            { 5, 2, 1 }, // 162: 5x+2=7
+            { 3, 1, 1 }, // 163: 3x+1=4
+            { 2, 3, 3 }, // 164: 2x+3=9
+            { 4, 5, 1 }, // 165: 4x+5=9
         };
 
         private static readonly string[] SeaCreatureNames =
