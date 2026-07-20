@@ -65,6 +65,16 @@ namespace DragonBoxAlgebra.Core
             && side.Cards[0].Kind is CardKind.PositiveConstant or CardKind.NegativeConstant
             && side.Cards[0].Value == 0;
 
+        /// <summary>Lone non-x variable letter (140–150 answer: x = a/b/c/r).</summary>
+        public static bool IsLoneNonGoalVariableSide(BoardSide side) =>
+            side.Cards.Count == 1
+            && side.Cards[0].Kind is CardKind.DayCreature or CardKind.NightCreature
+            && side.Cards[0].VariableLetter != '\0'
+            && !VariableGoalRules.IsVariableXGoal(side.Cards[0]);
+
+        public static bool IsEmptyZeroOrLetterAnswerSide(BoardSide side) =>
+            IsEmptyOrZeroOnlySide(side) || IsLoneNonGoalVariableSide(side);
+
         /// <summary>Box on one side only; the opposite side is empty or only 0.</summary>
         public static bool IsReadyForSidesTogether(AlgebraBoard board)
         {
@@ -81,15 +91,18 @@ namespace DragonBoxAlgebra.Core
             return false;
         }
 
-        /// <summary>Positive x alone on one side; opposite side empty or only 0 (x = 0).</summary>
-        public static bool IsVariableXReadyForSidesTogether(AlgebraBoard board)
+        /// <summary>Positive x alone on one side; opposite side empty, only 0, or (optional) a lone letter.</summary>
+        public static bool IsVariableXReadyForSidesTogether(AlgebraBoard board, bool allowLoneVariableAnswer = false)
         {
-            if (IsEmptyOrZeroOnlySide(board.Right))
+            bool OppositeOk(BoardSide side) =>
+                allowLoneVariableAnswer ? IsEmptyZeroOrLetterAnswerSide(side) : IsEmptyOrZeroOnlySide(side);
+
+            if (OppositeOk(board.Right))
             {
                 return board.Left.Cards.Count == 1 && VariableGoalRules.IsVariableXGoal(board.Left.Cards[0]);
             }
 
-            if (IsEmptyOrZeroOnlySide(board.Left))
+            if (OppositeOk(board.Left))
             {
                 return board.Right.Cards.Count == 1 && VariableGoalRules.IsVariableXGoal(board.Right.Cards[0]);
             }
@@ -130,7 +143,7 @@ namespace DragonBoxAlgebra.Core
         /// </summary>
         public static bool CanWin(AlgebraBoard board, int moves, bool hasPendingBalance, int pendingCancelCount,
             int activeMergeAnimations, bool allowOppositeCreatures = false, bool useVariableXGoal = false,
-            bool useMultiplyAdditionWin = false)
+            bool useMultiplyAdditionWin = false, bool allowLoneVariableAnswer = false)
         {
             if (hasPendingBalance || pendingCancelCount > 0 || activeMergeAnimations > 0)
             {
@@ -149,7 +162,7 @@ namespace DragonBoxAlgebra.Core
 
             if (useVariableXGoal)
             {
-                return IsVariableXReadyForSidesTogether(board);
+                return IsVariableXReadyForSidesTogether(board, allowLoneVariableAnswer);
             }
 
             return allowOppositeCreatures

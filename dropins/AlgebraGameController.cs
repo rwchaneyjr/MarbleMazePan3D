@@ -1240,7 +1240,7 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (!WinChecker.CanWin(Board, Moves.Moves, _pendingBalance != null, _pendingCancels.Count,
                     _activeMergeAnimations, UsesExtraOppositeTileLevel, UsesVariableXGoalWin,
-                    UsesMultiplyAdditionLevels))
+                    UsesMultiplyAdditionLevels, UsesLetterOppositeAnswerWin))
             {
                 return;
             }
@@ -1264,11 +1264,21 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 bool equalsZero = UsesPlusBetweenBoardTiles
                     && (WinChecker.IsZeroOnlySide(Board.Left) || WinChecker.IsZeroOnlySide(Board.Right));
+                bool equalsLetter = UsesLetterOppositeAnswerWin
+                    && (WinChecker.IsLoneNonGoalVariableSide(Board.Left)
+                        || WinChecker.IsLoneNonGoalVariableSide(Board.Right));
+                char letterAnswer = equalsLetter
+                    ? (WinChecker.IsLoneNonGoalVariableSide(Board.Left)
+                        ? Board.Left.Cards[0].VariableLetter
+                        : Board.Right.Cards[0].VariableLetter)
+                    : '\0';
                 MessageChanged?.Invoke(equalsZero
                     ? "You win! x = 0."
-                    : UsesVariableXGoalWin
-                        ? "You win! x is alone."
-                        : "You win! The red box is alone.");
+                    : equalsLetter
+                        ? $"You win! x = {letterAnswer}."
+                        : UsesVariableXGoalWin
+                            ? "You win! x is alone."
+                            : "You win! The red box is alone.");
             }
 
             WinSequenceStarted?.Invoke(stars, moves);
@@ -1291,6 +1301,11 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         public bool UsesVariableXGoalWin => CurrentLevel.Chapter >= 6;
+
+        /// <summary>Levels 140–150: opposite answer is a letter (x = a/b/c/r), not scene 0.</summary>
+        public bool UsesLetterOppositeAnswerWin =>
+            _levelIndex + 1 >= ChapterLevelGenerator.NumberLevelsStartLevel
+            && _levelIndex + 1 <= ChapterLevelGenerator.PlusBetweenTilesEndLevel;
 
         public bool UsesExtraOppositeTileLevel =>
             _levelIndex + 1 >= ChapterLevelGenerator.OppositeExtraTileStartLevel

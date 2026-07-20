@@ -6,7 +6,8 @@ namespace DragonBoxAlgebra.Gameplay
     /// <summary>
     /// DragonBox-style intro: Ch1–Ch4 through level 62; Ch5 (63–80) variable images + red box;
     /// Ch6 (81–100) x + variables; Ch7 (101–150) sea + variables + numbers (+ between tiles from 113);
-    /// 129–139 exact copies of 118–128; 140–150 copy 129–139 with sea slots → number images;
+    /// 129–139 exact copies of 118–128; 140–150 copy 129–139 with sea slots → number images
+    /// and a letter opposite x (b,c,b,r,a,r,a,b,a,c,b) instead of scene 0;
     /// Ch8 (151–165) multiplication with addition (a·x + b = c) and divide-both-sides.
     /// </summary>
     public static class ChapterLevelGenerator
@@ -59,7 +60,7 @@ namespace DragonBoxAlgebra.Gameplay
         public const int NumberLevelsStartLevel = 140;
 
         /// <summary>Bump when curriculum changes — shown in Unity Console on Play.</summary>
-        public const string CurriculumVersion = "2026-07-151-165-fraction-line-divide";
+        public const string CurriculumVersion = "2026-07-140-150-letter-opposite";
 
         /// <summary>From global level 64: alternate 1 vs 2 variable letters (one tile each, never duplicates).</summary>
         public const int VariableLetterCountStartLevel = 64;
@@ -159,11 +160,22 @@ namespace DragonBoxAlgebra.Gameplay
                 AddRandomExtraTileOppositeBox(levels[i], i);
             }
 
-            // 113–150: scene 0 on the side opposite x/box so addition ends as x = 0.
+            // 113–139: scene 0 opposite x/box (x = 0).
+            // 140–150: letter opposite x in order b,c,b,r,a,r,a,b,a,c,b (x = letter).
             for (int globalLevel = PlusBetweenTilesStartLevel; globalLevel <= PlusBetweenTilesEndLevel; globalLevel++)
             {
                 int index = globalLevel - 1;
-                if (index >= 0 && index < levels.Count)
+                if (index < 0 || index >= levels.Count)
+                {
+                    continue;
+                }
+
+                if (globalLevel >= NumberLevelsStartLevel)
+                {
+                    int letterIndex = globalLevel - NumberLevelsStartLevel;
+                    AddLetterOppositeGoal(levels[index], OppositeLetterFor140To150[letterIndex]);
+                }
+                else
                 {
                     AddZeroOppositeGoal(levels[index]);
                 }
@@ -174,7 +186,7 @@ namespace DragonBoxAlgebra.Gameplay
             HandRules.AssertAllHandCardsFlippable(levels);
             HandRules.AssertVariableHandCardsFlippable(levels);
             AssertGoalXOnOneSideForNumberLevels(levels);
-            AssertZeroOppositeGoalForAdditionLevels(levels);
+            AssertOppositeAnswerForAdditionLevels(levels);
             return levels;
         }
 
@@ -221,6 +233,12 @@ namespace DragonBoxAlgebra.Gameplay
         }
 
         private static readonly char[] VariablePairLetters = { 'a', 'b', 'c', 'r' };
+
+        /// <summary>Global 140–150: replace scene 0 with this letter opposite x (x = letter).</summary>
+        private static readonly char[] OppositeLetterFor140To150 =
+        {
+            'b', 'c', 'b', 'r', 'a', 'r', 'a', 'b', 'a', 'c', 'b'
+        };
 
         private static IEnumerable<LevelDefinition> GenerateChapter5()
         {
@@ -776,30 +794,9 @@ namespace DragonBoxAlgebra.Gameplay
         /// </summary>
         private static void AddZeroOppositeGoal(LevelDefinition level)
         {
-            bool goalOnLeft = SideHasIsolationGoal(level.LeftCards, level.LeftVariableLetters);
-            bool goalOnRight = SideHasIsolationGoal(level.RightCards, level.RightVariableLetters);
-
-            List<CardKind> cards;
-            List<char> letters;
-            List<int> values;
-            if (goalOnLeft && !goalOnRight)
+            if (!TryGetSideOppositeGoal(level, out List<CardKind> cards, out List<char> letters, out List<int> values))
             {
-                cards = level.RightCards;
-                letters = level.RightVariableLetters;
-                values = level.RightValues;
-            }
-            else if (goalOnRight && !goalOnLeft)
-            {
-                cards = level.LeftCards;
-                letters = level.LeftVariableLetters;
-                values = level.LeftValues;
-            }
-            else
-            {
-                // Goal missing/ambiguous — still place 0 on the right scene.
-                cards = level.RightCards;
-                letters = level.RightVariableLetters;
-                values = level.RightValues;
+                return;
             }
 
             if (SideHasZeroConstant(cards, values))
@@ -807,6 +804,73 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
+            EnsureSideListLengths(cards, letters, values);
+            cards.Add(CardKind.PositiveConstant);
+            letters.Add('\0');
+            values.Add(0);
+        }
+
+        /// <summary>
+        /// Levels 140–150: put a variable letter opposite x (replaces scene 0) so the answer is x = letter.
+        /// </summary>
+        private static void AddLetterOppositeGoal(LevelDefinition level, char letter)
+        {
+            if (!TryGetSideOppositeGoal(level, out List<CardKind> cards, out List<char> letters, out List<int> values))
+            {
+                return;
+            }
+
+            EnsureSideListLengths(cards, letters, values);
+
+            // Replace an existing opposite 0 if present; otherwise append the letter.
+            for (int i = 0; i < cards.Count; i++)
+            {
+                int value = i < values.Count ? values[i] : 1;
+                if (cards[i] is (CardKind.PositiveConstant or CardKind.NegativeConstant) && value == 0)
+                {
+                    cards[i] = CardKind.DayCreature;
+                    letters[i] = letter;
+                    values[i] = 1;
+                    return;
+                }
+            }
+
+            cards.Add(CardKind.DayCreature);
+            letters.Add(letter);
+            values.Add(1);
+        }
+
+        private static bool TryGetSideOppositeGoal(LevelDefinition level,
+            out List<CardKind> cards, out List<char> letters, out List<int> values)
+        {
+            bool goalOnLeft = SideHasIsolationGoal(level.LeftCards, level.LeftVariableLetters);
+            bool goalOnRight = SideHasIsolationGoal(level.RightCards, level.RightVariableLetters);
+
+            if (goalOnLeft && !goalOnRight)
+            {
+                cards = level.RightCards;
+                letters = level.RightVariableLetters;
+                values = level.RightValues;
+                return true;
+            }
+
+            if (goalOnRight && !goalOnLeft)
+            {
+                cards = level.LeftCards;
+                letters = level.LeftVariableLetters;
+                values = level.LeftValues;
+                return true;
+            }
+
+            // Goal missing/ambiguous — still place on the right scene.
+            cards = level.RightCards;
+            letters = level.RightVariableLetters;
+            values = level.RightValues;
+            return true;
+        }
+
+        private static void EnsureSideListLengths(List<CardKind> cards, List<char> letters, List<int> values)
+        {
             while (letters.Count < cards.Count)
             {
                 letters.Add('\0');
@@ -816,10 +880,6 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 values.Add(1);
             }
-
-            cards.Add(CardKind.PositiveConstant);
-            letters.Add('\0');
-            values.Add(0);
         }
 
         private static bool SideHasIsolationGoal(List<CardKind> cards, List<char> letters)
@@ -861,7 +921,25 @@ namespace DragonBoxAlgebra.Gameplay
             return false;
         }
 
-        private static void AssertZeroOppositeGoalForAdditionLevels(IReadOnlyList<LevelDefinition> levels)
+        private static bool SideHasLetter(List<CardKind> cards, List<char> letters, char letter)
+        {
+            for (int i = 0; i < cards.Count; i++)
+            {
+                if (cards[i] is not (CardKind.DayCreature or CardKind.NightCreature))
+                {
+                    continue;
+                }
+
+                if (i < letters.Count && letters[i] == letter)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void AssertOppositeAnswerForAdditionLevels(IReadOnlyList<LevelDefinition> levels)
         {
             for (int globalLevel = PlusBetweenTilesStartLevel; globalLevel <= PlusBetweenTilesEndLevel; globalLevel++)
             {
@@ -874,6 +952,26 @@ namespace DragonBoxAlgebra.Gameplay
                 LevelDefinition level = levels[index];
                 bool goalOnLeft = SideHasIsolationGoal(level.LeftCards, level.LeftVariableLetters);
                 bool goalOnRight = SideHasIsolationGoal(level.RightCards, level.RightVariableLetters);
+
+                if (globalLevel >= NumberLevelsStartLevel)
+                {
+                    char expected = OppositeLetterFor140To150[globalLevel - NumberLevelsStartLevel];
+                    bool letterOpposite = goalOnLeft && !goalOnRight
+                        ? SideHasLetter(level.RightCards, level.RightVariableLetters, expected)
+                        : goalOnRight && !goalOnLeft
+                            ? SideHasLetter(level.LeftCards, level.LeftVariableLetters, expected)
+                            : SideHasLetter(level.LeftCards, level.LeftVariableLetters, expected)
+                              || SideHasLetter(level.RightCards, level.RightVariableLetters, expected);
+
+                    if (!letterOpposite)
+                    {
+                        throw new System.InvalidOperationException(
+                            $"Level {globalLevel} ({level.Title}) must have letter '{expected}' opposite x/box.");
+                    }
+
+                    continue;
+                }
+
                 bool zeroOpposite = goalOnLeft && !goalOnRight
                     ? SideHasZeroConstant(level.RightCards, level.RightValues)
                     : goalOnRight && !goalOnLeft
