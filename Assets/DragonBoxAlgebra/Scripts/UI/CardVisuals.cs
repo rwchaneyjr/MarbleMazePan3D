@@ -48,9 +48,9 @@ namespace DragonBoxAlgebra.UI
             CardKind.NightCreature => UsesVariableLetter(card)
                 ? $"NEG {VariableLabel(card)}"
                 : $"NIGHT x{card.Value}",
-            CardKind.PositiveConstant => $"+{card.Value}",
-            CardKind.NegativeConstant => $"-{card.Value}",
-            CardKind.One => "ONE",
+            CardKind.PositiveConstant => card.Value.ToString(),
+            CardKind.NegativeConstant => card.Value == 0 ? "0" : $"-{card.Value}",
+            CardKind.One => "1",
             CardKind.DivideTool => "DIV",
             _ => "?"
         };
@@ -81,9 +81,21 @@ namespace DragonBoxAlgebra.UI
 
         public static bool PreferEmoji(BoardCard card) => false;
 
-        public static bool ShowsIconOnly(BoardCard card) =>
-            card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box
-                or CardKind.PositiveConstant or CardKind.NegativeConstant;
+        public static bool ShowsIconOnly(BoardCard card)
+        {
+            if (card.Kind is CardKind.DayCreature or CardKind.NightCreature or CardKind.Box)
+            {
+                return true;
+            }
+
+            // Numbers: icon-only only when a digit PNG exists (12 has no sprite → show "12" text).
+            if (card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+            {
+                return CardSpriteLoader.GetNumberSprite(card.Value, card.Kind == CardKind.PositiveConstant) != null;
+            }
+
+            return false;
+        }
 
         public static Color FaceBackground(BoardCard card, string sideName)
         {
@@ -138,6 +150,15 @@ namespace DragonBoxAlgebra.UI
                 }
             }
 
+            if (card.Kind == CardKind.One)
+            {
+                Sprite one = CardSpriteLoader.GetOneSprite();
+                if (one != null)
+                {
+                    return one;
+                }
+            }
+
             return card.Kind switch
             {
                 CardKind.DayCreature => CreatureArt.LightSprite(card),
@@ -155,11 +176,24 @@ namespace DragonBoxAlgebra.UI
                 return creature;
             }
 
+            if (card.Kind == CardKind.One)
+            {
+                Sprite one = CardSpriteLoader.GetOneSprite();
+                if (one != null)
+                {
+                    return one;
+                }
+            }
+
+            // Digit tiles use number PNGs when present; values like 12 have no art → text in CardWidget.
+            if (card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+            {
+                return CardSpriteLoader.GetNumberSprite(card.Value, card.Kind == CardKind.PositiveConstant);
+            }
+
             return card.Kind switch
             {
-                CardKind.PositiveConstant => SpriteFactory.DiceSprite,
-                CardKind.NegativeConstant => SpriteFactory.DiceSprite,
-                CardKind.One => SpriteFactory.SmileySprite,
+                CardKind.One => CardSpriteLoader.GetOneSprite() ?? SpriteFactory.SmileySprite,
                 CardKind.DivideTool => SpriteFactory.DiceSprite,
                 _ => null
             };
@@ -175,8 +209,8 @@ namespace DragonBoxAlgebra.UI
             CardKind.NightCreature => UsesVariableLetter(card)
                 ? FormatVariableAlgebra(card, positive: false)
                 : card.Value == 1 ? "-x" : $"-{card.Value}x",
-            CardKind.PositiveConstant => $"+{card.Value}",
-            CardKind.NegativeConstant => $"-{card.Value}",
+            CardKind.PositiveConstant => card.Value.ToString(),
+            CardKind.NegativeConstant => card.Value == 0 ? "0" : $"-{card.Value}",
             CardKind.One => "1",
             CardKind.DivideTool => "÷",
             _ => "?"

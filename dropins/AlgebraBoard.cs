@@ -11,6 +11,8 @@ namespace DragonBoxAlgebra.Core
         {
             Left.Cards.Clear();
             Right.Cards.Clear();
+            Left.ClearDenominator();
+            Right.ClearDenominator();
 
             foreach (BoardCard card in left.Cards)
             {
@@ -20,6 +22,16 @@ namespace DragonBoxAlgebra.Core
             foreach (BoardCard card in right.Cards)
             {
                 Right.Cards.Add(card.Clone());
+            }
+
+            if (left.Denominator.HasValue)
+            {
+                Left.Denominator = left.Denominator.Value.Clone();
+            }
+
+            if (right.Denominator.HasValue)
+            {
+                Right.Denominator = right.Denominator.Value.Clone();
             }
         }
 

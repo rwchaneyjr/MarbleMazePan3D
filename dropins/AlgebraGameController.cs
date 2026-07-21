@@ -17,10 +17,14 @@ namespace DragonBoxAlgebra.Gameplay
     {
         public event Action BoardChanged;
         public event Action HandChanged;
+        /// <summary>Fraction underlines under 5·x and the dice should refresh (drag/flip divisor).</summary>
+        public event Action FractionGuideChanged;
         public event Action<int, int> LevelCompleted;
         public event Action<int, int> WinSequenceStarted;
         public event Action<int, int> LevelLoaded;
         public event Action<string> MessageChanged;
+        /// <summary>True when the 151–180 order-of-ops intro overlay should be visible.</summary>
+        public event Action<bool> OrderIntroVisibilityChanged;
         public event Action<CombineEvent> CombineOccurred;
 
         public AlgebraBoard Board { get; } = new();
@@ -30,6 +34,8 @@ namespace DragonBoxAlgebra.Gameplay
         public bool CanUndo => _undoStack.Count > 0;
         public bool HasPendingBalance => _pendingBalance != null;
         public BalancePending PendingBalance => _pendingBalance;
+        public bool HasPendingDivide => _pendingDivide != null;
+        public DividePending PendingDivide => _pendingDivide;
         public bool HasActiveMergeAnimations => _activeMergeAnimations > 0;
         public bool IsLevelComplete => _levelComplete;
 
@@ -40,9 +46,12 @@ namespace DragonBoxAlgebra.Gameplay
         private readonly Stack<GameSnapshot> _undoStack = new();
         private GameSnapshot _initialSnapshot;
         private BalancePending _pendingBalance;
+        private DividePending _pendingDivide;
+        private int? _dragFractionDivisor;
         private int _levelIndex;
         private int _activeHandSlot = -1;
         private bool _levelComplete;
+        private bool _orderIntroVisible;
         private int _activeMergeAnimations;
         private bool UsesManualPairMerge =>
             CurrentLevel.Chapter >= 3
@@ -51,6 +60,13 @@ namespace DragonBoxAlgebra.Gameplay
         /// <summary>Ch2 levels 17+: drag hand tile onto opposite creature (not balance).</summary>
         public bool UsesOppositeHandPlay =>
             CurrentLevel.Chapter == 2 && ChapterLevelGenerator.IndexWithinChapter(_levelIndex) >= 16;
+
+        /// <summary>
+        /// Hand tile may cancel directly onto a board opposite (Ch2 opposite-play, Ch8/Ch9 addend cancel).
+        /// Ch3+ balance chapters must NOT do this — night onto day should start ? balance, not merge.
+        /// </summary>
+        public bool UsesHandOntoOppositeCancel =>
+            UsesOppositeHandPlay || UsesMultiplyAdditionLevels;
 
         /// <summary>Ch1/Ch2 drag-to-merge: same-side light/dark tiles should snap together into *.</summary>
         public bool UsesDragToMergePairs => CurrentLevel.DragToMergePairs;
@@ -251,17 +267,21 @@ namespace DragonBoxAlgebra.Gameplay
             _undoStack.Clear();
             _levelComplete = false;
             _pendingBalance = null;
+            _pendingDivide = null;
+            Board.Left.ClearDenominator();
+            Board.Right.ClearDenominator();
             _pendingCancels.Clear();
             _spentHandIndices.Clear();
             _activeHandSlot = -1;
             _activeMergeAnimations = 0;
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
-                _spentHandIndices);
+                _spentHandIndices, _pendingDivide);
 
+            SetOrderIntroVisible(UsesOrderOfOperationsIntro);
             LevelLoaded?.Invoke(_levelIndex + 1, LevelCount);
             ResolveCombines();
             _initialSnapshot = GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
-                _spentHandIndices);
+                _spentHandIndices, _pendingDivide);
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
             MessageChanged?.Invoke(_pendingCancels.Count > 0 && _hand.Count == 0
@@ -278,8 +298,49 @@ namespace DragonBoxAlgebra.Gameplay
             CreatureSpriteDebug.LogLevel(Board, _hand, level);
         }
 
+        /// <summary>Levels 151–180 show the order-of-ops tip until the first drag.</summary>
+        public bool UsesOrderOfOperationsIntro =>
+            ChapterLevelGenerator.UsesOrderOfOperationsIntro(_levelIndex + 1);
+
+        public bool IsOrderIntroVisible => _orderIntroVisible;
+
+        /// <summary>Called when the player starts dragging a tile — hides the 151–180 intro tip.</summary>
+        public void NotifyPlayerDragStarted()
+        {
+            if (!_orderIntroVisible)
+            {
+                return;
+            }
+
+            SetOrderIntroVisible(false);
+        }
+
+        private void SetOrderIntroVisible(bool visible)
+        {
+            if (_orderIntroVisible == visible)
+            {
+                return;
+            }
+
+            _orderIntroVisible = visible;
+            OrderIntroVisibilityChanged?.Invoke(visible);
+        }
+
         private string HandMessage(LevelDefinition level)
         {
+            if (UsesOrderOfOperationsIntro)
+            {
+                return "First undo addition and subtraction. Second undo multiplication.";
+            }
+
+            if (UsesMultiplyAdditionLevels)
+            {
+                return "Order of operations: addition is first — finish the addition " +
+                       "(cancel every addend → 0) until the addition is done. " +
+                       "Then divide both sides with the coefficient of x " +
+                       "(drop it under the line on each side).";
+            }
+
             int count = level.HandCards.Count;
             string pairPhrase = level.Chapter >= 5 ? "Positive + negative" : "Light + dark";
             if (count == 0)
@@ -289,8 +350,9 @@ namespace DragonBoxAlgebra.Gameplay
 
             if (count <= 1)
             {
-                return "Drag a tile to one side. A ? appears on the other side. Drag the same tile to the ? to balance. " +
-                       $"{pairPhrase} on the same side become one *. Pairs never cross the middle.";
+                string cancelHint = UsesZeroCancelSymbol ? "0" : "*";
+                return "Drag a tile onto a side (onto its opposite when present). A ? appears on the other side — " +
+                       $"drag the same tile to the ?. Opposites merge on top into {cancelHint}, then {cancelHint} clears.";
             }
 
             if (count == 2)
@@ -335,6 +397,16 @@ namespace DragonBoxAlgebra.Gameplay
             }
         }
 
+        /// <summary>Jump to the first level of the next distinct problem type (Browse).</summary>
+        public void SkipToNextProblemType()
+        {
+            int nextIndex = ChapterLevelGenerator.GetNextProblemTypeLevelIndex(_levelIndex);
+            LoadLevel(nextIndex);
+            int global = nextIndex + 1;
+            int chapter = ChapterLevelGenerator.ChapterForLevelIndex(nextIndex);
+            MessageChanged?.Invoke($"Browsed to Ch{chapter} · {global}.");
+        }
+
         public void LoadRandomLevel()
         {
             if (LevelLibrary.Levels.Count <= 6)
@@ -360,13 +432,17 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
+            _initialSnapshot.Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices,
+                out _pendingDivide);
             RestoreHandSlotFromSnapshot();
             _undoStack.Clear();
             _levelComplete = false;
+            SetOrderIntroVisible(UsesOrderOfOperationsIntro);
             BoardChanged?.Invoke();
             HandChanged?.Invoke();
-            MessageChanged?.Invoke("Rewound to the start of the level.");
+            MessageChanged?.Invoke(UsesOrderOfOperationsIntro
+                ? "First undo addition and subtraction. Second undo multiplication."
+                : "Rewound to the start of the level.");
         }
 
         public void Undo()
@@ -376,7 +452,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return;
             }
 
-            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices);
+            _undoStack.Pop().Apply(Board, _hand, Moves, out _pendingBalance, _pendingCancels, _spentHandIndices,
+                out _pendingDivide);
             RestoreHandSlotFromSnapshot();
             _levelComplete = false;
             BoardChanged?.Invoke();
@@ -414,11 +491,18 @@ namespace DragonBoxAlgebra.Gameplay
             SyncHandTemplateForCard(_hand[handIndex]);
 
             HandChanged?.Invoke();
+            if (UsesMultiplyAdditionLevels)
+            {
+                FractionGuideChanged?.Invoke();
+            }
+
             bool creatureOnly = _hand[handIndex].VariableLetter == '\0';
             MessageChanged?.Invoke(CardFlipRules.IsLight(_hand[handIndex])
                 ? creatureOnly || !UsesVariablePositiveNegative
                     ? $"Flipped to {LightTerm}. Click again for {DarkTerm}."
-                    : "Flipped to positive. Click again for negative."
+                    : UsesMultiplyAdditionLevels && BoardHasCoefficient(_hand[handIndex].Value)
+                        ? $"Flipped to {_hand[handIndex].Value}. Drop it under the line below {_hand[handIndex].Value}·x and under the dice."
+                        : "Flipped to positive. Click again for negative."
                 : creatureOnly || !UsesVariablePositiveNegative
                     ? $"Flipped to {DarkTerm}. Click again for {LightTerm}."
                     : "Flipped to negative. Click again for positive.");
@@ -453,9 +537,10 @@ namespace DragonBoxAlgebra.Gameplay
                 if (CombineRules.UsesAsteriskCancel(cardA, cardB))
                 {
                     TryCreateCancelMarker(sideName, cardA.Id, cardB.Id);
+                    string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
                     MessageChanged?.Invoke(_pendingBalance != null
-                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears. The ? hole stays until you fill it."
-                        : $"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
+                        ? $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears. The ? hole stays until you fill it."
+                        : $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
                 }
                 else
                 {
@@ -613,6 +698,526 @@ namespace DragonBoxAlgebra.Gameplay
             return TryPlayFromHand(handIndex, "Left");
         }
 
+        /// <summary>
+        /// DragonBox divide: drop a number under the line on one side, then the same under the other.
+        /// Matching a/a becomes 1; other numbers stay as dice/a until resolved.
+        /// </summary>
+        public bool TryPlaceDenominatorFromHand(int handIndex, string sideName)
+        {
+            if (!UsesMultiplyAdditionLevels || _levelComplete)
+            {
+                return false;
+            }
+
+            if (handIndex < 0 || handIndex >= _hand.Count || _spentHandIndices.Contains(handIndex))
+            {
+                return false;
+            }
+
+            if (_pendingBalance != null || _pendingCancels.Count > 0 || _activeMergeAnimations > 0)
+            {
+                MessageChanged?.Invoke("Finish cancels and ? holes before dividing.");
+                return false;
+            }
+
+            if (sideName != "Left" && sideName != "Right")
+            {
+                return false;
+            }
+
+            BoardCard handCard = _hand[handIndex];
+            if (handCard.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                MessageChanged?.Invoke("Drop a number under the line.");
+                return false;
+            }
+
+            // Use positive face for the denominator (flip if needed conceptually).
+            BoardCard denomTemplate = handCard.Kind == CardKind.NegativeConstant
+                ? new BoardCard(CardKind.PositiveConstant, handCard.Value)
+                : handCard.CloneForPlacement();
+
+            if (_pendingDivide != null)
+            {
+                return TryCompleteDenominator(handIndex, sideName, denomTemplate);
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            if (side.HasDenominator)
+            {
+                MessageChanged?.Invoke("That side already has a number under the line.");
+                return false;
+            }
+
+            PushUndo();
+            side.Denominator = denomTemplate;
+            _pendingDivide = new DividePending
+            {
+                Card = denomTemplate.Clone(),
+                PlacedSide = sideName,
+                HandIndex = handIndex
+            };
+
+            MessageChanged?.Invoke(
+                $"Line under {sideName.ToLowerInvariant()} — drop the same {denomTemplate.Value} under the dice / {denomTemplate.Value}·x on the other side.");
+            BoardChanged?.Invoke();
+            FractionGuideChanged?.Invoke();
+            return true;
+        }
+
+        private bool TryCompleteDenominator(int handIndex, string sideName, BoardCard denomTemplate)
+        {
+            if (handIndex != _pendingDivide.HandIndex)
+            {
+                MessageChanged?.Invoke("Finish the divide — use the same hand card under the other line.");
+                return false;
+            }
+
+            if (sideName != _pendingDivide.HoleSide)
+            {
+                MessageChanged?.Invoke("Drop under the line on the other side.");
+                return false;
+            }
+
+            if (!_pendingDivide.Matches(denomTemplate)
+                && !(_pendingDivide.Card.Value == denomTemplate.Value
+                     && denomTemplate.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                MessageChanged?.Invoke("The number under the line must match.");
+                return false;
+            }
+
+            PushUndo();
+            BoardSide holeSide = Board.GetSide(sideName);
+            holeSide.Denominator = new BoardCard(CardKind.PositiveConstant, denomTemplate.Value);
+            int handForSpend = _pendingDivide.HandIndex;
+            _pendingDivide = null;
+
+            if (UsesReusableVariableHandCards)
+            {
+                RefreshHandSpentStateForReusableCards();
+            }
+            else
+            {
+                _spentHandIndices.Add(handForSpend);
+            }
+
+            Moves.RegisterCombine();
+            int d = holeSide.Denominator.Value.Value;
+            MessageChanged?.Invoke(
+                $"Both sides ÷{d}. Even dice reduce (e.g. 6/{d}→{6 / Math.Max(1, d)}); uneven stays a fraction.");
+            HandChanged?.Invoke();
+            BoardChanged?.Invoke();
+            FractionGuideChanged?.Invoke();
+            TryAutoResolveAfterBothDenominators(d);
+            return true;
+        }
+
+        /// <summary>
+        /// 151–165 only after both sides have the divisor under the line:
+        /// coeff/coeff → 1; even dice once (8/2 → 4); uneven (7/2) stays a fraction.
+        /// </summary>
+        private void TryAutoResolveAfterBothDenominators(int divisor)
+        {
+            if (!UsesMultiplyAdditionLevels || divisor <= 0)
+            {
+                return;
+            }
+
+            TryResolveMatchingCoefficientOnSide("Left", divisor);
+            TryResolveMatchingCoefficientOnSide("Right", divisor);
+
+            // One division by the coefficient on each side — 8/2 → 4 (not left as 8/2).
+            ReduceEvenDiceOnce("Left", divisor);
+            ReduceEvenDiceOnce("Right", divisor);
+
+            TryClearDenominatorsIfResolved();
+            HandChanged?.Invoke();
+            BoardChanged?.Invoke();
+            FractionGuideChanged?.Invoke();
+            CheckWin();
+        }
+
+        private void TryResolveMatchingCoefficientOnSide(string sideName, int divisor)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard target = side.Cards[i];
+                if (target.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                if (target.Value != divisor)
+                {
+                    continue;
+                }
+
+                bool wasCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+                if (!wasCoefficient)
+                {
+                    continue;
+                }
+
+                side.Cards.RemoveAt(i);
+                side.Cards.Insert(i, new BoardCard(CardKind.One, 1));
+                ResolveOneIdentitiesOnSide(sideName);
+                Moves.RegisterCombine();
+                MessageChanged?.Invoke($"{divisor}/{divisor} → 1");
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Divide dice by the coefficient once when even — 8/2 → 4, then clear that line.
+        /// Uneven (7/2) is left alone as a fraction.
+        /// Multi-term letter numerators stay intact: (6·a + r − 5)/3 must not become 2/3 + a/3 + …
+        /// </summary>
+        private bool ReduceEvenDiceOnce(string sideName, int divisor)
+        {
+            if (divisor <= 0)
+            {
+                return false;
+            }
+
+            // Keep the whole grouped letter expression over one denominator.
+            if (UsesGroupedLetterFraction(sideName))
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard target = side.Cards[i];
+                if (target.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                bool isXCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+                if (isXCoefficient)
+                {
+                    continue;
+                }
+
+                // Never peel 6 off of 6·a — that coefficient belongs to the letter product.
+                bool isLetterCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsPairVariable(side.Cards[i + 1]);
+                if (isLetterCoefficient)
+                {
+                    continue;
+                }
+
+                // Must divide evenly and be a real quotient (8/2 → 4). Skip uneven fractions.
+                if (target.Value % divisor != 0)
+                {
+                    continue;
+                }
+
+                int newValue = target.Value / divisor;
+                if (newValue <= 0)
+                {
+                    continue;
+                }
+
+                // Same value (2/2 as lone dice) → 1; larger (8/2) → 4.
+                side.Cards[i] = new BoardCard(
+                    target.Kind == CardKind.NegativeConstant
+                        ? CardKind.NegativeConstant
+                        : CardKind.PositiveConstant,
+                    newValue);
+                // Keep the line when a letter remains (Ch9: x = (b−2)/3).
+                if (!SideHasPairVariable(side))
+                {
+                    side.ClearDenominator();
+                }
+
+                Moves.RegisterCombine();
+                MessageChanged?.Invoke($"{target.Value}/{divisor} → {newValue}");
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// With denominators on both sides: tap/drop onto a card above the line.
+        /// Same value → 1 (3/3). Other divisible number → dice/d.
+        /// </summary>
+        public bool TryResolveDivisionOnCard(string sideName, int boardIndex)
+        {
+            if (!UsesMultiplyAdditionLevels || _levelComplete || _pendingDivide != null)
+            {
+                return false;
+            }
+
+            if (!Board.Left.HasDenominator || !Board.Right.HasDenominator)
+            {
+                return false;
+            }
+
+            int divisor = Board.Left.Denominator.Value.Value;
+            if (Board.Right.Denominator.Value.Value != divisor)
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            if (boardIndex < 0 || boardIndex >= side.Cards.Count)
+            {
+                return false;
+            }
+
+            BoardCard target = side.Cards[boardIndex];
+            if (VariableGoalRules.IsVariableXGoal(target) || target.Kind == CardKind.One)
+            {
+                return false;
+            }
+
+            if (target.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                return false;
+            }
+
+            PushUndo();
+
+            // Matching a/a → 1. Coefficient beside x uses the 1 cancel marker; lone dice become 1.
+            if (target.Value == divisor)
+            {
+                bool wasCoefficient = boardIndex + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[boardIndex + 1]);
+
+                if (wasCoefficient)
+                {
+                    side.Cards.RemoveAt(boardIndex);
+                    side.Cards.Insert(boardIndex, new BoardCard(CardKind.One, 1));
+                    ResolveOneIdentitiesOnSide(sideName);
+                }
+                else
+                {
+                    side.Cards[boardIndex] = new BoardCard(CardKind.PositiveConstant, 1);
+                    CreateOneResultMarker(sideName);
+                }
+
+                Moves.RegisterCombine();
+                MessageChanged?.Invoke($"{divisor}/{divisor} → 1");
+                TryClearDenominatorsIfResolved();
+                HandChanged?.Invoke();
+                BoardChanged?.Invoke();
+                CheckWin();
+                return true;
+            }
+
+            // dice/d → integer once when even (8/2 → 4); otherwise keep fraction (7/2).
+            if (target.Value % divisor != 0)
+            {
+                Moves.RegisterCombine();
+                MessageChanged?.Invoke($"{target.Value}/{divisor} stays as the answer.");
+                TryClearDenominatorsIfResolved();
+                HandChanged?.Invoke();
+                BoardChanged?.Invoke();
+                FractionGuideChanged?.Invoke();
+                CheckWin();
+                return true;
+            }
+
+            int newValue = target.Value / divisor;
+            side.Cards[boardIndex] = new BoardCard(
+                target.Kind == CardKind.NegativeConstant ? CardKind.NegativeConstant : CardKind.PositiveConstant,
+                newValue);
+            side.ClearDenominator();
+
+            Moves.RegisterCombine();
+            MessageChanged?.Invoke($"{target.Value}/{divisor} → {newValue}");
+            TryClearDenominatorsIfResolved();
+            HandChanged?.Invoke();
+            BoardChanged?.Invoke();
+            FractionGuideChanged?.Invoke();
+            CheckWin();
+            return true;
+        }
+
+        private void TryClearDenominatorsIfResolved()
+        {
+            if (!UsesMultiplyAdditionLevels)
+            {
+                if (Board.Left.HasDenominator && Board.Right.HasDenominator)
+                {
+                    int d = Board.Left.Denominator.Value.Value;
+                    if (!SideStillNeedsDenominator(Board.Left, d) && !SideStillNeedsDenominator(Board.Right, d))
+                    {
+                        Board.Left.ClearDenominator();
+                        Board.Right.ClearDenominator();
+                    }
+                }
+
+                return;
+            }
+
+            // 151–165: never leave an even fraction hanging (8/2 must become 4).
+            ForceReduceEvenDenominators("Left");
+            ForceReduceEvenDenominators("Right");
+            MaybeClearSideDenominator("Left");
+            MaybeClearSideDenominator("Right");
+        }
+
+        private void ForceReduceEvenDenominators(string sideName)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            if (!side.HasDenominator)
+            {
+                return;
+            }
+
+            int divisor = side.Denominator.Value.Value;
+            if (divisor <= 0)
+            {
+                return;
+            }
+
+            ReduceEvenDiceOnce(sideName, divisor);
+        }
+
+        private void MaybeClearSideDenominator(string sideName)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            if (!side.HasDenominator)
+            {
+                return;
+            }
+
+            int divisor = side.Denominator.Value.Value;
+
+            // Ch10 grouped letter answer: keep /coeff visible until the puzzle ends (x = (…)/3).
+            if (UsesGroupedLetterFraction(sideName))
+            {
+                return;
+            }
+
+            // Uneven fraction (7/2): keep the line + denominator — that IS the answer.
+            if (SideHasUnevenFraction(side, divisor))
+            {
+                return;
+            }
+
+            // Coefficient a·x still needs a/a → 1.
+            if (SideStillNeedsCoefficientCancel(side, divisor))
+            {
+                return;
+            }
+
+            // Ch9 letter answer: keep /coeff under the letter expression.
+            if (SideHasPairVariable(side))
+            {
+                return;
+            }
+
+            // Even dice already reduced (or nothing left to divide) — drop the line.
+            side.ClearDenominator();
+        }
+
+        private static bool SideStillNeedsCoefficientCancel(BoardSide side, int divisor)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                bool isCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+                if (isCoefficient && card.Value == divisor)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool SideHasUnevenFraction(BoardSide side, int divisor)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                bool isCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+                if (isCoefficient)
+                {
+                    continue;
+                }
+
+                if (card.Value % divisor != 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool SideStillNeedsDenominator(BoardSide side, int divisor)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                bool isCoefficient = i + 1 < side.Cards.Count
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]);
+
+                // Coefficient a beside x still needs a/a → 1.
+                if (isCoefficient && card.Value == divisor)
+                {
+                    return true;
+                }
+
+                // Larger multiples still need dice/d → integer.
+                if (card.Value > divisor && card.Value % divisor == 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Legacy single-bar entry: place under Left first when no denoms yet.</summary>
+        public bool TryDivideBothSidesFromHand(int handIndex)
+        {
+            if (Board.Left.HasDenominator && !Board.Right.HasDenominator)
+            {
+                return TryPlaceDenominatorFromHand(handIndex, "Right");
+            }
+
+            if (Board.Right.HasDenominator && !Board.Left.HasDenominator)
+            {
+                return TryPlaceDenominatorFromHand(handIndex, "Left");
+            }
+
+            if (Board.Left.HasDenominator && Board.Right.HasDenominator)
+            {
+                MessageChanged?.Invoke("Tap a number above the line (3/3 → 1, or dice/3).");
+                return false;
+            }
+
+            return TryPlaceDenominatorFromHand(handIndex, "Left");
+        }
+
         public bool CanPlayHandOntoBoardCard(int handIndex, string sideName, int boardIndex)
         {
             if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count
@@ -633,7 +1238,8 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
-            // Snap / drop-on-top only targets true opposites (any chapter).
+            // Snap targeting allows any opposite so the hand tile can sit on top visually.
+            // Cancel-vs-balance is decided by UsesHandOntoOppositeCancel in the drop handlers.
             if (CombineRules.GetCombineAction(_hand[handIndex], targetCard)
                 == CombineActionType.OppositeCancel)
             {
@@ -669,6 +1275,11 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool TryPlayHandOntoOpposite(int handIndex, string sideName, int targetBoardIndex)
         {
+            if (!UsesHandOntoOppositeCancel)
+            {
+                return false;
+            }
+
             if (_levelComplete || handIndex < 0 || handIndex >= _hand.Count)
             {
                 return false;
@@ -702,7 +1313,17 @@ namespace DragonBoxAlgebra.Gameplay
             }
 
             PushUndo();
+
+            // 151–200: drop opposite onto a term → cancel on this side, blank ? on the other side.
+            if (UsesMultiplyAdditionLevels
+                && CombineRules.UsesAsteriskCancel(handCard, targetCard))
+            {
+                return TryStartMultiplyCancelWithBalanceHole(handIndex, sideName, targetBoardIndex, handCard,
+                    targetCard);
+            }
+
             _pendingBalance = null;
+
             if (CombineRules.UsesAsteriskCancel(handCard, targetCard))
             {
                 // Place the hand clone beside the target so the swirl sits in that slot.
@@ -724,7 +1345,9 @@ namespace DragonBoxAlgebra.Gameplay
 
                 _spentHandIndices.Add(handIndex);
                 Moves.RegisterCombine();
-                MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — swirl appears.");
+                string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
+                MessageChanged?.Invoke(
+                    $"{Capitalize(LightTerm)} met {DarkTerm} — {cancelSymbol} appears.");
             }
             else
             {
@@ -749,7 +1372,60 @@ namespace DragonBoxAlgebra.Gameplay
 
             HandChanged?.Invoke();
             BoardChanged?.Invoke();
+            if (UsesMultiplyAdditionLevels)
+            {
+                FractionGuideChanged?.Invoke();
+            }
+
             CheckWin();
+            return true;
+        }
+
+        /// <summary>
+        /// 151–200: cancel a term on this side (0), and open a blank ? on the other side
+        /// so the same hand tile is dragged in to balance (numbers or letters).
+        /// </summary>
+        private bool TryStartMultiplyCancelWithBalanceHole(int handIndex, string sideName,
+            int targetBoardIndex, BoardCard handCard, BoardCard targetCard)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            int insertAt = Math.Clamp(targetBoardIndex + 1, 0, side.Cards.Count);
+            side.Cards.Insert(insertAt, handCard.CloneForPlacement());
+            BoardCard placed = side.Cards[insertAt];
+            if (!TryCreateCancelMarker(sideName, targetCard.Id, placed.Id))
+            {
+                CombineRules.RemovePairById(side, targetCard.Id, placed.Id);
+                CombineOccurred?.Invoke(new CombineEvent
+                {
+                    SideName = sideName,
+                    Action = CombineActionType.OppositeCancel,
+                    IndexA = targetBoardIndex,
+                    IndexB = insertAt
+                });
+            }
+
+            Moves.RegisterCombine();
+
+            string holeSide = sideName == "Left" ? "Right" : "Left";
+            BoardCard template = handCard.Clone();
+            // Show blank before existing terms: ? + …
+            _pendingBalance = new BalancePending
+            {
+                Card = template,
+                PlacedSide = sideName,
+                PlacedIndex = insertAt,
+                HandIndex = handIndex,
+                HoleInsertIndex = 0
+            };
+            _activeHandSlot = handIndex;
+            _spentHandIndices.Remove(handIndex);
+
+            string cancelSymbol = UsesZeroCancelSymbol ? "0" : "swirl";
+            MessageChanged?.Invoke(
+                $"{cancelSymbol} on this side — drag the same tile into the blank ? on the other side.");
+            HandChanged?.Invoke();
+            BoardChanged?.Invoke();
+            FractionGuideChanged?.Invoke();
             return true;
         }
 
@@ -796,9 +1472,13 @@ namespace DragonBoxAlgebra.Gameplay
         {
             PushUndo();
             BoardSide placedSide = Board.GetSide(targetSide);
-            placedSide.Cards.Add(template.CloneForPlacement());
-            int placedIndex = placedSide.Cards.Count - 1;
+            // Sit on / beside the opposite so the merge shows stacked in that slot (not a free end park).
+            int insertAt = FindInsertIndexBesideOpposite(placedSide, targetSide, template);
+            placedSide.Cards.Insert(insertAt, template.CloneForPlacement());
+            int placedIndex = insertAt;
             string holeSide = targetSide == "Left" ? "Right" : "Left";
+            BoardSide holeSideBoard = Board.GetSide(holeSide);
+            int holeInsert = FindInsertIndexBesideOpposite(holeSideBoard, holeSide, template);
 
             _pendingBalance = new BalancePending
             {
@@ -806,7 +1486,7 @@ namespace DragonBoxAlgebra.Gameplay
                 PlacedSide = targetSide,
                 PlacedIndex = placedIndex,
                 HandIndex = handIndex,
-                HoleInsertIndex = Board.GetSide(holeSide).Cards.Count
+                HoleInsertIndex = holeInsert
             };
 
             if (UsesPlayableHandDisplay)
@@ -814,7 +1494,16 @@ namespace DragonBoxAlgebra.Gameplay
                 _activeHandSlot = handIndex;
             }
 
-            MessageChanged?.Invoke("? appeared on the other side — drag the same tile to fill the hole.");
+            // 29–150: night on day → merge on top → 0; ? stays on the other side until filled.
+            if (!UsesMultiplyAdditionLevels)
+            {
+                ActivateOppositePairOrCancelDice(targetSide, placedIndex);
+            }
+
+            string cancelHint = UsesZeroCancelSymbol ? "0" : "*";
+            MessageChanged?.Invoke(_pendingCancels.Count > 0
+                ? $"? on the other side — drag the same tile to fill it. {Capitalize(LightTerm)} met {DarkTerm}: {cancelHint} appears."
+                : "? appeared on the other side — drag the same tile to fill the hole.");
             BoardChanged?.Invoke();
             if (UsesPlayableHandDisplay && !UsesDualHandPanelDisplay)
             {
@@ -849,13 +1538,31 @@ namespace DragonBoxAlgebra.Gameplay
             int insertIndex = _pendingBalance.HoleInsertIndex;
             if (insertIndex < 0 || insertIndex > balancedSide.Cards.Count)
             {
-                insertIndex = balancedSide.Cards.Count;
+                insertIndex = FindInsertIndexBesideOpposite(balancedSide, targetSide, template);
             }
 
-            balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
+            // 151–180: fold into dice when numeric; beside a letter keep the constant (b + −2).
+            if (UsesMultiplyAdditionLevels
+                && template.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
+            {
+                if (SideHasPairVariable(balancedSide))
+                {
+                    balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
+                }
+                else
+                {
+                    ApplyConstantToSide(balancedSide, template);
+                    insertIndex = -1;
+                }
+            }
+            else
+            {
+                // Sit on the opposite (merge-on-top), not a free park at the end of the side.
+                insertIndex = FindInsertIndexBesideOpposite(balancedSide, targetSide, template);
+                balancedSide.Cards.Insert(insertIndex, template.CloneForPlacement());
+            }
+
             int holePlacedIndex = insertIndex;
-            string placedSide = _pendingBalance.PlacedSide;
-            int placedBoardIndex = _pendingBalance.PlacedIndex;
             _pendingBalance = null;
             if (UsesPlayableHandDisplay)
             {
@@ -878,13 +1585,50 @@ namespace DragonBoxAlgebra.Gameplay
 
             HandChanged?.Invoke();
 
+            if (!UsesMultiplyAdditionLevels && holePlacedIndex >= 0)
+            {
+                ActivateOppositePairOrCancelDice(targetSide, holePlacedIndex);
+            }
+
             Moves.RegisterBalancedPlay();
-            MessageChanged?.Invoke(UsesManualPairMerge
-                ? $"Balanced! Drag {LightTerm} onto {DarkTerm} on the same side to make *."
-                : "Balanced!");
+            string cancelHint = UsesZeroCancelSymbol ? "0" : "*";
+            MessageChanged?.Invoke(UsesMultiplyAdditionLevels
+                ? "Balanced both sides. Now divide with the coefficient."
+                : _pendingCancels.Count > 0
+                    ? $"Balanced! {Capitalize(LightTerm)} met {DarkTerm} — {cancelHint} appears, then clears."
+                    : UsesManualPairMerge
+                        ? $"Balanced! Drag {LightTerm} onto {DarkTerm} on the same side to make {cancelHint}."
+                        : "Balanced!");
             PruneInvalidCancelMarkers();
             ResolveCombines();
+            if (UsesMultiplyAdditionLevels)
+            {
+                FractionGuideChanged?.Invoke();
+            }
+
             return true;
+        }
+
+        /// <summary>
+        /// Insert index so a new tile sits immediately after its opposite (merge-on-top slot),
+        /// or at the end when no opposite is present on that side.
+        /// </summary>
+        private int FindInsertIndexBesideOpposite(BoardSide side, string sideName, BoardCard template)
+        {
+            for (int j = 0; j < side.Cards.Count; j++)
+            {
+                if (IsCardPendingCancelOnSide(side.Cards[j].Id, sideName))
+                {
+                    continue;
+                }
+
+                if (CombineRules.GetCombineAction(template, side.Cards[j]) == CombineActionType.OppositeCancel)
+                {
+                    return j + 1;
+                }
+            }
+
+            return side.Cards.Count;
         }
 
         private void ResolveCombines()
@@ -921,14 +1665,16 @@ namespace DragonBoxAlgebra.Gameplay
         {
             if (_pendingCancels.Count > 0)
             {
+                string clearing = UsesZeroCancelSymbol ? "0" : "Swirl";
                 MessageChanged?.Invoke(_pendingCancels.Count > 1
-                    ? "Swirls clearing…"
-                    : "Swirl clearing…");
+                    ? $"{clearing}s clearing…"
+                    : $"{clearing} clearing…");
                 return;
             }
 
             if (!WinChecker.CanWin(Board, Moves.Moves, _pendingBalance != null, _pendingCancels.Count,
-                    _activeMergeAnimations, UsesExtraOppositeTileLevel, UsesVariableXGoalWin))
+                    _activeMergeAnimations, UsesExtraOppositeTileLevel, UsesVariableXGoalWin,
+                    UsesMultiplyAdditionLevels, UsesLetterOppositeAnswerWin))
             {
                 return;
             }
@@ -941,9 +1687,52 @@ namespace DragonBoxAlgebra.Gameplay
             _levelComplete = true;
             int stars = Moves.CalculateStars(CurrentLevel);
             int moves = Moves.Moves;
-            MessageChanged?.Invoke(UsesVariableXGoalWin
-                ? "You win! x is alone."
-                : "You win! The red box is alone.");
+            if (UsesMultiplyAdditionLevels
+                && (WinChecker.IsVariableXEqualsConstant(Board)
+                    || WinChecker.IsVariableXEqualsFraction(Board)
+                    || WinChecker.IsVariableXEqualsLetterExpression(Board)))
+            {
+                if (WinChecker.IsVariableXEqualsLetterExpression(Board))
+                {
+                    BoardSide letterSide = SideHasPairVariable(Board.Right) ? Board.Right : Board.Left;
+                    MessageChanged?.Invoke($"You win! x = {FormatLetterAnswer(letterSide)}.");
+                }
+                else if (WinChecker.IsVariableXEqualsFraction(Board))
+                {
+                    BoardSide fractionSide = Board.Right.HasDenominator ? Board.Right : Board.Left;
+                    int num = fractionSide.Cards[0].Value;
+                    int den = fractionSide.Denominator.Value.Value;
+                    MessageChanged?.Invoke($"You win! x = {num}/{den}.");
+                }
+                else
+                {
+                    int answer = Board.Left.Cards.Count == 1 && Board.Left.Cards[0].Kind == CardKind.PositiveConstant
+                        ? Board.Left.Cards[0].Value
+                        : Board.Right.Cards[0].Value;
+                    MessageChanged?.Invoke($"You win! x = {answer}.");
+                }
+            }
+            else
+            {
+                bool equalsZero = UsesPlusBetweenBoardTiles
+                    && (WinChecker.IsZeroOnlySide(Board.Left) || WinChecker.IsZeroOnlySide(Board.Right));
+                bool equalsLetter = UsesLetterOppositeAnswerWin
+                    && (WinChecker.IsLoneNonGoalVariableSide(Board.Left)
+                        || WinChecker.IsLoneNonGoalVariableSide(Board.Right));
+                char letterAnswer = equalsLetter
+                    ? (WinChecker.IsLoneNonGoalVariableSide(Board.Left)
+                        ? Board.Left.Cards[0].VariableLetter
+                        : Board.Right.Cards[0].VariableLetter)
+                    : '\0';
+                MessageChanged?.Invoke(equalsZero
+                    ? "You win! x = 0."
+                    : equalsLetter
+                        ? $"You win! x = {letterAnswer}."
+                        : UsesVariableXGoalWin
+                            ? "You win! x is alone."
+                            : "You win! The red box is alone.");
+            }
+
             WinSequenceStarted?.Invoke(stars, moves);
             HandChanged?.Invoke();
         }
@@ -965,12 +1754,328 @@ namespace DragonBoxAlgebra.Gameplay
 
         public bool UsesVariableXGoalWin => CurrentLevel.Chapter >= 6;
 
+        /// <summary>Levels 140–150: opposite answer is a letter (x = a/b/c/r), not scene 0.</summary>
+        public bool UsesLetterOppositeAnswerWin =>
+            _levelIndex + 1 >= ChapterLevelGenerator.NumberLevelsStartLevel
+            && _levelIndex + 1 <= ChapterLevelGenerator.PlusBetweenTilesEndLevel;
+
         public bool UsesExtraOppositeTileLevel =>
             _levelIndex + 1 >= ChapterLevelGenerator.OppositeExtraTileStartLevel
             && _levelIndex + 1 <= ChapterLevelGenerator.OppositeExtraTileEndLevel;
 
         public bool UsesPlusBetweenBoardTiles =>
             ChapterLevelGenerator.UsesPlusBetweenBoardTiles(_levelIndex + 1);
+
+        /// <summary>
+        /// Levels 29–150: cancel shows 0 (then dismisses). Ch8/Ch9 addition cancels also use 0.
+        /// Ch1–Ch2 keep the swirl.
+        /// </summary>
+        public bool UsesZeroCancelSymbol =>
+            (_levelIndex + 1 >= ChapterLevelGenerator.Chapter3BalanceStartLevel
+             && _levelIndex + 1 <= ChapterLevelGenerator.PlusBetweenTilesEndLevel)
+            || UsesMultiplyAdditionLevels;
+
+        /// <summary>Levels 151–200: a·x + b = c/letter, or multi-letter both sides with divide-both-sides.</summary>
+        public bool UsesMultiplyAdditionLevels =>
+            ChapterLevelGenerator.UsesMultiplyAddition(_levelIndex + 1);
+
+        public bool UsesMultiplyLetterRhsLevels =>
+            ChapterLevelGenerator.UsesMultiplyLetterRhs(_levelIndex + 1);
+
+        private CancelResultSymbol AdditionCancelSymbol =>
+            UsesZeroCancelSymbol ? CancelResultSymbol.Zero : CancelResultSymbol.Swirl;
+
+        /// <summary>
+        /// Active divisor for fraction lines (e.g. 5 when isolating x from 5·x).
+        /// Set while dragging, after flip to +coeff, or when denoms are partially placed.
+        /// </summary>
+        public int? GetActiveFractionDivisor()
+        {
+            if (!UsesMultiplyAdditionLevels)
+            {
+                return null;
+            }
+
+            if (Board.Left.HasDenominator)
+            {
+                return Board.Left.Denominator.Value.Value;
+            }
+
+            if (Board.Right.HasDenominator)
+            {
+                return Board.Right.Denominator.Value.Value;
+            }
+
+            if (_pendingDivide != null)
+            {
+                return _pendingDivide.Card.Value;
+            }
+
+            if (_dragFractionDivisor.HasValue)
+            {
+                return _dragFractionDivisor;
+            }
+
+            for (int i = 0; i < _hand.Count; i++)
+            {
+                if (_spentHandIndices.Contains(i))
+                {
+                    continue;
+                }
+
+                BoardCard handCard = _hand[i];
+                // Positive face ready to drop under the line (151–165 only).
+                if (handCard.Kind == CardKind.PositiveConstant
+                    && BoardHasCoefficient(handCard.Value))
+                {
+                    return handCard.Value;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Multi-term letter answer (Ch10): e.g. 6·a + r − 5. Uses one shared fraction bar + parentheses,
+        /// not a /d under every tile.
+        /// </summary>
+        public bool UsesGroupedLetterFraction(string sideName)
+        {
+            if (!UsesMultiplyAdditionLevels)
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            return !SideHasVariableX(side) && SideHasPairVariable(side) && side.Cards.Count > 1;
+        }
+
+        /// <summary>
+        /// Show a line under coeff·x and under the dice (151–165 only) so you can
+        /// place the coeff under both → (a·x)/a and dice/a → x = dice/a.
+        /// Multi-term letter sides use the shared DenominatorDropZone bar instead.
+        /// </summary>
+        public bool ShouldShowFractionLineUnder(string sideName, int boardIndex)
+        {
+            if (!UsesMultiplyAdditionLevels)
+            {
+                return false;
+            }
+
+            // Ch10 grouped expression: one bar under the whole side, not per card.
+            if (UsesGroupedLetterFraction(sideName))
+            {
+                return false;
+            }
+
+            int? divisor = GetActiveFractionDivisor();
+            if (divisor == null)
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            if (boardIndex < 0 || boardIndex >= side.Cards.Count)
+            {
+                return false;
+            }
+
+            BoardCard card = side.Cards[boardIndex];
+            bool isNumber = card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant;
+            bool isCoefficient = isNumber
+                && boardIndex + 1 < side.Cards.Count
+                && VariableGoalRules.IsVariableXGoal(side.Cards[boardIndex + 1]);
+
+            // Line under the a of a·x
+            if (isCoefficient && card.Value == divisor.Value)
+            {
+                return true;
+            }
+
+            // Line continues under the x of a·x (same product term).
+            if (VariableGoalRules.IsVariableXGoal(card)
+                && boardIndex > 0
+                && side.Cards[boardIndex - 1].Kind is (CardKind.PositiveConstant or CardKind.NegativeConstant)
+                && side.Cards[boardIndex - 1].Value == divisor.Value)
+            {
+                return true;
+            }
+
+            // Line under the dice (side without x) — not under the addend beside x.
+            if (isNumber && !isCoefficient && !SideHasVariableX(side))
+            {
+                return true;
+            }
+
+            // Ch9: line under the letter on the side opposite x (e.g. b in 3·x = b).
+            if (VariableGoalRules.IsPairVariable(card) && !SideHasVariableX(side))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>True when this board index is the start of coeff·x for the active divisor (151–165).</summary>
+        public bool IsFractionProductAnchor(string sideName, int boardIndex)
+        {
+            if (!UsesMultiplyAdditionLevels || !ShouldShowFractionLineUnder(sideName, boardIndex))
+            {
+                return false;
+            }
+
+            BoardSide side = Board.GetSide(sideName);
+            return boardIndex + 1 < side.Cards.Count
+                && side.Cards[boardIndex].Kind is CardKind.PositiveConstant or CardKind.NegativeConstant
+                && VariableGoalRules.IsVariableXGoal(side.Cards[boardIndex + 1]);
+        }
+
+        private static bool SideHasVariableX(BoardSide side)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (VariableGoalRules.IsVariableXGoal(side.Cards[i]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool SideHasPairVariable(BoardSide side)
+        {
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                if (VariableGoalRules.IsPairVariable(side.Cards[i]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string FormatLetterAnswer(BoardSide side)
+        {
+            var parts = new System.Text.StringBuilder();
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                BoardCard? previous = i > 0 ? side.Cards[i - 1] : null;
+                bool timesPair = previous.HasValue
+                    && DivisionRules.IsCoefficientTimesVariablePair(previous.Value, card);
+
+                if (i > 0 && !timesPair && card.Kind is CardKind.PositiveConstant or CardKind.DayCreature)
+                {
+                    parts.Append('+');
+                }
+                else if (timesPair)
+                {
+                    parts.Append('·');
+                }
+
+                if (VariableGoalRules.IsPairVariable(card))
+                {
+                    if (card.Kind == CardKind.NightCreature)
+                    {
+                        parts.Append('-').Append(card.VariableLetter);
+                    }
+                    else
+                    {
+                        parts.Append(card.VariableLetter);
+                    }
+                }
+                else if (card.Kind == CardKind.NegativeConstant)
+                {
+                    parts.Append('-').Append(card.Value);
+                }
+                else if (card.Kind == CardKind.PositiveConstant)
+                {
+                    parts.Append(card.Value);
+                }
+            }
+
+            string body = parts.Length > 0 ? parts.ToString() : "?";
+            if (side.HasDenominator)
+            {
+                int d = side.Denominator.Value.Value;
+                if (side.Cards.Count > 1)
+                {
+                    return $"({body})/{d}";
+                }
+
+                return $"{body}/{d}";
+            }
+
+            return body;
+        }
+
+        public void BeginFractionDrag(int handIndex)
+        {
+            if (!UsesMultiplyAdditionLevels || handIndex < 0 || handIndex >= _hand.Count)
+            {
+                return;
+            }
+
+            BoardCard handCard = _hand[handIndex];
+            if (handCard.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                return;
+            }
+
+            // Coefficient of a·x: dragging it shows lines under a·x and the dice (151–165 only).
+            if (!BoardHasCoefficient(handCard.Value))
+            {
+                _dragFractionDivisor = null;
+                FractionGuideChanged?.Invoke();
+                return;
+            }
+
+            _dragFractionDivisor = handCard.Value;
+            FractionGuideChanged?.Invoke();
+            if (handCard.Kind == CardKind.PositiveConstant)
+            {
+                MessageChanged?.Invoke(
+                    $"Drop {handCard.Value} under the line below {handCard.Value}·x and under the dice.");
+            }
+            else
+            {
+                MessageChanged?.Invoke(
+                    $"Flip to +{handCard.Value}, then drop it under the line below {handCard.Value}·x and under the dice.");
+            }
+        }
+
+        public void EndFractionDrag()
+        {
+            if (!_dragFractionDivisor.HasValue)
+            {
+                return;
+            }
+
+            _dragFractionDivisor = null;
+            FractionGuideChanged?.Invoke();
+        }
+
+        private bool BoardHasCoefficient(int value)
+        {
+            return SideHasCoefficient(Board.Left, value) || SideHasCoefficient(Board.Right, value);
+        }
+
+        private static bool SideHasCoefficient(BoardSide side, int value)
+        {
+            for (int i = 0; i < side.Cards.Count - 1; i++)
+            {
+                if (side.Cards[i].Kind == CardKind.PositiveConstant
+                    && side.Cards[i].Value == value
+                    && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         public bool TryGetBoxSideNames(out string boxSide, out string oppositeSide)
         {
@@ -1020,7 +2125,7 @@ namespace DragonBoxAlgebra.Gameplay
         private void PushUndo()
         {
             _undoStack.Push(GameSnapshot.Capture(Board, _hand, Moves, _pendingBalance, _pendingCancels,
-                _spentHandIndices));
+                _spentHandIndices, _pendingDivide));
         }
 
         private void ActivateOppositePairOrCancelDice(string sideName, int cardIndex)
@@ -1052,6 +2157,14 @@ namespace DragonBoxAlgebra.Gameplay
                 if (!CombineRules.IsDiceOppositePair(placed, side.Cards[j]))
                 {
                     continue;
+                }
+
+                // Addition chapters: show 0 cancel marker instead of silently deleting dice.
+                if (UsesZeroCancelSymbol && TryCreateCancelMarker(sideName, placed.Id, side.Cards[j].Id))
+                {
+                    Moves.RegisterCombine();
+                    MessageChanged?.Invoke($"{Capitalize(LightTerm)} met {DarkTerm} — 0 appears.");
+                    return true;
                 }
 
                 string partnerId = side.Cards[j].Id;
@@ -1212,9 +2325,51 @@ namespace DragonBoxAlgebra.Gameplay
             {
                 SideName = sideName,
                 CardIdA = cardIdA,
-                CardIdB = cardIdB
+                CardIdB = cardIdB,
+                ResultSymbol = AdditionCancelSymbol
             });
             return true;
+        }
+
+        private void CreateOneResultMarker(string sideName)
+        {
+            _pendingCancels.Add(new PendingCancelMarker
+            {
+                SideName = sideName,
+                CardIdA = string.Empty,
+                CardIdB = string.Empty,
+                SwirlOnly = true,
+                ResultSymbol = CancelResultSymbol.One
+            });
+        }
+
+        /// <summary>Remove identity 1 next to x after division (1·x → x), with a 1 dismiss marker.</summary>
+        private void ResolveOneIdentitiesAfterDivide()
+        {
+            ResolveOneIdentitiesOnSide("Left");
+            ResolveOneIdentitiesOnSide("Right");
+        }
+
+        private void ResolveOneIdentitiesOnSide(string sideName)
+        {
+            BoardSide side = Board.GetSide(sideName);
+            for (int i = side.Cards.Count - 1; i >= 0; i--)
+            {
+                if (side.Cards[i].Kind != CardKind.One)
+                {
+                    continue;
+                }
+
+                bool nextToX = (i + 1 < side.Cards.Count && VariableGoalRules.IsVariableXGoal(side.Cards[i + 1]))
+                    || (i > 0 && VariableGoalRules.IsVariableXGoal(side.Cards[i - 1]));
+                if (!nextToX && side.Cards.Count > 1)
+                {
+                    continue;
+                }
+
+                side.Cards.RemoveAt(i);
+                CreateOneResultMarker(sideName);
+            }
         }
 
         private static bool CardExistsOnlyOnSide(AlgebraBoard board, string sideName, string cardId)
@@ -1276,6 +2431,13 @@ namespace DragonBoxAlgebra.Gameplay
         {
             for (int i = 0; i < _hand.Count; i++)
             {
+                // Keep the tile free while a blank ? still needs this same hand card (151–165 balance).
+                if (_pendingBalance != null && _pendingBalance.HandIndex == i)
+                {
+                    _spentHandIndices.Remove(i);
+                    continue;
+                }
+
                 // Numbers use matching +/- board constants (not light-sea count).
                 // Sea / variable tiles use HandTileStillNeededOnBoard as before.
                 if (HandTileStillNeededOnBoard(i))
@@ -1296,6 +2458,12 @@ namespace DragonBoxAlgebra.Gameplay
                 return false;
             }
 
+            // 151–165: blank ? still waiting for this tile.
+            if (_pendingBalance != null && _pendingBalance.HandIndex == handIndex)
+            {
+                return true;
+            }
+
             BoardCard handCard = _hand[handIndex];
             if (handCard.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant)
             {
@@ -1303,7 +2471,14 @@ namespace DragonBoxAlgebra.Gameplay
                 CardKind needed = handCard.Kind == CardKind.NegativeConstant
                     ? CardKind.PositiveConstant
                     : CardKind.NegativeConstant;
-                return CountConstantsOnBoard(needed, handCard.Value) > 0;
+                if (CountConstantsOnBoard(needed, handCard.Value) > 0)
+                {
+                    return true;
+                }
+
+                // Multiply levels: keep the coefficient card available to drop on the divide line.
+                return UsesMultiplyAdditionLevels
+                    && DivisionRules.CanDivideBothSides(Board, handCard.Value);
             }
 
             char letter = handCard.VariableLetter;
@@ -1314,6 +2489,39 @@ namespace DragonBoxAlgebra.Gameplay
 
             // Sea hand tile stays unlocked while any light sea remains on the board.
             return CountLightSeaCreaturesOnBoard() > 0;
+        }
+
+        /// <summary>
+        /// Fold a constant into the first number on a side (9 + −3 → 6), or append if none.
+        /// </summary>
+        private static void ApplyConstantToSide(BoardSide side, BoardCard delta)
+        {
+            int deltaSigned = delta.SignedValue;
+            for (int i = 0; i < side.Cards.Count; i++)
+            {
+                BoardCard card = side.Cards[i];
+                if (card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+                {
+                    continue;
+                }
+
+                int sum = card.SignedValue + deltaSigned;
+                if (sum == 0)
+                {
+                    side.Cards.RemoveAt(i);
+                    return;
+                }
+
+                side.Cards[i] = new BoardCard(
+                    sum > 0 ? CardKind.PositiveConstant : CardKind.NegativeConstant,
+                    Math.Abs(sum),
+                    card.StackCount,
+                    card.VisualTheme,
+                    '\0');
+                return;
+            }
+
+            side.Cards.Add(delta.CloneForPlacement());
         }
 
         private int CountConstantsOnBoard(CardKind kind, int value)

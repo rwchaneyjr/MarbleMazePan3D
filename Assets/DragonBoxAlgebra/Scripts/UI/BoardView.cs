@@ -17,6 +17,7 @@ namespace DragonBoxAlgebra.UI
         private const float DefaultTileHeight = 120f;
         private const float DefaultTileSpacing = 16f;
         private const float PlusSeparatorWidth = 28f;
+        private const float TimesSeparatorWidth = 22f;
         private const float MinTileWidth = 52f;
         private const float MinTileSpacing = 4f;
         private const int CompactPadding = 12;
@@ -24,6 +25,9 @@ namespace DragonBoxAlgebra.UI
 
         private RectTransform _leftPanel;
         private RectTransform _rightPanel;
+        private RectTransform _boardRow;
+        private DenominatorDropZone _leftDenomZone;
+        private DenominatorDropZone _rightDenomZone;
         private RectTransform _dragRoot;
         private Canvas _canvas;
         private AlgebraGameController _controller;
@@ -37,11 +41,12 @@ namespace DragonBoxAlgebra.UI
         private Coroutine _winSequenceCoroutine;
 
         public void Initialize(AlgebraGameController controller, RectTransform left, RectTransform right,
-            Canvas canvas, RectTransform dragRoot)
+            Canvas canvas, RectTransform dragRoot, RectTransform boardRow = null)
         {
             _controller = controller;
             _leftPanel = left;
             _rightPanel = right;
+            _boardRow = boardRow;
             _canvas = canvas;
             _dragRoot = dragRoot;
 
@@ -53,11 +58,59 @@ namespace DragonBoxAlgebra.UI
             left.gameObject.AddComponent<BoardDropZone>().SideName = "Left";
             right.gameObject.AddComponent<BoardDropZone>().SideName = "Right";
 
+            // Denom drop zones only for 151–165 — never create on Ch1–Ch7.
+            if (_controller != null && _controller.UsesMultiplyAdditionLevels)
+            {
+                EnsureDenominatorZones();
+            }
+
             _controller.BoardChanged += Refresh;
             _controller.CombineOccurred += OnCombine;
             _controller.LevelLoaded += OnLevelLoaded;
             _controller.WinSequenceStarted += OnWinSequenceStarted;
+            _controller.FractionGuideChanged += OnFractionGuideChanged;
             Refresh();
+        }
+
+        private void EnsureDenominatorZones()
+        {
+            if (_leftPanel == null || _rightPanel == null)
+            {
+                return;
+            }
+
+            if (_controller == null || !_controller.UsesMultiplyAdditionLevels)
+            {
+                DestroyDenominatorZones();
+                return;
+            }
+
+            if (_leftDenomZone == null)
+            {
+                _leftDenomZone = DenominatorDropZone.Create(_leftPanel, _controller, "Left");
+                _leftDenomZone.gameObject.SetActive(false);
+            }
+
+            if (_rightDenomZone == null)
+            {
+                _rightDenomZone = DenominatorDropZone.Create(_rightPanel, _controller, "Right");
+                _rightDenomZone.gameObject.SetActive(false);
+            }
+        }
+
+        private void DestroyDenominatorZones()
+        {
+            if (_leftDenomZone != null)
+            {
+                Destroy(_leftDenomZone.gameObject);
+                _leftDenomZone = null;
+            }
+
+            if (_rightDenomZone != null)
+            {
+                Destroy(_rightDenomZone.gameObject);
+                _rightDenomZone = null;
+            }
         }
 
         private void OnDestroy()
@@ -68,7 +121,18 @@ namespace DragonBoxAlgebra.UI
                 _controller.CombineOccurred -= OnCombine;
                 _controller.LevelLoaded -= OnLevelLoaded;
                 _controller.WinSequenceStarted -= OnWinSequenceStarted;
+                _controller.FractionGuideChanged -= OnFractionGuideChanged;
             }
+        }
+
+        private void OnFractionGuideChanged()
+        {
+            for (int i = 0; i < _widgets.Count; i++)
+            {
+                _widgets[i]?.RefreshFractionGuide();
+            }
+
+            RefreshDenominatorZones();
         }
 
         private void OnLevelLoaded(int current, int total)
@@ -118,6 +182,8 @@ namespace DragonBoxAlgebra.UI
             }
 
             _playingWinSequence = true;
+            // Keep answer (…)/3 box visible through the win presentation.
+            RefreshDenominatorZones();
             _winSequenceCoroutine = StartCoroutine(PlayWinSequence(stars, moves));
         }
 
@@ -257,17 +323,7 @@ namespace DragonBoxAlgebra.UI
             TileLayout rightLayout = ComputeTileLayout(_rightPanel, rightSlots, rightPlus);
             RebuildSide(_leftPanel, _controller.Board.Left, "Left", leftLayout);
             RebuildSide(_rightPanel, _controller.Board.Right, "Right", rightLayout);
-
-            if (_controller.HasPendingBalance)
-            {
-                BalancePending pending = _controller.PendingBalance;
-                RectTransform holePanel = pending.HoleSide == "Left" ? _leftPanel : _rightPanel;
-                TileLayout holeLayout = pending.HoleSide == "Left" ? leftLayout : rightLayout;
-                BalanceHoleWidget hole = BalanceHoleWidget.Create(holePanel, _controller, pending.HoleSide, pending.Card,
-                    holeLayout.Width, holeLayout.Height);
-                int holeSlot = Mathf.Clamp(pending.HoleInsertIndex, 0, holePanel.childCount - 1);
-                hole.transform.SetSiblingIndex(holeSlot);
-            }
+            RefreshDenominatorZones();
 
             // SwirlOnly markers (cards already gone) still append at end of their side.
             BuildSwirlOnlyMarkers(_leftPanel, "Left", leftLayout);
@@ -322,6 +378,11 @@ namespace DragonBoxAlgebra.UI
                 {
                     visibleCards++;
                 }
+            }
+
+            if (_controller.HasPendingBalance && _controller.PendingBalance.HoleSide == sideName)
+            {
+                visibleCards++;
             }
 
             return visibleCards > 1 ? visibleCards - 1 : 0;
@@ -403,10 +464,14 @@ namespace DragonBoxAlgebra.UI
             for (int i = panel.childCount - 1; i >= 0; i--)
             {
                 Transform child = panel.GetChild(i);
-                if (child.GetComponent<BoardDropZone>() == null)
+                // Keep the panel drop zone and Ch8 (151–165) fraction denom slots across rebuilds.
+                if (child.GetComponent<BoardDropZone>() != null
+                    || child.GetComponent<DenominatorDropZone>() != null)
                 {
-                    Destroy(child.gameObject);
+                    continue;
                 }
+
+                Destroy(child.gameObject);
             }
 
             var horizontalLayout = panel.GetComponent<HorizontalLayoutGroup>();
@@ -422,14 +487,52 @@ namespace DragonBoxAlgebra.UI
             }
 
             horizontalLayout.spacing = layout.Spacing;
-            horizontalLayout.padding = new RectOffset(layout.Padding, layout.Padding, layout.Padding, layout.Padding);
+            // Extra bottom padding so fraction lines + slots under a·x / dice stay visible.
+            // Multi-term letter answers need more room for the shared line + blank under (… ).
+            bool groupedLetterPad = _controller.UsesMultiplyAdditionLevels
+                && _controller.UsesGroupedLetterFraction(sideName);
+            int bottomPad = _controller.UsesMultiplyAdditionLevels
+                ? Mathf.Max(layout.Padding, groupedLetterPad ? 110 : 72)
+                : layout.Padding;
+            horizontalLayout.padding = new RectOffset(layout.Padding, layout.Padding, layout.Padding, bottomPad);
 
             bool usePlus = _controller.UsesPlusBetweenBoardTiles;
+            bool useMultiply = _controller.UsesMultiplyAdditionLevels;
+            bool groupedLetterFraction = useMultiply && _controller.UsesGroupedLetterFraction(sideName)
+                && (side.HasDenominator
+                    || _controller.GetActiveFractionDivisor() != null
+                    || (_controller.HasPendingDivide
+                        && (_controller.PendingDivide.HoleSide == sideName
+                            || _controller.PendingDivide.PlacedSide == sideName)));
             bool placedCard = false;
+            BoardCard? previousCard = null;
             var placedMarkerIndexes = new HashSet<int>();
+
+            int holeInsert = -1;
+            if (_controller.HasPendingBalance && _controller.PendingBalance.HoleSide == sideName)
+            {
+                holeInsert = Mathf.Clamp(_controller.PendingBalance.HoleInsertIndex, 0, side.Cards.Count);
+            }
+
+            if (groupedLetterFraction)
+            {
+                CreateParenSeparator(panel, layout.Height, "(");
+            }
 
             for (int i = 0; i < side.Cards.Count; i++)
             {
+                if (i == holeInsert)
+                {
+                    if (usePlus && placedCard)
+                    {
+                        CreatePlusSeparator(panel, layout.Height);
+                    }
+
+                    PlaceBalanceHole(panel, sideName, layout);
+                    placedCard = true;
+                    previousCard = null;
+                }
+
                 BoardCard card = side.Cards[i];
                 int markerIndex = FindPendingMarkerIndex(sideName, card.Id);
                 if (markerIndex >= 0)
@@ -440,7 +543,7 @@ namespace DragonBoxAlgebra.UI
                     {
                         if (usePlus && placedCard)
                         {
-                            CreatePlusSeparator(panel, layout.Height);
+                            CreateOperatorSeparator(panel, layout.Height, previousCard, card, useMultiply);
                         }
 
                         PendingCancelMarker marker = _controller.PendingCancels[markerIndex];
@@ -458,6 +561,7 @@ namespace DragonBoxAlgebra.UI
 
                         placedMarkerIndexes.Add(markerIndex);
                         placedCard = true;
+                        previousCard = card;
                     }
 
                     continue;
@@ -465,7 +569,7 @@ namespace DragonBoxAlgebra.UI
 
                 if (usePlus && placedCard)
                 {
-                    CreatePlusSeparator(panel, layout.Height);
+                    CreateOperatorSeparator(panel, layout.Height, previousCard, card, useMultiply);
                 }
 
                 CardWidget widget = CardWidget.Create(panel, card, i, sideName, _controller, _canvas, _dragRoot,
@@ -473,7 +577,177 @@ namespace DragonBoxAlgebra.UI
                 widget.gameObject.AddComponent<CardDropZone>();
                 _widgets.Add(widget);
                 placedCard = true;
+                previousCard = card;
             }
+
+            if (holeInsert == side.Cards.Count)
+            {
+                if (usePlus && placedCard)
+                {
+                    CreatePlusSeparator(panel, layout.Height);
+                }
+
+                PlaceBalanceHole(panel, sideName, layout);
+            }
+
+            if (groupedLetterFraction)
+            {
+                CreateParenSeparator(panel, layout.Height, ")");
+            }
+        }
+
+        private void PlaceBalanceHole(RectTransform panel, string sideName, TileLayout layout)
+        {
+            BalancePending pending = _controller.PendingBalance;
+            BalanceHoleWidget.Create(panel, _controller, sideName, pending.Card, layout.Width, layout.Height);
+        }
+
+        private void RefreshDenominatorZones()
+        {
+            if (_controller == null || !_controller.UsesMultiplyAdditionLevels)
+            {
+                DestroyDenominatorZones();
+                return;
+            }
+
+            EnsureDenominatorZones();
+            bool hasPlacedDenom = _controller.Board.Left.HasDenominator
+                || _controller.Board.Right.HasDenominator;
+            // Keep answer /coeff boxes visible through the end of the puzzle (including win).
+            bool guideActive = hasPlacedDenom
+                || (!_playingWinSequence
+                    && (_controller.GetActiveFractionDivisor() != null
+                        || _controller.HasPendingDivide));
+
+            if (_leftDenomZone != null)
+            {
+                bool showLeft = guideActive
+                    || (_controller.UsesGroupedLetterFraction("Left") && _controller.Board.Left.HasDenominator);
+                _leftDenomZone.gameObject.SetActive(showLeft);
+                if (showLeft)
+                {
+                    _leftDenomZone.RefreshVisual(_controller);
+                    _leftDenomZone.transform.SetAsLastSibling();
+                }
+            }
+
+            if (_rightDenomZone != null)
+            {
+                bool showRight = guideActive
+                    || (_controller.UsesGroupedLetterFraction("Right") && _controller.Board.Right.HasDenominator);
+                _rightDenomZone.gameObject.SetActive(showRight);
+                if (showRight)
+                {
+                    _rightDenomZone.RefreshVisual(_controller);
+                    _rightDenomZone.transform.SetAsLastSibling();
+                }
+            }
+
+            for (int i = 0; i < _widgets.Count; i++)
+            {
+                _widgets[i]?.RefreshFractionGuide();
+            }
+
+            // Snap after layout so the ? / 3 box stays centered under ( … ), not shifted right.
+            if (_leftDenomZone != null && _leftDenomZone.gameObject.activeSelf
+                && _controller.UsesGroupedLetterFraction("Left"))
+            {
+                StartCoroutine(SnapGroupedDenomNextFrame(_leftDenomZone, "Left", _leftPanel));
+            }
+
+            if (_rightDenomZone != null && _rightDenomZone.gameObject.activeSelf
+                && _controller.UsesGroupedLetterFraction("Right"))
+            {
+                StartCoroutine(SnapGroupedDenomNextFrame(_rightDenomZone, "Right", _rightPanel));
+            }
+        }
+
+        private IEnumerator SnapGroupedDenomNextFrame(DenominatorDropZone zone, string sideName,
+            RectTransform panel)
+        {
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            if (panel != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(panel);
+            }
+
+            SnapGroupedDenomUnderEquation(zone, sideName, panel);
+            if (zone != null && _controller != null)
+            {
+                zone.RefreshVisual(_controller);
+                SnapGroupedDenomUnderEquation(zone, sideName, panel);
+            }
+        }
+
+        /// <summary>
+        /// Pin the shared Ch10 fraction line flush under the ( equation ) on that side.
+        /// </summary>
+        private void SnapGroupedDenomUnderEquation(DenominatorDropZone zone, string sideName,
+            RectTransform panel)
+        {
+            if (zone == null || panel == null || _controller == null
+                || !_controller.UsesGroupedLetterFraction(sideName)
+                || !zone.gameObject.activeSelf)
+            {
+                return;
+            }
+
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(panel);
+
+            float localLeft = float.MaxValue;
+            float localRight = float.MinValue;
+            float localBottom = float.MaxValue;
+            bool any = false;
+            var corners = new Vector3[4];
+
+            void ExpandFrom(RectTransform rt)
+            {
+                if (rt == null)
+                {
+                    return;
+                }
+
+                rt.GetWorldCorners(corners);
+                for (int c = 0; c < 4; c++)
+                {
+                    Vector3 local = panel.InverseTransformPoint(corners[c]);
+                    localLeft = Mathf.Min(localLeft, local.x);
+                    localRight = Mathf.Max(localRight, local.x);
+                    localBottom = Mathf.Min(localBottom, local.y);
+                }
+
+                any = true;
+            }
+
+            // Measure equation tiles + parentheses only (not the denom zone / separators).
+            for (int i = 0; i < _widgets.Count; i++)
+            {
+                CardWidget widget = _widgets[i];
+                if (widget == null || widget.SideName != sideName)
+                {
+                    continue;
+                }
+
+                ExpandFrom(widget.transform as RectTransform);
+            }
+
+            for (int i = 0; i < panel.childCount; i++)
+            {
+                Transform child = panel.GetChild(i);
+                if (child != null && child.name is "OpenParen" or "CloseParen")
+                {
+                    ExpandFrom(child as RectTransform);
+                }
+            }
+
+            if (!any || localRight <= localLeft)
+            {
+                return;
+            }
+
+            zone.SnapFlushUnderEquation(localLeft, localRight, localBottom);
         }
 
         private int FindPendingMarkerIndex(string sideName, string cardId)
@@ -559,24 +833,57 @@ namespace DragonBoxAlgebra.UI
             }
         }
 
+        private static void CreateOperatorSeparator(Transform parent, float tileHeight, BoardCard? previous,
+            BoardCard next, bool useMultiply)
+        {
+            bool times = useMultiply
+                && previous.HasValue
+                && DivisionRules.IsCoefficientTimesVariablePair(previous.Value, next);
+            if (times)
+            {
+                CreateTimesSeparator(parent, tileHeight);
+            }
+            else
+            {
+                CreatePlusSeparator(parent, tileHeight);
+            }
+        }
+
         private static void CreatePlusSeparator(Transform parent, float tileHeight)
         {
-            var go = new GameObject("PlusSeparator", typeof(RectTransform), typeof(Text), typeof(LayoutElement));
+            CreateSymbolSeparator(parent, tileHeight, "PlusSeparator", "+", PlusSeparatorWidth, 34);
+        }
+
+        private static void CreateTimesSeparator(Transform parent, float tileHeight)
+        {
+            CreateSymbolSeparator(parent, tileHeight, "TimesSeparator", "·", TimesSeparatorWidth, 36);
+        }
+
+        private static void CreateParenSeparator(Transform parent, float tileHeight, string paren)
+        {
+            CreateSymbolSeparator(parent, tileHeight, paren == "(" ? "OpenParen" : "CloseParen", paren,
+                TimesSeparatorWidth, 40);
+        }
+
+        private static void CreateSymbolSeparator(Transform parent, float tileHeight, string name, string symbol,
+            float width, int fontSize)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Text), typeof(LayoutElement));
             go.transform.SetParent(parent, false);
 
             var layoutElement = go.GetComponent<LayoutElement>();
-            layoutElement.minWidth = PlusSeparatorWidth;
-            layoutElement.preferredWidth = PlusSeparatorWidth;
+            layoutElement.minWidth = width;
+            layoutElement.preferredWidth = width;
             layoutElement.minHeight = tileHeight;
             layoutElement.preferredHeight = tileHeight;
 
             var rect = go.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(PlusSeparatorWidth, tileHeight);
+            rect.sizeDelta = new Vector2(width, tileHeight);
 
             var text = go.GetComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.text = "+";
-            text.fontSize = 34;
+            text.text = symbol;
+            text.fontSize = fontSize;
             text.fontStyle = FontStyle.Bold;
             text.alignment = TextAnchor.MiddleCenter;
             text.color = new Color(0.95f, 0.95f, 0.88f);

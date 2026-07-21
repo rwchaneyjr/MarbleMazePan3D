@@ -56,15 +56,34 @@ namespace DragonBoxAlgebra.Core
             return board.Right.Cards.Count == 1;
         }
 
-        /// <summary>Box on one side only; the opposite side is completely empty.</summary>
+        /// <summary>Opposite side is empty, or only a lone 0 (addition: x = 0).</summary>
+        public static bool IsEmptyOrZeroOnlySide(BoardSide side) =>
+            side.Cards.Count == 0 || IsZeroOnlySide(side);
+
+        public static bool IsZeroOnlySide(BoardSide side) =>
+            side.Cards.Count == 1
+            && side.Cards[0].Kind is CardKind.PositiveConstant or CardKind.NegativeConstant
+            && side.Cards[0].Value == 0;
+
+        /// <summary>Lone non-x variable letter (140–150 answer: x = a/b/c/r).</summary>
+        public static bool IsLoneNonGoalVariableSide(BoardSide side) =>
+            side.Cards.Count == 1
+            && side.Cards[0].Kind is CardKind.DayCreature or CardKind.NightCreature
+            && side.Cards[0].VariableLetter != '\0'
+            && !VariableGoalRules.IsVariableXGoal(side.Cards[0]);
+
+        public static bool IsEmptyZeroOrLetterAnswerSide(BoardSide side) =>
+            IsEmptyOrZeroOnlySide(side) || IsLoneNonGoalVariableSide(side);
+
+        /// <summary>Box on one side only; the opposite side is empty or only 0.</summary>
         public static bool IsReadyForSidesTogether(AlgebraBoard board)
         {
-            if (board.Right.Cards.Count == 0)
+            if (IsEmptyOrZeroOnlySide(board.Right))
             {
                 return board.Left.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(board.Left.Cards[0]);
             }
 
-            if (board.Left.Cards.Count == 0)
+            if (IsEmptyOrZeroOnlySide(board.Left))
             {
                 return board.Right.Cards.Count == 1 && VariableGoalRules.IsIsolationGoal(board.Right.Cards[0]);
             }
@@ -72,20 +91,134 @@ namespace DragonBoxAlgebra.Core
             return false;
         }
 
-        /// <summary>Ch5: positive x alone on one side, opposite side empty.</summary>
-        public static bool IsVariableXReadyForSidesTogether(AlgebraBoard board)
+        /// <summary>Positive x alone on one side; opposite side empty, only 0, or (optional) a lone letter.</summary>
+        public static bool IsVariableXReadyForSidesTogether(AlgebraBoard board, bool allowLoneVariableAnswer = false)
         {
-            if (board.Right.Cards.Count == 0)
+            bool OppositeOk(BoardSide side) =>
+                allowLoneVariableAnswer ? IsEmptyZeroOrLetterAnswerSide(side) : IsEmptyOrZeroOnlySide(side);
+
+            if (OppositeOk(board.Right))
             {
                 return board.Left.Cards.Count == 1 && VariableGoalRules.IsVariableXGoal(board.Left.Cards[0]);
             }
 
-            if (board.Left.Cards.Count == 0)
+            if (OppositeOk(board.Left))
             {
                 return board.Right.Cards.Count == 1 && VariableGoalRules.IsVariableXGoal(board.Right.Cards[0]);
             }
 
             return false;
+        }
+
+        /// <summary>Ch8: x alone on one side equals a single constant on the other (x = k).</summary>
+        public static bool IsVariableXEqualsConstant(AlgebraBoard board)
+        {
+            // Integer answer: no fraction line left under either side.
+            if (board.Left.HasDenominator || board.Right.HasDenominator)
+            {
+                return false;
+            }
+
+            if (board.Left.Cards.Count == 1
+                && VariableGoalRules.IsVariableXGoal(board.Left.Cards[0])
+                && board.Right.Cards.Count == 1
+                && board.Right.Cards[0].Kind == CardKind.PositiveConstant
+                && board.Right.Cards[0].Value > 0)
+            {
+                return true;
+            }
+
+            if (board.Right.Cards.Count == 1
+                && VariableGoalRules.IsVariableXGoal(board.Right.Cards[0])
+                && board.Left.Cards.Count == 1
+                && board.Left.Cards[0].Kind == CardKind.PositiveConstant
+                && board.Left.Cards[0].Value > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Ch8 win: x alone = fraction n/d (dice above the line, divisor below), e.g. x = 9/2.
+        /// </summary>
+        public static bool IsVariableXEqualsFraction(AlgebraBoard board)
+        {
+            return IsXEqualsFractionOnSides(board.Left, board.Right)
+                || IsXEqualsFractionOnSides(board.Right, board.Left);
+        }
+
+        private static bool IsXEqualsFractionOnSides(BoardSide xSide, BoardSide fractionSide)
+        {
+            if (xSide.Cards.Count != 1 || !VariableGoalRules.IsVariableXGoal(xSide.Cards[0]))
+            {
+                return false;
+            }
+
+            if (xSide.HasDenominator)
+            {
+                return false;
+            }
+
+            if (fractionSide.Cards.Count != 1
+                || fractionSide.Cards[0].Kind != CardKind.PositiveConstant
+                || fractionSide.Cards[0].Value <= 0
+                || !fractionSide.HasDenominator)
+            {
+                return false;
+            }
+
+            int denom = fractionSide.Denominator.Value.Value;
+            return denom > 1 && fractionSide.Cards[0].Value % denom != 0;
+        }
+
+        /// <summary>
+        /// Ch9/Ch10 win: x alone = letter expression (one or more letters ± constants, optional /coeff),
+        /// e.g. x = (b−2)/3 or x = (6·a + r − b − 5)/3.
+        /// </summary>
+        public static bool IsVariableXEqualsLetterExpression(AlgebraBoard board)
+        {
+            return IsXEqualsLetterExpressionOnSides(board.Left, board.Right)
+                || IsXEqualsLetterExpressionOnSides(board.Right, board.Left);
+        }
+
+        private static bool IsXEqualsLetterExpressionOnSides(BoardSide xSide, BoardSide letterSide)
+        {
+            if (xSide.Cards.Count != 1 || !VariableGoalRules.IsVariableXGoal(xSide.Cards[0]))
+            {
+                return false;
+            }
+
+            if (xSide.HasDenominator)
+            {
+                return false;
+            }
+
+            int letterCount = 0;
+            for (int i = 0; i < letterSide.Cards.Count; i++)
+            {
+                BoardCard card = letterSide.Cards[i];
+                if (VariableGoalRules.IsVariableXGoal(card) || card.Kind == CardKind.Box)
+                {
+                    return false;
+                }
+
+                if (VariableGoalRules.IsPairVariable(card))
+                {
+                    letterCount++;
+                    continue;
+                }
+
+                if (card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.One)
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return letterCount >= 1 && letterSide.HasDenominator;
         }
 
         /// <summary>Red box alone on one side with the other side empty.</summary>
@@ -96,7 +229,8 @@ namespace DragonBoxAlgebra.Core
         /// and the player has made at least one move (no win on load).
         /// </summary>
         public static bool CanWin(AlgebraBoard board, int moves, bool hasPendingBalance, int pendingCancelCount,
-            int activeMergeAnimations, bool allowOppositeCreatures = false, bool useVariableXGoal = false)
+            int activeMergeAnimations, bool allowOppositeCreatures = false, bool useVariableXGoal = false,
+            bool useMultiplyAdditionWin = false, bool allowLoneVariableAnswer = false)
         {
             if (hasPendingBalance || pendingCancelCount > 0 || activeMergeAnimations > 0)
             {
@@ -108,9 +242,16 @@ namespace DragonBoxAlgebra.Core
                 return false;
             }
 
+            if (useMultiplyAdditionWin)
+            {
+                return IsVariableXEqualsConstant(board)
+                    || IsVariableXEqualsFraction(board)
+                    || IsVariableXEqualsLetterExpression(board);
+            }
+
             if (useVariableXGoal)
             {
-                return IsVariableXReadyForSidesTogether(board);
+                return IsVariableXReadyForSidesTogether(board, allowLoneVariableAnswer);
             }
 
             return allowOppositeCreatures

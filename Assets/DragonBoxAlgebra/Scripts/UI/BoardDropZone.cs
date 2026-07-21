@@ -37,15 +37,19 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // 1) Merge onto nearest correct opposite (distance snap) — this is the intended drop.
-            if (TryMergeNearestOpposite(controller, dragged, eventData))
+            // 1) Merge onto nearest correct opposite — Ch2 opposite-play and Ch8/9 only.
+            //    Ch3+ balance must not steal night→day into a one-side cancel.
+            if (controller.UsesHandOntoOppositeCancel
+                && TryMergeNearestOpposite(controller, dragged, eventData))
             {
                 return;
             }
 
-            // 2) If the pointer is over ANY board tile, do nothing.
-            //    Falling through to TryPlayFromHand is what "pops the tile to the side".
-            if (FindAnyBoardCardUnderPointer(eventData, dragged) != null)
+            // 2) If the pointer is over ANY board tile:
+            //    opposite-hand / multiply → do nothing (avoid parking beside instead of cancel).
+            //    balance chapters → still TryPlayFromHand on this side (tile is a valid drop target).
+            if (FindAnyBoardCardUnderPointer(eventData, dragged) != null
+                && controller.UsesHandOntoOppositeCancel)
             {
                 return;
             }
@@ -61,7 +65,7 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // 3) Empty panel only → start balance play.
+            // 3) Empty panel or balance drop onto a side → start balance play.
             if (controller.TryPlayFromHand(dragged.Index, SideName))
             {
                 dragged.MarkHandPlayHandled();

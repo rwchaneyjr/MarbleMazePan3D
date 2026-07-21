@@ -30,6 +30,10 @@ namespace DragonBoxAlgebra.UI
         private Image _creatureImage;
         private Text _creatureText;
         private Text _labelText;
+        private GameObject _fractionGuideRoot;
+        private Image _fractionLineImage;
+        private GameObject _fractionSlotGo;
+        private Text _fractionSlotHint;
         private CreatureReaction _reaction;
         private DraggableTile _draggable;
         private Vector2 _dragOffset;
@@ -58,7 +62,23 @@ namespace DragonBoxAlgebra.UI
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (_didDrag || _dragStarted || SideName != "Hand" || _controller == null || !CanFlipHand())
+            if (_didDrag || _dragStarted || _controller == null)
+            {
+                return;
+            }
+
+            // Multiply levels: tap a number above the line (3/3 → 1, dice/3 → divide).
+            if (SideName != "Hand"
+                && _controller.UsesMultiplyAdditionLevels
+                && _controller.Board.Left.HasDenominator
+                && _controller.Board.Right.HasDenominator
+                && _controller.TryResolveDivisionOnCard(SideName, Index))
+            {
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCombine();
+                return;
+            }
+
+            if (SideName != "Hand" || !CanFlipHand())
             {
                 return;
             }
@@ -124,8 +144,11 @@ namespace DragonBoxAlgebra.UI
             if (_labelText != null)
             {
                 bool showIconOnly = CardVisuals.ShowsIconOnly(Card) && _creatureImage != null && _creatureImage.enabled;
+                bool largeNumberText = !showIconOnly
+                    && Card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.One
+                    && (_creatureImage == null || !_creatureImage.enabled);
 
-                if (showIconOnly)
+                if (showIconOnly || largeNumberText)
                 {
                     _labelText.text = string.Empty;
                 }
@@ -140,6 +163,138 @@ namespace DragonBoxAlgebra.UI
             }
 
             ApplyHandSlotDimming();
+            RefreshFractionGuide();
+        }
+
+        /// <summary>Show the DragonBox fraction underline + empty/?/number tile under a·x / dice.</summary>
+        public void RefreshFractionGuide()
+        {
+            if (_fractionGuideRoot == null)
+            {
+                return;
+            }
+
+            bool show = SideName != "Hand"
+                && _controller != null
+                && _controller.UsesMultiplyAdditionLevels
+                && _controller.ShouldShowFractionLineUnder(SideName, Index);
+            _fractionGuideRoot.SetActive(show);
+            if (!show)
+            {
+                return;
+            }
+
+            var fractionRect = _fractionGuideRoot.transform as RectTransform;
+            bool productAnchor = _controller.IsFractionProductAnchor(SideName, Index);
+            bool isVariablePart = VariableGoalRules.IsVariableXGoal(Card);
+            if (fractionRect != null)
+            {
+                // Span under a·x from the coefficient; x half only extends the hit target lightly.
+                if (productAnchor)
+                {
+                    fractionRect.anchorMin = new Vector2(0.05f, -0.95f);
+                    fractionRect.anchorMax = new Vector2(1.95f, -0.04f);
+                }
+                else if (isVariablePart)
+                {
+                    // Coefficient already draws the shared line+slot; keep a slim drop target under x.
+                    fractionRect.anchorMin = new Vector2(0.05f, -0.95f);
+                    fractionRect.anchorMax = new Vector2(0.95f, -0.04f);
+                }
+                else
+                {
+                    fractionRect.anchorMin = new Vector2(0.08f, -0.95f);
+                    fractionRect.anchorMax = new Vector2(0.92f, -0.04f);
+                }
+            }
+
+            if (_fractionLineImage != null)
+            {
+                _fractionLineImage.color = new Color(0.95f, 0.95f, 0.9f, 0.98f);
+                _fractionLineImage.gameObject.SetActive(!isVariablePart || productAnchor);
+            }
+
+            if (_fractionSlotGo != null)
+            {
+                // One slot under a·x (on the coefficient) and one under the dice — not under x alone.
+                bool showSlot = productAnchor || !isVariablePart;
+                _fractionSlotGo.SetActive(showSlot);
+                if (showSlot)
+                {
+                    RefreshFractionSlotContents();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Blank ? until a number is dropped; then show a real number tile (visible each drag-in).
+        /// </summary>
+        private void RefreshFractionSlotContents()
+        {
+            if (_fractionSlotGo == null || _controller == null)
+            {
+                return;
+            }
+
+            Transform existingArt = _fractionSlotGo.transform.Find("DenomArt");
+            if (existingArt != null)
+            {
+                DestroyImmediate(existingArt.gameObject);
+            }
+
+            var slotBg = _fractionSlotGo.GetComponent<Image>();
+            var side = _controller.Board.GetSide(SideName);
+            if (side.HasDenominator)
+            {
+                int value = side.Denominator.Value.Value;
+                if (slotBg != null)
+                {
+                    slotBg.sprite = SpriteFactory.RoundedCard;
+                    slotBg.type = Image.Type.Sliced;
+                    slotBg.color = new Color(0.96f, 0.97f, 1f, 0.98f);
+                }
+
+                if (_fractionSlotHint != null)
+                {
+                    _fractionSlotHint.text = string.Empty;
+                }
+
+                Sprite numberSprite = CardSpriteLoader.GetNumberSprite(value, positive: true);
+                if (numberSprite != null)
+                {
+                    var artGo = new GameObject("DenomArt", typeof(RectTransform), typeof(Image));
+                    artGo.transform.SetParent(_fractionSlotGo.transform, false);
+                    var artRect = artGo.GetComponent<RectTransform>();
+                    artRect.anchorMin = new Vector2(0.1f, 0.1f);
+                    artRect.anchorMax = new Vector2(0.9f, 0.9f);
+                    artRect.offsetMin = Vector2.zero;
+                    artRect.offsetMax = Vector2.zero;
+                    var artImage = artGo.GetComponent<Image>();
+                    artImage.sprite = numberSprite;
+                    artImage.preserveAspect = true;
+                    artImage.raycastTarget = false;
+                }
+                else if (_fractionSlotHint != null)
+                {
+                    _fractionSlotHint.text = value.ToString();
+                    _fractionSlotHint.color = Color.black;
+                }
+
+                return;
+            }
+
+            if (slotBg != null)
+            {
+                slotBg.sprite = SpriteFactory.RoundedCard;
+                slotBg.type = Image.Type.Sliced;
+                slotBg.color = new Color(0.16f, 0.2f, 0.3f, 0.92f);
+            }
+
+            if (_fractionSlotHint != null)
+            {
+                _fractionSlotHint.text = "?";
+                _fractionSlotHint.color = new Color(0.92f, 0.94f, 0.98f, 0.9f);
+            }
         }
 
         private void ApplyHandSlotDimming()
@@ -203,10 +358,25 @@ namespace DragonBoxAlgebra.UI
 
             if (_creatureText != null)
             {
-                _creatureText.font = EmojiFont.Get();
-                _creatureText.text = CardVisuals.Emoji(Card);
-                _creatureText.fontSize = CardVisuals.EmojiFontSize(Card);
-                _creatureText.enabled = icon == null;
+                bool numberNeedsText = icon == null
+                    && Card.Kind is CardKind.PositiveConstant or CardKind.NegativeConstant or CardKind.One;
+                if (numberNeedsText)
+                {
+                    _creatureText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    _creatureText.text = CardVisuals.AlgebraLabel(Card);
+                    _creatureText.fontSize = Card.Value >= 10 ? 36 : 44;
+                    _creatureText.fontStyle = FontStyle.Bold;
+                    _creatureText.color = Color.black;
+                    _creatureText.enabled = true;
+                }
+                else
+                {
+                    _creatureText.font = EmojiFont.Get();
+                    _creatureText.text = CardVisuals.Emoji(Card);
+                    _creatureText.fontSize = CardVisuals.EmojiFontSize(Card);
+                    _creatureText.color = Color.white;
+                    _creatureText.enabled = icon == null;
+                }
             }
         }
 
@@ -403,6 +573,7 @@ namespace DragonBoxAlgebra.UI
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                 eventData.pressEventCamera, out _dragOffset);
             _dragOffset = (Vector2)_rect.localPosition - _dragOffset;
+            _controller?.NotifyPlayerDragStarted();
         }
 
         private void BeginHandDrag(PointerEventData eventData)
@@ -430,6 +601,8 @@ namespace DragonBoxAlgebra.UI
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_dragRoot, eventData.position,
                 eventData.pressEventCamera, out _dragOffset);
             _dragOffset = (Vector2)transform.localPosition - _dragOffset;
+            _controller?.BeginFractionDrag(Index);
+            _controller?.NotifyPlayerDragStarted();
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -498,6 +671,7 @@ namespace DragonBoxAlgebra.UI
                         TryFlipHandOnTap();
                     }
 
+                    _controller?.EndFractionDrag();
                     return;
                 }
 
@@ -521,6 +695,7 @@ namespace DragonBoxAlgebra.UI
 
                 ClearSnapHighlight();
                 RestoreDragVisuals();
+                _controller?.EndFractionDrag();
 
                 if (_handPlayHandled)
                 {
@@ -736,18 +911,22 @@ namespace DragonBoxAlgebra.UI
 
         private void TryPlayHandDrop(PointerEventData eventData)
         {
-            // 1) Opposite under the pointer → merge + swirl in that slot.
-            CardWidget opposite = FindOppositeBoardCardUnderPointer(eventData);
-            if (opposite == null && _snapHighlight != null
-                && CombineRules.GetCombineAction(Card, _snapHighlight.Card) == CombineActionType.OppositeCancel)
+            // 1) Opposite under the pointer → merge + swirl — only for opposite-hand / Ch8–9 cancel.
+            //    Ch3+ balance: night onto day must start ? balance, not cancel on one side.
+            if (_controller.UsesHandOntoOppositeCancel)
             {
-                opposite = _snapHighlight;
-            }
+                CardWidget opposite = FindOppositeBoardCardUnderPointer(eventData);
+                if (opposite == null && _snapHighlight != null
+                    && CombineRules.GetCombineAction(Card, _snapHighlight.Card) == CombineActionType.OppositeCancel)
+                {
+                    opposite = _snapHighlight;
+                }
 
-            if (opposite != null)
-            {
-                TryPlayHandOnBoardTarget(opposite);
-                return;
+                if (opposite != null)
+                {
+                    TryPlayHandOnBoardTarget(opposite);
+                    return;
+                }
             }
 
             if (_controller.HasPendingBalance)
@@ -766,6 +945,18 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
+                // 151–165: dropping the balancing tile onto the dice side also fills the blank
+                // (? + 7 with −3 → 4).
+                CardWidget boardOnHoleSide = FindAnyBoardCardUnderPointer(eventData);
+                if (boardOnHoleSide != null
+                    && boardOnHoleSide.SideName == holeSide
+                    && _controller.TryPlayFromHand(Index, holeSide))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    return;
+                }
+
                 BoardDropZone boardZone = FindBoardZone(eventData);
                 string pendingSide = boardZone != null ? boardZone.SideName : SideUnderPointer(eventData);
                 if (pendingSide == holeSide && _controller.TryPlayFromHand(Index, holeSide))
@@ -777,9 +968,35 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Over a board tile: fill ?, start balance on that side, or ignore non-opposites.
-            // Addition levels (129–139) already have tiles — empty-padding-only was locking drops.
-            CardWidget boardTarget = FindHandBoardTarget(eventData);
+            // 151–165 ONLY: drop coefficient under the ? on either side (coeff·x and dice).
+            // Must run before parking the tile on the board with TryPlayFromHand.
+            if (_controller.UsesMultiplyAdditionLevels)
+            {
+                CardWidget fractionTarget = FindFractionLineTarget(eventData);
+                if (fractionTarget != null && TryPlaceDenominatorUnderCard(fractionTarget))
+                {
+                    return;
+                }
+
+                DenominatorDropZone denomZone = FindDenominatorZone(eventData);
+                if (denomZone != null
+                    && _controller.TryPlaceDenominatorFromHand(Index, denomZone.SideName))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                    return;
+                }
+
+                // Also accept drop on any board card that currently shows a fraction line.
+                CardWidget lineCard = FindHandBoardTarget(eventData) ?? FindAnyBoardCardUnderPointer(eventData);
+                if (lineCard != null && TryPlaceDenominatorUnderCard(lineCard))
+                {
+                    return;
+                }
+            }
+
+            // Over a board tile: fill ?, start balance on that side, or Ch8/9 cancel / denom.
+            CardWidget boardTarget = FindHandBoardTarget(eventData) ?? FindAnyBoardCardUnderPointer(eventData);
             if (boardTarget != null)
             {
                 if (_controller.HasPendingBalance
@@ -792,9 +1009,14 @@ namespace DragonBoxAlgebra.UI
                     return;
                 }
 
-                if (!_controller.UsesOppositeHandPlay
-                    && CombineRules.GetCombineAction(Card, boardTarget.Card) != CombineActionType.OppositeCancel
-                    && _controller.TryPlayFromHand(Index, boardTarget.SideName))
+                if (_controller.UsesHandOntoOppositeCancel)
+                {
+                    TryPlayHandOnBoardTarget(boardTarget);
+                    return;
+                }
+
+                // Balance chapters: drop onto any tile on a side starts ? balance on that side.
+                if (_controller.TryPlayFromHand(Index, boardTarget.SideName))
                 {
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -809,6 +1031,46 @@ namespace DragonBoxAlgebra.UI
             {
                 TryPlayHandOnSide(dropSide);
             }
+        }
+
+        private CardWidget FindAnyBoardCardUnderPointer(PointerEventData eventData)
+        {
+            foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
+            {
+                if (widget != null && widget != this && widget.SideName != "Hand")
+                {
+                    return widget;
+                }
+            }
+
+            return null;
+        }
+
+        private static DenominatorDropZone FindDenominatorZone(PointerEventData eventData)
+        {
+            if (eventData == null || EventSystem.current == null)
+            {
+                return null;
+            }
+
+            var results = new System.Collections.Generic.List<RaycastResult>();
+            EventSystem.current.RaycastAll(eventData, results);
+            foreach (RaycastResult result in results)
+            {
+                if (result.gameObject == null)
+                {
+                    continue;
+                }
+
+                DenominatorDropZone zone = result.gameObject.GetComponent<DenominatorDropZone>()
+                    ?? result.gameObject.GetComponentInParent<DenominatorDropZone>();
+                if (zone != null)
+                {
+                    return zone;
+                }
+            }
+
+            return null;
         }
 
         private CardWidget FindOppositeBoardCardUnderPointer(PointerEventData eventData)
@@ -912,6 +1174,10 @@ namespace DragonBoxAlgebra.UI
                     if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
                     {
                         TryPlayHandOnBoardTarget(target);
+                    }
+                    else if (TryPlaceDenominatorUnderCard(target))
+                    {
+                        return false;
                     }
                 }
 
@@ -1100,10 +1366,35 @@ namespace DragonBoxAlgebra.UI
                 return;
             }
 
-            // Dropping on top of an opposite always merges + swirl (all chapters).
+            // 151–165: dropping on / under a lined card places the divisor (both sides).
+            if (TryPlaceDenominatorUnderCard(target))
+            {
+                return;
+            }
+
+            // With lines under both sides, dropping on a number resolves 3/3 → 1 or dice/3.
+            if (_controller.UsesMultiplyAdditionLevels
+                && _controller.Board.Left.HasDenominator
+                && _controller.Board.Right.HasDenominator
+                && _controller.TryResolveDivisionOnCard(target.SideName, target.Index))
+            {
+                MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCombine();
+                return;
+            }
+
+            // Dropping on top of an opposite merges only for opposite-hand / Ch8–9.
+            // Ch3+ balance: same drop starts ? on the other side instead.
             if (CombineRules.GetCombineAction(Card, target.Card) == CombineActionType.OppositeCancel)
             {
-                if (_controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index))
+                if (_controller.UsesHandOntoOppositeCancel
+                    && _controller.TryPlayHandOntoOpposite(Index, target.SideName, target.Index))
+                {
+                    MarkHandPlayHandled();
+                    DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                }
+                else if (!_controller.UsesHandOntoOppositeCancel
+                    && _controller.TryPlayFromHand(Index, target.SideName))
                 {
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
@@ -1119,9 +1410,63 @@ namespace DragonBoxAlgebra.UI
                     MarkHandPlayHandled();
                     DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
                 }
+
+                return;
             }
 
-            // Do not call TryPlayFromHand here — that parks the tile at the end of the side.
+            if (_controller.TryPlayFromHand(Index, target.SideName))
+            {
+                MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+            }
+
+            // Do not fall through — balance chapters park via TryPlayFromHand above.
+        }
+
+        private bool TryPlaceDenominatorUnderCard(CardWidget target)
+        {
+            if (target == null || _controller == null || !_controller.UsesMultiplyAdditionLevels)
+            {
+                return false;
+            }
+
+            if (Card.Kind is not (CardKind.PositiveConstant or CardKind.NegativeConstant))
+            {
+                return false;
+            }
+
+            if (!_controller.ShouldShowFractionLineUnder(target.SideName, target.Index))
+            {
+                return false;
+            }
+
+            if (_controller.TryPlaceDenominatorFromHand(Index, target.SideName))
+            {
+                MarkHandPlayHandled();
+                DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayCardPlay();
+                return true;
+            }
+
+            return false;
+        }
+
+        private CardWidget FindFractionLineTarget(PointerEventData eventData)
+        {
+            foreach (CardWidget widget in GetHoveredCardWidgets(eventData))
+            {
+                if (widget == null || widget == this || widget.SideName == "Hand")
+                {
+                    continue;
+                }
+
+                if (_controller != null
+                    && _controller.ShouldShowFractionLineUnder(widget.SideName, widget.Index))
+                {
+                    return widget;
+                }
+            }
+
+            return null;
         }
 
         public static CardWidget Create(Transform parent, BoardCard card, int index, string sideName,
@@ -1208,6 +1553,68 @@ namespace DragonBoxAlgebra.UI
             labelText.color = Color.white;
             labelText.raycastTarget = false;
             widget._labelText = labelText;
+
+            // Fraction line/slot ONLY on 151–165. Never create on Ch1–Ch7 (would show on level 1).
+            if (sideName != "Hand" && controller != null && controller.UsesMultiplyAdditionLevels)
+            {
+                var fractionGo = new GameObject("FractionGuide", typeof(RectTransform), typeof(Image));
+                fractionGo.transform.SetParent(root.transform, false);
+                var fractionRect = fractionGo.GetComponent<RectTransform>();
+                fractionRect.anchorMin = new Vector2(0.08f, -0.95f);
+                fractionRect.anchorMax = new Vector2(0.92f, -0.04f);
+                fractionRect.offsetMin = Vector2.zero;
+                fractionRect.offsetMax = Vector2.zero;
+                var fractionHit = fractionGo.GetComponent<Image>();
+                fractionHit.color = new Color(1f, 1f, 1f, 0.02f);
+                fractionHit.raycastTarget = true;
+
+                var lineGo = new GameObject("FractionLine", typeof(RectTransform), typeof(Image));
+                lineGo.transform.SetParent(fractionGo.transform, false);
+                var lineRect = lineGo.GetComponent<RectTransform>();
+                lineRect.anchorMin = new Vector2(0.04f, 0.78f);
+                lineRect.anchorMax = new Vector2(0.96f, 0.9f);
+                lineRect.offsetMin = Vector2.zero;
+                lineRect.offsetMax = Vector2.zero;
+                var lineImage = lineGo.GetComponent<Image>();
+                lineImage.color = new Color(0.95f, 0.95f, 0.9f, 0.98f);
+                lineImage.raycastTarget = false;
+
+                // Image and Text cannot share one GameObject in Unity UI.
+                var slotGo = new GameObject("FractionSlot", typeof(RectTransform), typeof(Image));
+                slotGo.transform.SetParent(fractionGo.transform, false);
+                var slotRect = slotGo.GetComponent<RectTransform>();
+                slotRect.anchorMin = new Vector2(0.18f, 0.05f);
+                slotRect.anchorMax = new Vector2(0.82f, 0.72f);
+                slotRect.offsetMin = Vector2.zero;
+                slotRect.offsetMax = Vector2.zero;
+                var slotBg = slotGo.GetComponent<Image>();
+                slotBg.sprite = SpriteFactory.RoundedCard;
+                slotBg.type = Image.Type.Sliced;
+                slotBg.color = new Color(0.16f, 0.2f, 0.3f, 0.92f);
+                slotBg.raycastTarget = true;
+
+                var hintGo = new GameObject("Hint", typeof(RectTransform), typeof(Text));
+                hintGo.transform.SetParent(slotGo.transform, false);
+                var hintRect = hintGo.GetComponent<RectTransform>();
+                hintRect.anchorMin = Vector2.zero;
+                hintRect.anchorMax = Vector2.one;
+                hintRect.offsetMin = Vector2.zero;
+                hintRect.offsetMax = Vector2.zero;
+                var slotHint = hintGo.GetComponent<Text>();
+                slotHint.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                slotHint.text = "?";
+                slotHint.fontSize = 36;
+                slotHint.fontStyle = FontStyle.Bold;
+                slotHint.alignment = TextAnchor.MiddleCenter;
+                slotHint.color = new Color(0.92f, 0.94f, 0.98f, 0.9f);
+                slotHint.raycastTarget = false;
+
+                widget._fractionGuideRoot = fractionGo;
+                widget._fractionLineImage = lineImage;
+                widget._fractionSlotGo = slotGo;
+                widget._fractionSlotHint = slotHint;
+                fractionGo.SetActive(false);
+            }
 
             var layoutElement = root.AddComponent<LayoutElement>();
             layoutElement.minWidth = tileWidth;

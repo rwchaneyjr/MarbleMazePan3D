@@ -12,6 +12,8 @@ namespace DragonBoxAlgebra.UI
         private Text _progressText;
         private Text _messageText;
         private Text _spriteDebugText;
+        private Text _browseButtonLabel;
+        private GameObject _orderIntroPanel;
         private LevelCompleteView _completeView;
         private RectTransform _dragRoot;
         private Canvas _canvas;
@@ -23,6 +25,7 @@ namespace DragonBoxAlgebra.UI
             controller.LevelLoaded += OnLevelLoaded;
             controller.MessageChanged += OnMessageChanged;
             controller.LevelCompleted += OnLevelCompleted;
+            controller.OrderIntroVisibilityChanged += OnOrderIntroVisibilityChanged;
             controller.LoadLevel(0);
         }
 
@@ -33,6 +36,7 @@ namespace DragonBoxAlgebra.UI
                 Controller.LevelLoaded -= OnLevelLoaded;
                 Controller.MessageChanged -= OnMessageChanged;
                 Controller.LevelCompleted -= OnLevelCompleted;
+                Controller.OrderIntroVisibilityChanged -= OnOrderIntroVisibilityChanged;
             }
         }
 
@@ -43,18 +47,42 @@ namespace DragonBoxAlgebra.UI
             if (total < expected)
             {
                 _progressText.text =
-                    $"{current}/{total} OLD — need {expected}!  ·  Ch{chapter}";
+                    $"Ch{chapter} · {current}/{total} OLD — need {expected}!";
                 _progressText.color = new Color(1f, 0.45f, 0.45f);
             }
             else
             {
-                _progressText.text = $"{current}/{total}  ·  Ch{chapter}";
+                _progressText.text = $"Ch{chapter} · {current}/{total}";
                 _progressText.color = Color.white;
             }
 
             _titleText.text = $"{Controller.CurrentLevel.Title}  •  {CreatureArt.ThemeName}";
+            RefreshBrowseButtonLabel(current);
             _completeView.Hide();
+            SetOrderIntroVisible(Controller.IsOrderIntroVisible);
             RefreshSpriteDebugBanner();
+        }
+
+        private void RefreshBrowseButtonLabel(int currentGlobalLevel)
+        {
+            if (_browseButtonLabel == null)
+            {
+                return;
+            }
+
+            int nextGlobal = ChapterLevelGenerator.GetNextProblemTypeStartLevel(currentGlobalLevel);
+            int nextChapter = ChapterLevelGenerator.ChapterForLevelIndex(nextGlobal - 1);
+            _browseButtonLabel.text = $"Browse  Ch{nextChapter} · {nextGlobal}";
+        }
+
+        private void OnOrderIntroVisibilityChanged(bool visible) => SetOrderIntroVisible(visible);
+
+        private void SetOrderIntroVisible(bool visible)
+        {
+            if (_orderIntroPanel != null)
+            {
+                _orderIntroPanel.SetActive(visible);
+            }
         }
 
         private void RefreshSpriteDebugBanner()
@@ -81,7 +109,10 @@ namespace DragonBoxAlgebra.UI
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayWin();
         }
 
-        public void OnRestartClicked() => Controller.RestartLevel();
+        public void OnBrowseClicked()
+        {
+            Controller.SkipToNextProblemType();
+        }
 
         public void OnNextClicked()
         {
@@ -89,21 +120,10 @@ namespace DragonBoxAlgebra.UI
             Controller.LoadNextLevel();
         }
 
-        public void OnUndoClicked()
+        public void OnResetProblemClicked()
         {
-            Controller.Undo();
+            Controller.RestartLevel();
             DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
-        }
-
-        public void OnRewindClicked()
-        {
-            Controller.RewindLevel();
-            DragonBoxAlgebra.Audio.AudioManager.Instance?.PlayUndo();
-        }
-
-        public void OnRandomClicked()
-        {
-            Controller.LoadRandomLevel();
         }
 
         private void BuildUI()
@@ -134,9 +154,10 @@ namespace DragonBoxAlgebra.UI
                 new Vector2(0.02f, 0.28f), new Vector2(0.98f, 0.82f), Vector2.zero, Vector2.zero);
 
             var leftPanel = CreateTexturedPanel(boardRow.transform, "LeftPanel",
-                new Vector2(0f, 0f), new Vector2(0.495f, 1f));
+                new Vector2(0f, 0f), new Vector2(0.47f, 1f));
             var rightPanel = CreateTexturedPanel(boardRow.transform, "RightPanel",
-                new Vector2(0.505f, 0f), new Vector2(1f, 1f));
+                new Vector2(0.53f, 0f), new Vector2(1f, 1f));
+            CreateEqualsSign(boardRow.transform);
 
             // DragRoot above UI so hand/board tiles stay visible while dragging.
             _dragRoot = new GameObject("DragRoot", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -148,7 +169,7 @@ namespace DragonBoxAlgebra.UI
             _dragRoot.SetAsLastSibling();
 
             var boardView = gameObject.AddComponent<BoardView>();
-            boardView.Initialize(Controller, leftPanel, rightPanel, _canvas, _dragRoot);
+            boardView.Initialize(Controller, leftPanel, rightPanel, _canvas, _dragRoot, boardRow);
 
             var handPanel = CreatePanel(background.transform, "Hand", new Color(0.08f, 0.18f, 0.24f, 0.85f),
                 new Vector2(0.12f, 0.06f), new Vector2(0.88f, 0.22f), Vector2.zero, Vector2.zero);
@@ -160,10 +181,13 @@ namespace DragonBoxAlgebra.UI
                 "Drag cards together on the same side, or drag from your hand to the board.",
                 new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 12f), 18, TextAnchor.LowerCenter);
 
-            CreateRoundButton(background.transform, "Menu", new Vector2(0.06f, 0.92f), OnRestartClicked, "⬆");
-            CreateRoundButton(background.transform, "Random", new Vector2(0.12f, 0.92f), OnRandomClicked, "🎲");
-            CreateRoundButton(background.transform, "Undo", new Vector2(0.88f, 0.92f), OnUndoClicked, "↩");
-            CreateRoundButton(background.transform, "Rewind", new Vector2(0.94f, 0.92f), OnRewindClicked, "⏪");
+            _orderIntroPanel = CreateOrderIntroPanel(background.transform);
+            _orderIntroPanel.SetActive(false);
+
+            CreateLabeledButton(background.transform, "Browse", new Vector2(0.10f, 0.92f), OnBrowseClicked, 168f,
+                out _browseButtonLabel);
+            CreateLabeledButton(background.transform, "Reset Problem", new Vector2(0.90f, 0.92f), OnResetProblemClicked,
+                168f);
 
             var completePanel = CreatePanel(background.transform, "CompletePanel", new Color(0.05f, 0.12f, 0.18f, 0.92f),
                 new Vector2(0.2f, 0.25f), new Vector2(0.8f, 0.75f), Vector2.zero, Vector2.zero);
@@ -188,6 +212,37 @@ namespace DragonBoxAlgebra.UI
             }
 
             _dragRoot.SetAsLastSibling();
+        }
+
+        private static GameObject CreateOrderIntroPanel(Transform parent)
+        {
+            // Non-blocking tip above the equation — first drag hides it (151–180).
+            var panel = CreatePanel(parent, "OrderIntro", new Color(0.04f, 0.1f, 0.14f, 0.88f),
+                new Vector2(0.12f, 0.78f), new Vector2(0.88f, 0.90f), Vector2.zero, Vector2.zero);
+            panel.GetComponent<Image>().raycastTarget = false;
+
+            var line1 = CreateText(panel.transform, "Line1",
+                "First undo addition and subtraction",
+                new Vector2(0.5f, 0.68f), new Vector2(0.5f, 0.68f), Vector2.zero, 22, TextAnchor.MiddleCenter);
+            line1.rectTransform.sizeDelta = new Vector2(900f, 36f);
+            line1.fontStyle = FontStyle.Bold;
+            line1.raycastTarget = false;
+
+            var line2 = CreateText(panel.transform, "Line2",
+                "Second undo multiplication",
+                new Vector2(0.5f, 0.32f), new Vector2(0.5f, 0.32f), Vector2.zero, 22, TextAnchor.MiddleCenter);
+            line2.rectTransform.sizeDelta = new Vector2(900f, 36f);
+            line2.fontStyle = FontStyle.Bold;
+            line2.raycastTarget = false;
+
+            var hint = CreateText(panel.transform, "Hint",
+                "Drag a tile to begin",
+                new Vector2(0.5f, 0.02f), new Vector2(0.5f, 0.02f), Vector2.zero, 14, TextAnchor.MiddleCenter);
+            hint.rectTransform.sizeDelta = new Vector2(400f, 22f);
+            hint.color = new Color(0.75f, 0.9f, 0.95f, 0.85f);
+            hint.raycastTarget = false;
+
+            return panel.gameObject;
         }
 
         private static RectTransform CreateTexturedPanel(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
@@ -243,6 +298,34 @@ namespace DragonBoxAlgebra.UI
             return text;
         }
 
+        private static Button CreateLabeledButton(Transform parent, string label, Vector2 anchor,
+            UnityEngine.Events.UnityAction onClick, float width, out Text labelText)
+        {
+            var go = new GameObject(label.Replace(" ", "") + "Button", typeof(RectTransform), typeof(Image),
+                typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(width, 48f);
+            var image = go.GetComponent<Image>();
+            image.sprite = SpriteFactory.RoundedButton;
+            image.type = Image.Type.Sliced;
+            image.color = new Color(0.82f, 0.32f, 0.18f);
+
+            var button = go.GetComponent<Button>();
+            button.onClick.AddListener(onClick);
+            labelText = CreateText(go.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, 15,
+                TextAnchor.MiddleCenter);
+            labelText.fontStyle = FontStyle.Bold;
+            return button;
+        }
+
+        private static Button CreateLabeledButton(Transform parent, string label, Vector2 anchor,
+            UnityEngine.Events.UnityAction onClick, float width = 120f) =>
+            CreateLabeledButton(parent, label, anchor, onClick, width, out _);
+
         private static Button CreateButton(Transform parent, string label, Vector2 anchor, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject(label + "Button", typeof(RectTransform), typeof(Image), typeof(Button));
@@ -278,6 +361,27 @@ namespace DragonBoxAlgebra.UI
             image.color = new Color(0.82f, 0.32f, 0.18f);
             go.GetComponent<Button>().onClick.AddListener(onClick);
             CreateText(go.transform, "Symbol", symbol, Vector2.zero, Vector2.one, Vector2.zero, 22, TextAnchor.MiddleCenter);
+        }
+
+        /// <summary>White equals sign between the red-box / x side and the other side.</summary>
+        private static void CreateEqualsSign(Transform boardRow)
+        {
+            var go = new GameObject("EqualsSign", typeof(RectTransform), typeof(Text));
+            go.transform.SetParent(boardRow, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.47f, 0f);
+            rect.anchorMax = new Vector2(0.53f, 1f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var text = go.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.text = "=";
+            text.fontSize = 72;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = Color.white;
+            text.raycastTarget = false;
         }
     }
 }

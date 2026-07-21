@@ -8,6 +8,17 @@ namespace DragonBoxAlgebra.Core
 
         public static CombineActionType? GetCombineAction(BoardCard a, BoardCard b)
         {
+            // 1 · x → x (division identity).
+            if (a.Kind == CardKind.One && VariableGoalRules.IsVariableXGoal(b))
+            {
+                return CombineActionType.OneEliminates;
+            }
+
+            if (b.Kind == CardKind.One && VariableGoalRules.IsVariableXGoal(a))
+            {
+                return CombineActionType.OneEliminates;
+            }
+
             if (a.Kind == CardKind.Box || b.Kind == CardKind.Box
                 || VariableGoalRules.IsVariableXGoal(a) || VariableGoalRules.IsVariableXGoal(b))
             {
@@ -43,6 +54,13 @@ namespace DragonBoxAlgebra.Core
 
         public static void ApplyCombine(BoardSide side, int indexA, int indexB, CombineActionType action)
         {
+            if (action == CombineActionType.OneEliminates)
+            {
+                int oneIndex = side.Cards[indexA].Kind == CardKind.One ? indexA : indexB;
+                side.Cards.RemoveAt(oneIndex);
+                return;
+            }
+
             if (action != CombineActionType.OppositeCancel)
             {
                 return;

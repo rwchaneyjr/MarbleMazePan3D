@@ -45,7 +45,7 @@ target_subdir_for() {
 gameplay_dropin() {
   case "$1" in
     AlgebraGameController.cs|BalancePending.cs|CardFlipRules.cs|ChapterLevelGenerator.cs|\
-    DragMergeLevelGenerator.cs|GameSnapshot.cs|BoardFoldRules.cs|HandRules.cs|HandVisualRules.cs|\
+    DividePending.cs|DragMergeLevelGenerator.cs|GameSnapshot.cs|BoardFoldRules.cs|HandRules.cs|HandVisualRules.cs|\
     LevelDefinition.cs|LevelGenerator.cs|LevelLibrary.cs|MoveTracker.cs|\
     PendingCancelMarker.cs|ThemeAssignment.cs)
       return 0
@@ -58,7 +58,7 @@ gameplay_dropin() {
 
 core_dropin() {
   case "$1" in
-    AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|WinChecker.cs|VariableGoalRules.cs)
+    AlgebraBoard.cs|BoardCard.cs|BoardSide.cs|CardKind.cs|CombineRules.cs|DivisionRules.cs|WinChecker.cs|VariableGoalRules.cs)
       return 0
       ;;
     *)

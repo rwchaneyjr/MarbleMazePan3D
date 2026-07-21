@@ -210,11 +210,18 @@ namespace DragonBoxAlgebra.UI
         private static long NumberKey(int value, bool positive) =>
             ((long)Math.Abs(value) << 1) | (positive ? 1L : 0L);
 
-        private static Sprite GetNumberSprite(int value, bool positive)
+        public static Sprite GetNumberSprite(int value, bool positive)
         {
+            EnsureLoaded();
             NumberSprites.TryGetValue(NumberKey(value, positive), out Sprite sprite);
             return sprite;
         }
+
+        /// <summary>Number tile 0.png — addition-cancel result (opposites sum to 0).</summary>
+        public static Sprite GetZeroSprite() => GetNumberSprite(0, positive: true);
+
+        /// <summary>Number tile 1.png — division-cancel result (a÷a = 1).</summary>
+        public static Sprite GetOneSprite() => GetNumberSprite(1, positive: true);
 
         private static void RegisterNumber(int value, bool positive, Sprite sprite, int priority)
         {
